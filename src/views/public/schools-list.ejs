@@ -1,0 +1,13 @@
+<h1>Schools — public digital maturity summaries</h1>
+<p class="subtitle">No login required. No ranking or leaderboard — you can look up individual schools, not compare a sorted national table.</p>
+
+<form method="GET" action="/public-view/schools">
+  <input type="text" name="q" value="<%= q %>" placeholder="Search by school name...">
+</form>
+
+<table style="margin-top:1rem;">
+  <tr><th>School</th><th></th></tr>
+  <% schools.forEach(s => { %>
+    <tr><td><%= s.name %></td><td><a class="plain" href="/public-view/schools/<%= s.id %>">View summary →</a></td></tr>
+  <% }) %>
+</table>

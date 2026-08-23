@@ -1,0 +1,49 @@
+<h1><%= school.name %> — <%= lang==='ro'?'Ciclul':'Cycle' %> <%= cycle.cycleNumber %></h1>
+<%- include('_step-nav', { activeStep: 'review' }) %>
+
+<div class="card" style="text-align:center;">
+  <h2 style="margin-top:0;border:none;"><%= t('wheel_title') %></h2>
+  <%- wheelSvg %>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0;border:none;"><%= lang==='ro' ? 'Rezumat pe toți indicatorii' : 'Summary across all indicators' %></h2>
+  <table>
+    <tr><th><%= t('domain_label') %></th><th><%= t('th_indicator') %></th><th><%= t('level_label') %></th><th></th></tr>
+    <% domains.forEach(d => { %>
+      <% d.indicators.forEach(ind => { %>
+        <tr>
+          <td><%= d.code %></td>
+          <td><%= ind.code %> — <%= ind.name %></td>
+          <td><% if (ind.rating && ind.rating.level !== null) { %><span class="badge badge-level<%= ind.rating.level %>">L<%= ind.rating.level %></span><% } else { %><span class="badge">—</span><% } %></td>
+          <td>
+            <% if (ind.rating && ind.rating.level >= 2 && (!ind.rating.evidences || ind.rating.evidences.length === 0)) { %>
+              <span class="small" style="color:var(--red);"><%= lang==='ro' ? 'lipsă dovadă' : 'evidence missing' %></span>
+            <% } %>
+            <a class="plain small" href="/school/cycles/<%= cycle.id %>/step/<%= d.code %>#ind-<%= ind.code %>"><%= lang==='ro'?'Editează':'Edit' %></a>
+          </td>
+        </tr>
+      <% }) %>
+    <% }) %>
+  </table>
+</div>
+
+<% if (cycle.status === 'DRAFT') { %>
+<div class="card">
+  <h2 style="margin-top:0;border:none;"><%= t('assessment_confirm_title') %></h2>
+  <p class="small"><%= t('assessment_confirm_body') %></p>
+  <% if (errorMessage) { %><div class="flash flash-error"><%= errorMessage %></div><% } %>
+  <form method="POST" action="/school/cycles/<%= cycle.id %>/confirm">
+    <button class="btn" type="submit"><%= t('assessment_confirm_button') %></button>
+  </form>
+</div>
+<% } else { %>
+<div class="card" style="border-left:4px solid var(--green);">
+  <p><span class="badge badge-confirmed"><%= STATUS_LABELS.CONFIRMED %></span> <%= t('school_confirmed_on') %> <%= new Date(cycle.confirmedAt).toLocaleDateString() %>.</p>
+  <a class="btn btn-secondary" href="/school/cycles/<%= cycle.id %>/plan"><%= t('school_view_plan') %></a>
+</div>
+<% } %>
+
+<div class="card" style="text-align:center;">
+  <a class="btn btn-secondary" href="/school/cycles/<%= cycle.id %>"><%= lang==='ro'?'← Înapoi la prezentare generală':'← Back to overview' %></a>
+</div>

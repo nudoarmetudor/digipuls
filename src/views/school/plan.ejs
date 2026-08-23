@@ -1,0 +1,80 @@
+<h1><%= t('plan_title') %> — <%= lang==='ro'?'Ciclul':'Cycle' %> <%= cycle.cycleNumber %></h1>
+<p class="subtitle"><%= t('plan_subtitle') %></p>
+
+<% if (priorPlan && priorPlan.priorities.length) { %>
+<div class="card card-flat" style="background:var(--bg);">
+  <h2 style="margin-top:0;border:none;"><%= t('plan_previous_priorities') %></h2>
+  <table>
+    <tr><th><%= t('th_indicator') %></th><th><%= t('th_target') %></th><th><%= t('th_outcome') %></th></tr>
+    <% priorPlan.priorities.forEach(p => { %>
+      <tr><td><%= p.indicatorCode %></td><td><%= t('level_label') %> <%= p.currentLevel %> → <%= p.targetLevel %></td><td><%= p.outcomeStatus || t('not_yet_reviewed') %></td></tr>
+    <% }) %>
+  </table>
+</div>
+<% } %>
+
+<div class="card">
+  <h2 style="margin-top:0;border:none;"><%= t('plan_priorities') %> (<%= plan ? plan.priorities.length : 0 %>/5)</h2>
+  <% if (plan && plan.priorities.length) { %>
+    <% plan.priorities.forEach(p => { %>
+      <div class="indicator-block" style="margin-bottom:0.6rem;">
+        <h3><%= p.indicatorCode %> — <%= t('level_label') %> <%= p.currentLevel %> → <%= p.targetLevel %></h3>
+        <p class="small"><b><%= t('rationale_label') %>:</b> <%= p.rationale %></p>
+        <p class="small"><b><%= t('actions_label') %>:</b> <%= p.actions %></p>
+        <p class="small"><b><%= t('responsible_label') %>:</b> <%= p.responsible || '—' %> · <b><%= t('timeline_label') %>:</b> <%= p.timeline || '—' %></p>
+      </div>
+    <% }) %>
+  <% } %>
+
+  <% if (!plan || plan.priorities.length < 5) { %>
+  <form method="POST" action="/school/cycles/<%= cycle.id %>/plan/priorities">
+    <div class="inline-fields">
+      <div>
+        <label><%= t('linked_indicator') %></label>
+        <select name="indicatorCode" required>
+          <% indicators.forEach(i => { %><option value="<%= i.code %>"><%= i.code %> — <%= i.name %></option><% }) %>
+        </select>
+      </div>
+      <div><label><%= t('current_level_label') %></label><input type="number" name="currentLevel" min="0" max="5" required></div>
+      <div><label><%= t('target_level_label') %></label><input type="number" name="targetLevel" min="0" max="5" required></div>
+    </div>
+    <label><%= t('rationale_field') %></label>
+    <textarea name="rationale" required></textarea>
+    <label><%= t('actions_field') %></label>
+    <textarea name="actions" required></textarea>
+    <div class="inline-fields">
+      <div><label><%= t('responsible_persons') %></label><input type="text" name="responsible"></div>
+      <div><label><%= t('timeline_field') %></label><input type="text" name="timeline" placeholder="<%= lang==='ro'?'ex. Lunile 1-6':'e.g. Months 1-6' %>"></div>
+    </div>
+    <div style="margin-top:0.8rem;"><button class="btn" type="submit"><%= t('plan_add_priority') %></button></div>
+  </form>
+  <% } %>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0;border:none;"><%= t('plan_funding_title') %></h2>
+  <form method="POST" action="/school/cycles/<%= cycle.id %>/plan/details">
+    <label><%= t('funding_source') %></label>
+    <input type="text" name="fundingSource" value="<%= plan ? (plan.fundingSource || '') : '' %>" placeholder="<%= lang==='ro' ? 'bugetul școlii / cofinanțare locală / donator extern / Minister' : 'school budget / local co-funding / external donor / Ministry' %>">
+    <label><%= t('approving_authority') %></label>
+    <input type="text" name="approvingAuthority" value="<%= plan ? (plan.approvingAuthority || '') : '' %>">
+    <label><%= t('consultation_notes') %></label>
+    <textarea name="stakeholderConsultationNotes"><%= plan ? (plan.stakeholderConsultationNotes || '') : '' %></textarea>
+    <div style="margin-top:0.6rem;"><button class="btn btn-sm" type="submit"><%= t('plan_save_details') %></button></div>
+  </form>
+</div>
+
+<% if (plan && plan.priorities.length && !plan.publishedAt) { %>
+<div class="card" style="border-left:4px solid var(--green);">
+  <h2 style="margin-top:0;border:none;"><%= t('plan_publish_title') %></h2>
+  <p class="small"><%= t('publish_caption') %></p>
+  <form method="POST" action="/school/cycles/<%= cycle.id %>/plan/publish">
+    <button class="btn" type="submit"><%= t('plan_publish_button') %></button>
+  </form>
+</div>
+<% } else if (plan && plan.publishedAt) { %>
+<div class="card">
+  <p><%= t('plan_published') %> <%= new Date(plan.publishedAt).toLocaleDateString() %>.</p>
+  <a class="btn btn-secondary" href="/school/cycles/<%= cycle.id %>/plan/document" target="_blank"><%= t('plan_view_document') %></a>
+</div>
+<% } %>

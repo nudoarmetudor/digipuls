@@ -1,0 +1,15 @@
+<h1>Training-needs dashboard</h1>
+<p class="subtitle">Domain C only — teacher competence (C1), internal PD/mentoring capacity (C3), AI literacy (C4). Sorted by highest training need first, for planning DigiProf-B/-C cohorts and mentor assignments.</p>
+
+<table>
+  <tr><th>School</th><th>C1 — Teacher competence</th><th>C3 — PD/mentoring capacity</th><th>C4 — AI literacy</th></tr>
+  <% rows.forEach(r => { %>
+    <tr>
+      <td><%= r.school.name %></td>
+      <td><span class="badge badge-level<%= r.c1 ?? 0 %>">L<%= r.c1 ?? '—' %></span></td>
+      <td><span class="badge badge-level<%= r.c3 ?? 0 %>">L<%= r.c3 ?? '—' %></span></td>
+      <td><span class="badge badge-level<%= r.c4 ?? 0 %>">L<%= r.c4 ?? '—' %></span></td>
+    </tr>
+  <% }) %>
+</table>
+<% if (rows.length === 0) { %><div class="card"><p>No schools with confirmed data yet.</p></div><% } %>

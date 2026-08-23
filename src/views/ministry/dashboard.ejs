@@ -1,0 +1,103 @@
+<h1><%= t('ministry_dashboard_title') %></h1>
+<p class="subtitle"><%= t('ministry_dashboard_subtitle') %></p>
+
+<div class="grid-3">
+  <div class="card stat"><div class="num"><%= totalSchools %></div><div class="label"><%= t('stat_schools_provisioned') %></div></div>
+  <div class="card stat"><div class="num"><%= confirmedCount %></div><div class="label"><%= t('stat_confirmed_data') %></div></div>
+  <div class="card stat"><div class="num"><%= complianceCount %></div><div class="label"><%= t('stat_compliant') %></div></div>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0;border:none;"><%= t('stat_avg_domain') %></h2>
+  <div class="grid-3" style="grid-template-columns: repeat(4, 1fr);">
+    <div class="stat"><div class="num"><%= avgA %></div><div class="label">A — <%= lang==='ro'?'Conducere':'Leadership' %></div></div>
+    <div class="stat"><div class="num"><%= avgB %></div><div class="label">B — <%= lang==='ro'?'Predare':'Teaching' %></div></div>
+    <div class="stat"><div class="num"><%= avgC %></div><div class="label">C — <%= lang==='ro'?'Capacitate umană':'Human Capacity' %></div></div>
+    <div class="stat"><div class="num"><%= avgD %></div><div class="label">D — <%= lang==='ro'?'Infrastructură':'Infrastructure' %></div></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0;border:none;"><%= lang==='ro' ? 'Filtre' : 'Filters' %></h2>
+  <form method="GET" action="/ministry">
+    <div class="inline-fields">
+      <div>
+        <label><%= lang==='ro'?'Bandă':'Band' %></label>
+        <select name="band">
+          <option value="">—</option>
+          <% bands.forEach(b => { %><option value="<%= b.key %>" <%= query.band===b.key?'selected':'' %>><%= b.key %></option><% }) %>
+        </select>
+      </div>
+      <div>
+        <label><%= lang==='ro'?'Stare':'Status' %></label>
+        <select name="status">
+          <option value="">—</option>
+          <option value="confirmed" <%= query.status==='confirmed'?'selected':'' %>><%= STATUS_LABELS.CONFIRMED %></option>
+          <option value="draft" <%= query.status==='draft'?'selected':'' %>><%= STATUS_LABELS.DRAFT %></option>
+          <option value="no_data" <%= query.status==='no_data'?'selected':'' %>><%= lang==='ro'?'Fără date':'No data' %></option>
+        </select>
+      </div>
+      <div>
+        <label><%= lang==='ro'?'Ordinul 675':'Order 675' %></label>
+        <select name="compliance">
+          <option value="">—</option>
+          <option value="compliant" <%= query.compliance==='compliant'?'selected':'' %>><%= t('compliant') %></option>
+          <option value="gap" <%= query.compliance==='gap'?'selected':'' %>><%= lang==='ro'?'DECALAJ':'GAP' %></option>
+        </select>
+      </div>
+      <div>
+        <label><%= lang==='ro'?'Sortare':'Sort' %></label>
+        <select name="sort">
+          <option value="">—</option>
+          <option value="name-asc" <%= query.sort==='name-asc'?'selected':'' %>><%= lang==='ro'?'Nume A-Z':'Name A-Z' %></option>
+          <option value="A-desc" <%= query.sort==='A-desc'?'selected':'' %>>A ↓</option>
+          <option value="B-desc" <%= query.sort==='B-desc'?'selected':'' %>>B ↓</option>
+          <option value="C-desc" <%= query.sort==='C-desc'?'selected':'' %>>C ↓</option>
+          <option value="D-desc" <%= query.sort==='D-desc'?'selected':'' %>>D ↓</option>
+          <option value="A-asc" <%= query.sort==='A-asc'?'selected':'' %>>A ↑</option>
+          <option value="B-asc" <%= query.sort==='B-asc'?'selected':'' %>>B ↑</option>
+          <option value="C-asc" <%= query.sort==='C-asc'?'selected':'' %>>C ↑</option>
+          <option value="D-asc" <%= query.sort==='D-asc'?'selected':'' %>>D ↑</option>
+        </select>
+      </div>
+    </div>
+    <div class="inline-fields" style="margin-top:0.4rem;">
+      <div><label><%= lang==='ro'?'Nivel minim A':'Min level A' %></label><input type="number" name="minA" min="0" max="5" value="<%= query.minA||'' %>"></div>
+      <div><label><%= lang==='ro'?'Nivel minim B':'Min level B' %></label><input type="number" name="minB" min="0" max="5" value="<%= query.minB||'' %>"></div>
+      <div><label><%= lang==='ro'?'Nivel minim C':'Min level C' %></label><input type="number" name="minC" min="0" max="5" value="<%= query.minC||'' %>"></div>
+      <div><label><%= lang==='ro'?'Nivel minim D':'Min level D' %></label><input type="number" name="minD" min="0" max="5" value="<%= query.minD||'' %>"></div>
+    </div>
+    <div style="margin-top:0.8rem;">
+      <button class="btn btn-sm" type="submit"><%= lang==='ro'?'Aplică':'Apply' %></button>
+      <a class="btn btn-sm btn-secondary" href="/ministry"><%= lang==='ro'?'Resetează':'Reset' %></a>
+      <a class="btn btn-sm btn-secondary" href="/ministry/export.csv?<%= new URLSearchParams(query).toString() %>"><%= lang==='ro'?'Exportă CSV':'Export CSV' %></a>
+    </div>
+  </form>
+</div>
+
+<h2><%= t('all_schools') %> (<%= filteredCount %>/<%= totalSchools %>)</h2>
+<table>
+  <tr><th><%= lang==='ro'?'Școală':'School' %></th><th><%= lang==='ro'?'Teritoriu':'Territory' %></th><th><%= lang==='ro'?'Bandă':'Band' %></th><th><%= t('th_status') %></th><th>A</th><th>B</th><th>C</th><th>D</th><th><%= lang==='ro'?'Ordinul 675':'Order 675' %></th><th></th></tr>
+  <% rows.forEach(r => { %>
+    <tr>
+      <td><%= r.school.name %></td>
+      <td><%= r.school.territory ? r.school.territory.name : '—' %></td>
+      <td><%= r.school.enrolmentBand %></td>
+      <td>
+        <% if (!r.cycle) { %><span class="badge"><%= lang==='ro'?'Fără date':'No data' %></span>
+        <% } else { %><span class="badge badge-<%= r.cycle.status.toLowerCase() %>"><%= STATUS_LABELS[r.cycle.status] %></span><% } %>
+      </td>
+      <% ['A','B','C','D'].forEach(d => { %>
+        <td><%= r.domainScores && r.domainScores[d] !== null ? r.domainScores[d].toFixed(1) : '—' %></td>
+      <% }) %>
+      <td>
+        <% if (r.deviceCompliance && r.networkCompliance) { %>
+          <span class="badge badge-<%= (r.deviceCompliance.compliant && r.networkCompliance.compliant) ? 'pass' : 'fail' %>">
+            <%= (r.deviceCompliance.compliant && r.networkCompliance.compliant) ? t('ok') : (lang==='ro'?'DECALAJ':'GAP') %>
+          </span>
+        <% } else { %>—<% } %>
+      </td>
+      <td><a class="plain" href="/ministry/schools/<%= r.school.id %>"><%= lang==='ro'?'Detalii':'Details' %> →</a></td>
+    </tr>
+  <% }) %>
+</table>

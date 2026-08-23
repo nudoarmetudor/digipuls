@@ -1,0 +1,21 @@
+<h1>Regional dashboard — <%= territoryName %></h1>
+<p class="subtitle">Fulfils the territorial authority's existing Order 675 monitoring mandate for schools in this territory.</p>
+
+<div class="grid-2">
+  <div class="card stat"><div class="num"><%= totalSchools %></div><div class="label">Schools in territory</div></div>
+  <div class="card stat"><div class="num"><%= confirmedCount %></div><div class="label">With confirmed data</div></div>
+</div>
+
+<table>
+  <tr><th>School</th><th>Band</th><th>Status</th><th>A</th><th>B</th><th>C</th><th>D</th><th>Order 675</th><th></th></tr>
+  <% rows.forEach(r => { %>
+    <tr>
+      <td><%= r.school.name %></td>
+      <td><%= r.school.enrolmentBand %></td>
+      <td><% if (!r.cycle) { %><span class="badge">No data</span><% } else { %><span class="badge badge-<%= r.cycle.status.toLowerCase() %>"><%= r.cycle.status %></span><% } %></td>
+      <% ['A','B','C','D'].forEach(d => { %><td><%= r.domainScores && r.domainScores[d] !== null ? r.domainScores[d].toFixed(1) : '—' %></td><% }) %>
+      <td><% if (r.deviceCompliance && r.networkCompliance) { %><span class="badge badge-<%= (r.deviceCompliance.compliant && r.networkCompliance.compliant) ? 'pass' : 'fail' %>"><%= (r.deviceCompliance.compliant && r.networkCompliance.compliant) ? 'OK' : 'GAP' %></span><% } else { %>—<% } %></td>
+      <td><a class="plain" href="/territorial/schools/<%= r.school.id %>">Details →</a></td>
+    </tr>
+  <% }) %>
+</table>

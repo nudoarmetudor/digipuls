@@ -1,0 +1,45 @@
+<h1><%= school.name %></h1>
+<p class="subtitle">SIME ID: <span class="mono"><%= school.simeId || '—' %></span> · <%= lang === 'ro' ? 'Înscriși' : 'Enrolment' %>: <%= school.enrolmentTotal %> (<%= lang === 'ro' ? 'bandă' : 'band' %> <%= school.enrolmentBand %>)</p>
+
+<% if (cycles.length === 0) { %>
+  <div class="card">
+    <h2 style="margin-top:0; border:none;"><%= t('school_welcome_title') %></h2>
+    <p><%= t('school_welcome_body') %></p>
+    <form method="POST" action="/school/cycles/start">
+      <button class="btn" type="submit"><%= t('school_start_first_cycle') %></button>
+    </form>
+  </div>
+<% } else { %>
+  <% if (latest.status === 'DRAFT') { %>
+    <div class="card" style="border-left: 4px solid var(--blue);">
+      <h2 style="margin-top:0; border:none;"><%= lang==='ro'?'Ciclul':'Cycle' %> <%= latest.cycleNumber %> — <%= t('school_cycle_in_progress') %></h2>
+      <p><%= latest.ratings.filter(r => r.level !== null).length %> <%= t('school_indicators_rated') %></p>
+      <a class="btn" href="/school/cycles/<%= latest.id %>"><%= t('school_continue_assessment') %></a>
+    </div>
+  <% } else { %>
+    <div class="card" style="border-left: 4px solid var(--green);">
+      <h2 style="margin-top:0; border:none;"><%= lang==='ro'?'Ciclul':'Cycle' %> <%= latest.cycleNumber %> — <%= t('school_cycle_confirmed') %></h2>
+      <p class="small"><%= t('school_confirmed_on') %> <%= new Date(latest.confirmedAt).toLocaleDateString() %>. <%= t('school_next_renewal') %></p>
+      <a class="btn btn-secondary" href="/school/cycles/<%= latest.id %>"><%= t('school_view_assessment') %></a>
+      <a class="btn btn-secondary" href="/school/cycles/<%= latest.id %>/plan"><%= t('school_view_plan') %></a>
+      <form method="POST" action="/school/cycles/start" style="display:inline;">
+        <button class="btn" type="submit"><%= t('school_start_renewal') %></button>
+      </form>
+    </div>
+  <% } %>
+
+  <h2><%= t('school_cycle_history') %></h2>
+  <table>
+    <tr><th><%= t('th_cycle') %></th><th><%= t('th_status') %></th><th><%= t('th_started') %></th><th><%= t('th_confirmed') %></th><th><%= t('th_plan') %></th><th></th></tr>
+    <% cycles.forEach(c => { %>
+      <tr>
+        <td>#<%= c.cycleNumber %></td>
+        <td><span class="badge badge-<%= c.status.toLowerCase() %>"><%= STATUS_LABELS[c.status] %></span></td>
+        <td><%= new Date(c.startedAt).toLocaleDateString() %></td>
+        <td><%= c.confirmedAt ? new Date(c.confirmedAt).toLocaleDateString() : '—' %></td>
+        <td><%= c.plan ? (c.plan.publishedAt ? t('plan_published') : STATUS_LABELS.DRAFT) : '—' %></td>
+        <td><a class="plain" href="/school/cycles/<%= c.id %>"><%= lang==='ro'?'Deschide':'Open' %> →</a></td>
+      </tr>
+    <% }) %>
+  </table>
+<% } %>

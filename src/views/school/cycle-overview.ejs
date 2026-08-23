@@ -1,0 +1,37 @@
+<h1><%= school.name %> — <%= lang==='ro'?'Ciclul':'Cycle' %> <%= cycle.cycleNumber %></h1>
+<p class="subtitle">
+  <span class="badge badge-<%= cycle.status.toLowerCase() %>"><%= STATUS_LABELS[cycle.status] %></span>
+  <% if (isContinuation) { %> · <%= lang==='ro' ? 'Ciclu de continuare — fiecare indicator pornește de la nivelul anterior; confirmați sau ajustați fiecare.' : 'Continuation cycle — every indicator starts from its prior level; confirm or adjust each one.' %><% } %>
+</p>
+
+<div class="card card-flat" style="background:var(--bg);">
+  <p class="small" style="margin:0;">
+    <%= lang==='ro'
+      ? 'Acest ciclu poate implica mai multe persoane — conducerea școlii, profesori, tehnologul educațional, un expert/consultant extern de validare, meta-mentori — lucrând pe parcursul mai multor zile sau săptămâni. Fiecare pas se salvează automat pe măsură ce completați câmpurile; nu este nevoie să finalizați totul dintr-o dată sau într-o anumită ordine.'
+      : 'This cycle can involve multiple people — school leadership, teachers, the educational technologist, an external validation expert, meta-mentors — working across several days or weeks. Every step saves automatically as you fill it in; there is no need to finish everything at once or in any particular order.' %>
+  </p>
+</div>
+
+<%- include('_step-nav', { activeStep: null }) %>
+
+<div class="card">
+  <h2 style="margin-top:0;border:none;"><%= lang==='ro' ? 'Progres general' : 'Overall progress' %></h2>
+  <div class="progress-bar-track"><div class="progress-bar-fill" style="width:<%= Math.round(100*progress.rated/progress.total) %>%"></div></div>
+  <p class="small"><%= progress.rated %>/<%= progress.total %> <%= lang==='ro'?'indicatori evaluați':'indicators rated' %></p>
+</div>
+
+<div class="card" style="text-align:center;">
+  <h2 style="margin-top:0;border:none;"><%= t('wheel_title') %></h2>
+  <p class="small"><%= t('wheel_caption') %></p>
+  <%- wheelSvg %>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0;border:none;"><%= lang==='ro' ? 'Legendă' : 'Legend' %></h2>
+  <div style="display:flex; gap:1.5rem; flex-wrap:wrap;">
+    <span class="step-pill step-grey" style="pointer-events:none;"><span class="step-dot"></span><%= lang==='ro'?'Neînceput':'Not started' %></span>
+    <span class="step-pill step-blue" style="pointer-events:none;"><span class="step-dot"></span><%= lang==='ro'?'În desfășurare':'In progress' %></span>
+    <span class="step-pill step-red" style="pointer-events:none;"><span class="step-dot"></span><%= lang==='ro'?'Necesită atenție (dovadă lipsă)':'Needs attention (evidence missing)' %></span>
+    <span class="step-pill step-green" style="pointer-events:none;"><span class="step-dot"></span><%= lang==='ro'?'Complet':'Complete' %></span>
+  </div>
+</div>

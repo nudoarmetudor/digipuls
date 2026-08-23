@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= typeof title !== 'undefined' ? title + ' — DigiPuls' : 'DigiPuls' %></title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div class="topbar">
+    <a href="/" class="brand">Digi<span>Puls</span></a>
+    <% if (currentUser) { %>
+      <nav>
+        <% if (currentUser.role === 'SCHOOL_TEAM') { %>
+          <a href="/school"><%= t('nav_dashboard') %></a>
+          <a href="/school/history"><%= t('nav_my_progress') %></a>
+        <% } else if (currentUser.role === 'MINISTRY' || currentUser.role === 'ADMIN') { %>
+          <a href="/ministry"><%= t('nav_national_dashboard') %></a>
+          <a href="/ministry/compliance"><%= t('nav_compliance') %></a>
+          <% if (currentUser.role === 'ADMIN') { %><a href="/admin/schools/new"><%= t('nav_add_school') %></a><a href="/admin/audit-log"><%= t('nav_audit_log') %></a><% } %>
+        <% } else if (currentUser.role === 'TERRITORIAL') { %>
+          <a href="/territorial"><%= t('nav_regional_dashboard') %></a>
+        <% } else if (currentUser.role === 'PARTNER') { %>
+          <a href="/partner"><%= t('nav_my_offers') %></a>
+        <% } else if (currentUser.role === 'STRATEGIC_PARTNER') { %>
+          <a href="/strategic"><%= t('nav_training_dashboard') %></a>
+        <% } %>
+        <a href="/public-view/schools"><%= t('nav_public_view') %></a>
+        <span class="userbox">
+          <a href="/lang/en?back=<%= encodeURIComponent(currentPath) %>" style="<%= lang==='en' ? 'text-decoration:underline;' : 'opacity:0.6;' %>">EN</a>
+          / <a href="/lang/ro?back=<%= encodeURIComponent(currentPath) %>" style="<%= lang==='ro' ? 'text-decoration:underline;' : 'opacity:0.6;' %>">RO</a>
+          | <%= currentUser.name %> (<%= currentUser.role %>)
+        </span>
+        <form action="/logout" method="POST" style="display:inline">
+          <a href="#" onclick="this.closest('form').submit(); return false;"><%= t('nav_logout') %></a>
+        </form>
+      </nav>
+    <% } else { %>
+      <nav>
+        <a href="/public-view/schools"><%= t('nav_public_view') %></a>
+        <a href="/lang/en?back=<%= encodeURIComponent(currentPath) %>" style="<%= lang==='en' ? 'text-decoration:underline;' : 'opacity:0.6;' %>">EN</a>
+        / <a href="/lang/ro?back=<%= encodeURIComponent(currentPath) %>" style="<%= lang==='ro' ? 'text-decoration:underline;' : 'opacity:0.6;' %>">RO</a>
+        <a href="/login"><%= t('nav_login') %></a>
+      </nav>
+    <% } %>
+  </div>
+  <div class="container<%= typeof wide !== 'undefined' && wide ? ' wide' : '' %>">
+    <%- body %>
+  </div>
+  <footer>DigiPuls — MVP prototype. Not connected to a live SIME instance (SIME_PROVIDER=mock). Runs locally only.</footer>
+</body>
+</html>

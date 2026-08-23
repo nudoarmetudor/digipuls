@@ -1,0 +1,38 @@
+<h1><%= school.name %></h1>
+<p class="subtitle"><%= lang==='ro' ? 'Rezumat public al maturității digitale — divulgare minimă obligatorie, conform politicii naționale DigiPuls.' : "Public digital maturity summary — mandatory minimum disclosure, per DigiPuls' national policy." %></p>
+
+<% if (!hasData) { %>
+  <div class="card"><p><%= lang==='ro' ? 'Această școală nu a finalizat încă un ciclu de autoevaluare confirmat.' : 'This school has not yet completed a confirmed self-assessment cycle.' %></p></div>
+<% } else { %>
+  <div class="card" style="text-align:center;">
+    <h2 style="margin-top:0;border:none;"><%= t('wheel_title') %> — <%= lang==='ro'?'4 domenii':'4 domains' %></h2>
+    <p class="small"><%= t('wheel_domains_caption') %></p>
+    <%- wheelSvg %>
+  </div>
+  <div class="card">
+    <h2 style="margin-top:0;border:none;"><%= lang==='ro' ? 'Maturitate digitală — rezumat pe domenii' : 'Digital maturity — domain summary' %></h2>
+    <div class="grid-3" style="grid-template-columns:repeat(4,1fr);">
+      <div class="stat"><div class="num" style="font-size:1rem;"><%= domains.A || '—' %></div><div class="label">A — <%= lang==='ro'?'Conducere':'Leadership' %></div></div>
+      <div class="stat"><div class="num" style="font-size:1rem;"><%= domains.B || '—' %></div><div class="label">B — <%= lang==='ro'?'Predare':'Teaching' %></div></div>
+      <div class="stat"><div class="num" style="font-size:1rem;"><%= domains.C || '—' %></div><div class="label">C — <%= lang==='ro'?'Capacitate umană':'Human Capacity' %></div></div>
+      <div class="stat"><div class="num" style="font-size:1rem;"><%= domains.D || '—' %></div><div class="label">D — <%= lang==='ro'?'Infrastructură':'Infrastructure' %></div></div>
+    </div>
+    <p style="margin-top:1rem;"><%= lang==='ro' ? 'Standardele minime de echipamente/rețea (Ordinul 675)' : 'Order 675 minimum equipment/network standards' %>: <span class="badge badge-<%= compliant ? 'pass' : 'fail' %>"><%= compliant ? (lang==='ro'?'ÎNDEPLINITE':'MET') : (lang==='ro'?'NEÎNDEPLINITE ÎNCĂ':'NOT YET MET') %></span></p>
+    <p><%= lang==='ro' ? 'Plan de dezvoltare digitală' : 'Digital development plan' %>: <span class="badge badge-<%= hasPlan ? 'pass' : 'fail' %>"><%= hasPlan ? (lang==='ro'?'EXISTĂ':'EXISTS') : (lang==='ro'?'NEPUBLICAT ÎNCĂ':'NOT YET PUBLISHED') %></span></p>
+  </div>
+
+  <% if (richDetail) { %>
+    <div class="card">
+      <h2 style="margin-top:0;border:none;"><%= lang==='ro' ? 'Detalii suplimentare (această școală a ales să distribuie mai multe informații)' : 'Additional detail (this school has opted to share more)' %></h2>
+      <table>
+        <tr><th><%= t('domain_label') %></th><th><%= lang==='ro' ? 'Nivel mediu (0-5)' : 'Average level (0-5)' %></th></tr>
+        <tr><td>A — <%= lang==='ro'?'Conducere, guvernanță și managementul schimbării':'Leadership, Governance and Change Management' %></td><td><%= richDetail.A !== null ? richDetail.A.toFixed(1) : '—' %></td></tr>
+        <tr><td>B — <%= lang==='ro'?'Predare, învățare și evaluare':'Teaching, Learning and Assessment' %></td><td><%= richDetail.B !== null ? richDetail.B.toFixed(1) : '—' %></td></tr>
+        <tr><td>C — <%= lang==='ro'?'Capacitate umană și competență digitală':'Human Capacity and Digital Competence' %></td><td><%= richDetail.C !== null ? richDetail.C.toFixed(1) : '—' %></td></tr>
+        <tr><td>D — <%= lang==='ro'?'Infrastructură, platforme și ecosistem digital':'Infrastructure, Platforms and Digital Ecosystem' %></td><td><%= richDetail.D !== null ? richDetail.D.toFixed(1) : '—' %></td></tr>
+      </table>
+    </div>
+  <% } %>
+<% } %>
+
+<a class="btn btn-secondary" href="/public-view/schools">← <%= lang==='ro' ? 'Înapoi la căutarea școlilor' : 'Back to school search' %></a>

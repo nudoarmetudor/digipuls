@@ -1,0 +1,81 @@
+<h1><%= school.name %></h1>
+<p class="subtitle">SIME: <span class="mono"><%= school.simeId || '—' %></span> · Territory: <%= school.territory ? school.territory.name : '—' %> · Enrolment: <%= school.enrolmentTotal %> (band <%= school.enrolmentBand %>)</p>
+
+<% if (!latest) { %>
+  <div class="card"><p><%= lang==='ro'?'Niciun ciclu de autoevaluare început încă.':'No assessment cycle started yet.' %></p></div>
+<% } else { %>
+  <div class="card" style="text-align:center;">
+    <h2 style="margin-top:0;border:none;"><%= t('wheel_title') %> — <%= lang==='ro'?'Ciclul':'Cycle' %> <%= latest.cycleNumber %></h2>
+    <%- wheelSvg %>
+  </div>
+  <div class="card">
+    <h2 style="margin-top:0;border:none;"><%= lang==='ro'?'Ciclul':'Cycle' %> <%= latest.cycleNumber %> — <span class="badge badge-<%= latest.status.toLowerCase() %>"><%= STATUS_LABELS[latest.status] %></span></h2>
+    <table>
+      <tr><th><%= t('th_indicator') %></th><th><%= t('level_label') %></th><th><%= lang==='ro'?'Schimbare':'Change' %></th><th><%= lang==='ro'?'Comentariu':'Comment' %></th></tr>
+      <% ['A','B','C','D'].forEach(d => { %>
+        <% INDICATORS.filter(i => i.domain === d).forEach(ind => {
+             const r = latest.ratings.find(x => x.indicatorCode === ind.code);
+        %>
+          <tr>
+            <td><%= ind.code %> — <%= ind.name %></td>
+            <td><% if (r && r.level !== null) { %><span class="badge badge-level<%= r.level %>">L<%= r.level %></span><% } else { %>—<% } %></td>
+            <td><% if (r && r.changeState) { %><span class="badge badge-<%= r.changeState.toLowerCase() %>"><%= CHANGE_STATE_LABELS[r.changeState] %></span><% } %></td>
+            <td class="small"><%= r ? (r.comment || '') : '' %></td>
+          </tr>
+        <% }) %>
+      <% }) %>
+    </table>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h2 style="margin-top:0;border:none;">D1 — <%= lang==='ro'?'Conformitate rețea':'Network compliance' %></h2>
+      <% if (networkCompliance) { %>
+        <p><span class="badge badge-<%= networkCompliance.compliant ? 'pass' : 'fail' %>"><%= networkCompliance.compliant ? t('compliant') : t('non_compliant') %></span></p>
+        <ul class="small">
+          <% networkCompliance.checks.forEach(c => { %><li><%= c.pass ? '✓' : '✗' %> <%= c.label %></li><% }) %>
+        </ul>
+      <% } %>
+    </div>
+    <div class="card">
+      <h2 style="margin-top:0;border:none;">D2 — <%= lang==='ro'?'Conformitate echipamente':'Device compliance' %></h2>
+      <% if (deviceCompliance) { %>
+        <p><span class="badge badge-<%= deviceCompliance.compliant ? 'pass' : 'fail' %>"><%= deviceCompliance.compliant ? t('compliant') : t('non_compliant') %></span></p>
+        <table>
+          <% deviceCompliance.checks.forEach(c => { %>
+            <tr><td class="small"><%= c.label %></td><td class="small"><%= c.actual %>/<%= c.required %></td><td><%= c.pass ? '✓' : '✗' %></td></tr>
+          <% }) %>
+        </table>
+      <% } %>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0;border:none;">Validation records</h2>
+    <% if (validations.length === 0) { %>
+      <p class="small" style="color:var(--purple-dark);">No peer/expert validation on record for this cycle — data is self-reported only.</p>
+    <% } else { %>
+      <ul class="small">
+        <% validations.forEach(v => { %><li><b><%= v.reviewerType %></b> (<%= v.reviewerName %>): <%= v.verdict %><% if (v.reliabilityNote) { %> — <%= v.reliabilityNote %><% } %><% if (v.notes) { %> — "<%= v.notes %>"<% } %></li><% }) %>
+      </ul>
+    <% } %>
+  </div>
+
+  <% if (latest.plan) { %>
+    <div class="card">
+      <h2 style="margin-top:0;border:none;">Digital development plan</h2>
+      <p class="small"><%= latest.plan.publishedAt ? 'Published ' + new Date(latest.plan.publishedAt).toLocaleDateString() : 'Draft' %></p>
+      <ul>
+        <% latest.plan.priorities.forEach(p => { %><li><%= p.indicatorCode %>: Level <%= p.currentLevel %> → <%= p.targetLevel %> — <%= p.rationale %></li><% }) %>
+      </ul>
+    </div>
+  <% } %>
+
+  <h2><%= t('school_cycle_history') %></h2>
+  <table>
+    <tr><th><%= t('th_cycle') %></th><th><%= t('th_status') %></th><th><%= t('th_confirmed') %></th></tr>
+    <% school.cycles.forEach(c => { %>
+      <tr><td>#<%= c.cycleNumber %></td><td><span class="badge badge-<%= c.status.toLowerCase() %>"><%= STATUS_LABELS[c.status] %></span></td><td><%= c.confirmedAt ? new Date(c.confirmedAt).toLocaleDateString() : '—' %></td></tr>
+    <% }) %>
+  </table>
+<% } %>

@@ -1,0 +1,75 @@
+<h1>Add school</h1>
+<p class="subtitle">Search the (mock) SIME registry to auto-fill a school's official data, or enter it manually. See README.md "SIME integration" for how this seam becomes a live API call later.</p>
+
+<div class="card">
+  <h2 style="margin-top:0;border:none;">1. Search SIME registry</h2>
+  <input type="text" id="sime-search" placeholder="Search by school name or SIME ID...">
+  <div id="sime-results" style="margin-top:0.6rem;"></div>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0;border:none;">2. School details</h2>
+  <form method="POST" action="/admin/schools" id="school-form">
+    <label>SIME ID</label>
+    <input type="text" name="simeId" id="f-simeId">
+    <label>Name</label>
+    <input type="text" name="name" id="f-name" required>
+    <label>Address</label>
+    <input type="text" name="address" id="f-address">
+    <div class="inline-fields">
+      <div>
+        <label>Territory</label>
+        <select name="territoryId" id="f-territoryId">
+          <% territories.forEach(t => { %><option value="<%= t.id %>"><%= t.name %></option><% }) %>
+          <option value="new">+ New territory (enter name below)</option>
+        </select>
+      </div>
+      <div><label>New territory name (if selected above)</label><input type="text" name="territoryName" id="f-territoryName"></div>
+    </div>
+    <div class="inline-fields">
+      <div><label>Total enrolment</label><input type="number" name="enrolmentTotal" id="f-enrolmentTotal" required></div>
+      <div><label>Students grades 7-12</label><input type="number" name="studentsGrades7to12" id="f-studentsGrades7to12"></div>
+      <div><label>Total classrooms</label><input type="number" name="classroomsTotal" id="f-classroomsTotal"></div>
+    </div>
+    <h3 style="margin-top:1rem;">Digital team login (optional, can be added later)</h3>
+    <div class="inline-fields">
+      <div><label>Team email</label><input type="email" name="teamEmail"></div>
+      <div><label>Team display name</label><input type="text" name="teamName"></div>
+    </div>
+    <div style="margin-top:1rem;"><button class="btn" type="submit">Create school</button></div>
+  </form>
+</div>
+
+<script>
+const searchInput = document.getElementById('sime-search');
+const resultsDiv = document.getElementById('sime-results');
+let debounce;
+searchInput.addEventListener('input', () => {
+  clearTimeout(debounce);
+  const q = searchInput.value.trim();
+  if (!q) { resultsDiv.innerHTML = ''; return; }
+  debounce = setTimeout(async () => {
+    const res = await fetch('/admin/sime/search?q=' + encodeURIComponent(q));
+    const data = await res.json();
+    resultsDiv.innerHTML = data.length
+      ? data.map(s => `<div class="card card-flat" style="background:var(--bg);cursor:pointer;padding:0.6rem 0.9rem;margin-bottom:0.4rem;" data-school='${JSON.stringify(s).replace(/'/g, "&apos;")}'>
+          <b>${s.name}</b> <span class="small mono">${s.simeId}</span><br>
+          <span class="small">${s.address} · enrolment ${s.enrolmentTotal}</span>
+        </div>`).join('')
+      : '<p class="small">No matches.</p>';
+    resultsDiv.querySelectorAll('[data-school]').forEach(el => {
+      el.addEventListener('click', () => {
+        const s = JSON.parse(el.getAttribute('data-school'));
+        document.getElementById('f-simeId').value = s.simeId;
+        document.getElementById('f-name').value = s.name;
+        document.getElementById('f-address').value = s.address;
+        document.getElementById('f-enrolmentTotal').value = s.enrolmentTotal;
+        document.getElementById('f-studentsGrades7to12').value = s.studentsGrades7to12;
+        document.getElementById('f-classroomsTotal').value = s.classroomsTotal;
+        document.getElementById('f-territoryId').value = 'new';
+        document.getElementById('f-territoryName').value = s.territory;
+      });
+    });
+  }, 200);
+});
+</script>

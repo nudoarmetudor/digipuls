@@ -1,0 +1,14 @@
+<h1>Audit log</h1>
+<p class="subtitle">Last 200 entries — durable, attributable record of anything that could feed a decision (per "DigiPuls - additional requirements and open questions resolved.md").</p>
+<table>
+  <tr><th>When</th><th>User</th><th>Action</th><th>Entity</th><th>Details</th></tr>
+  <% entries.forEach(e => { %>
+    <tr>
+      <td class="small"><%= new Date(e.createdAt).toLocaleString() %></td>
+      <td class="small"><%= e.user ? e.user.name : '—' %></td>
+      <td class="small mono"><%= e.action %></td>
+      <td class="small"><%= e.entityType %> #<%= e.entityId %></td>
+      <td class="small"><%= e.details || '' %></td>
+    </tr>
+  <% }) %>
+</table>

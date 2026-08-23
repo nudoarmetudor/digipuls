@@ -1,0 +1,30 @@
+<h1><%= school.name %></h1>
+<p class="subtitle"><%= school.territory.name %> · Enrolment: <%= school.enrolmentTotal %></p>
+
+<% if (latest) { %>
+<div class="card" style="text-align:center;">
+  <h2 style="margin-top:0;border:none;"><%= t('wheel_title') %></h2>
+  <%- wheelSvg %>
+</div>
+<div class="card">
+  <h2 style="margin-top:0;border:none;">Latest cycle (#<%= latest.cycleNumber %>) — <span class="badge badge-<%= latest.status.toLowerCase() %>"><%= latest.status %></span></h2>
+  <table>
+    <tr><th>Indicator</th><th>Level</th></tr>
+    <% INDICATORS.forEach(ind => {
+         const r = latest.ratings.find(x => x.indicatorCode === ind.code);
+    %>
+      <tr><td><%= ind.code %> — <%= ind.name %></td><td><% if (r && r.level !== null) { %><span class="badge badge-level<%= r.level %>">L<%= r.level %></span><% } else { %>—<% } %></td></tr>
+    <% }) %>
+  </table>
+</div>
+<% } else { %>
+<div class="card"><p>No assessment cycle yet.</p></div>
+<% } %>
+
+<div class="card">
+  <h2 style="margin-top:0;border:none;">Flag for Ministry attention</h2>
+  <form method="POST" action="/territorial/schools/<%= school.id %>/flag">
+    <textarea name="reason" placeholder="e.g. stalled renewal, repeated decay pattern, local context the data doesn't capture" required></textarea>
+    <div style="margin-top:0.6rem;"><button class="btn btn-sm" type="submit">Flag</button></div>
+  </form>
+</div>

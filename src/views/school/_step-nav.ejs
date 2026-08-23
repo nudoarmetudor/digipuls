@@ -1,0 +1,19 @@
+<%
+// Expects: cycle, stepStatuses (array from computeStepStatuses+finalizeReviewStatus),
+// activeStep (key of current step, or null on the overview page).
+const STEP_LABELS_EN = { A: 'A — Leadership', B: 'B — Teaching', C: 'C — Human Capacity', D: 'D — Infrastructure', infra: 'Equipment & Network', review: 'Review & Confirm' };
+const STEP_LABELS_RO = { A: 'A — Conducere', B: 'B — Predare', C: 'C — Capacitate umană', D: 'D — Infrastructură', infra: 'Echipamente și rețea', review: 'Revizuire și confirmare' };
+const stepLabels = lang === 'ro' ? STEP_LABELS_RO : STEP_LABELS_EN;
+%>
+<div class="step-nav">
+  <% stepStatuses.forEach(s => {
+       let status = s.status;
+       if (s.kind === 'review' && cycle.status === 'CONFIRMED') status = 'green';
+  %>
+    <a href="<%= s.kind === 'review' ? `/school/cycles/${cycle.id}/step/review` : `/school/cycles/${cycle.id}/step/${s.key}` %>"
+       class="step-pill step-<%= status %><%= activeStep === s.key ? ' step-active' : '' %>">
+      <span class="step-dot"></span>
+      <%= stepLabels[s.key] %>
+    </a>
+  <% }) %>
+</div>

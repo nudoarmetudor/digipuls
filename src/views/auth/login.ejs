@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Log in — DigiPuls</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div class="topbar">
+    <a href="/" class="brand">Digi<span>Puls</span></a>
+    <nav>
+      <a href="/lang/en" style="<%= lang==='en' ? 'text-decoration:underline;' : 'opacity:0.6;' %>">EN</a>
+      / <a href="/lang/ro" style="<%= lang==='ro' ? 'text-decoration:underline;' : 'opacity:0.6;' %>">RO</a>
+    </nav>
+  </div>
+  <div class="container" style="max-width: 420px; margin-top: 3rem;">
+    <div class="card">
+      <h1><%= t('login_title') %></h1>
+      <p class="subtitle"><%= t('login_subtitle') %></p>
+      <% if (error) { %><div class="flash flash-error"><%= error %></div><% } %>
+      <form method="POST" action="/login">
+        <label><%= t('login_email') %></label>
+        <input type="email" name="email" required autofocus>
+        <label><%= t('login_password') %></label>
+        <input type="password" name="password" required>
+        <div style="margin-top:1.2rem;"><button class="btn" type="submit"><%= t('login_button') %></button></div>
+      </form>
+      <div class="card card-flat" style="margin-top:1.5rem; background:var(--bg);">
+        <h3><%= t('login_demo_accounts') %></h3>
+        <p class="small"><%= t('login_demo_password_note') %> <span class="mono"><b>DigiPuls2026!</b></span></p>
+        <table>
+          <tr><th>Role</th><th>Email</th></tr>
+          <tr><td>School (Chișinău, high maturity)</td><td class="mono">zadnipru@digipuls.md</td></tr>
+          <tr><td>School (Bălți, device-need)</td><td class="mono">hasdeu@digipuls.md</td></tr>
+          <tr><td>School (Orhei, non-compliant network)</td><td class="mono">ghibu@digipuls.md</td></tr>
+          <tr><td>School (Sîngera, mid-assessment)</td><td class="mono">singera@digipuls.md</td></tr>
+          <tr><td>Ministry</td><td class="mono">ministry@digipuls.md</td></tr>
+          <tr><td>Territorial (Chișinău)</td><td class="mono">territorial-chisinau@digipuls.md</td></tr>
+          <tr><td>Financing partner (UNICEF)</td><td class="mono">unicef@digipuls.md</td></tr>
+          <tr><td>Strategic partner (Clasa Viitorului)</td><td class="mono">clasaviitorului@digipuls.md</td></tr>
+          <tr><td>Admin (SIME provisioning)</td><td class="mono">admin@digipuls.md</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

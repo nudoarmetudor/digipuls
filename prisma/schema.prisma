@@ -1,0 +1,254 @@
+// DigiPuls — Prisma schema
+// Local dev uses SQLite (zero-config, file-based). To move to production,
+// change the datasource below to "postgresql" and set DATABASE_URL — the
+// rest of the schema is written to be portable (no SQLite-only features
+// used deliberately, aside from the default String-based enums, which map
+// cleanly onto real enums when moving to Postgres).
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ---------------------------------------------------------------------------
+// Identity & organisation
+// ---------------------------------------------------------------------------
+
+model Territory {
+  id     Int      @id @default(autoincrement())
+  name   String   @unique
+  schools School[]
+  users   User[]
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  name         String
+  // SCHOOL_TEAM | MINISTRY | TERRITORIAL | PARTNER | STRATEGIC_PARTNER | ADMIN
+  role         String
+  schoolId     Int?
+  school       School?  @relation(fields: [schoolId], references: [id])
+  territoryId  Int?
+  territory    Territory? @relation(fields: [territoryId], references: [id])
+  createdAt    DateTime @default(now())
+
+  auditEntries AuditLogEntry[]
+}
+
+// A school is provisioned either from the SIME registry (see services/sime)
+// or manually for the pilot cohort. simeId is nullable because not every
+// pilot-cohort school will necessarily have been matched to a SIME record
+// yet — see the SIME integration note in README.md.
+model School {
+  id                   Int      @id @default(autoincrement())
+  name                 String
+  simeId               String?  @unique
+  territoryId          Int?
+  territory            Territory? @relation(fields: [territoryId], references: [id])
+  address              String?
+  enrolmentTotal        Int      @default(0)
+  studentsGrades7to12   Int      @default(0)
+  classroomsTotal        Int      @default(0)
+  // computed at read-time from enrolmentTotal via src/services/order675.js;
+  // stored too for simple querying/filtering in dashboards
+  enrolmentBand         String   @default("0-250")
+  publicDisclosureOptIn Boolean  @default(false)
+  createdAt            DateTime @default(now())
+
+  users               User[]
+  cycles              AssessmentCycle[]
+}
+
+// ---------------------------------------------------------------------------
+// Reference data: the 19-indicator, 6-level instrument (Annex A)
+// Seeded once from src/data/indicators.js — this is fixed reference content,
+// not something schools edit.
+// ---------------------------------------------------------------------------
+
+model Indicator {
+  code        String   @id // e.g. "A1", "B5", "D2"
+  domain      String   // "A" | "B" | "C" | "D"
+  name        String
+  description String
+  sortOrder   Int
+
+  levels  IndicatorLevel[]
+  ratings IndicatorRating[]
+  priorities PlanPriority[]
+}
+
+model IndicatorLevel {
+  id                  Int    @id @default(autoincrement())
+  indicatorCode       String
+  indicator           Indicator @relation(fields: [indicatorCode], references: [code])
+  level               Int    // 0-5
+  levelName           String // "Below floor" | "Accidental" | ... | "Continuous innovation"
+  description         String
+  engagementBenchmark String?
+  frequencyBenchmark  String?
+  evidenceBenchmark   String?
+
+  @@unique([indicatorCode, level])
+}
+
+// ---------------------------------------------------------------------------
+// Assessment cycles (2-year, continuation model — see Process 2)
+// ---------------------------------------------------------------------------
+
+model AssessmentCycle {
+  id               Int       @id @default(autoincrement())
+  schoolId         Int
+  school           School    @relation(fields: [schoolId], references: [id])
+  cycleNumber      Int       // 1, 2, 3... per school
+  startedAt        DateTime  @default(now())
+  confirmedAt      DateTime?
+  // DRAFT | CONFIRMED
+  status           String    @default("DRAFT")
+  previousCycleId  Int?      @unique
+  previousCycle    AssessmentCycle? @relation("CycleContinuation", fields: [previousCycleId], references: [id])
+  nextCycle        AssessmentCycle? @relation("CycleContinuation")
+
+  ratings          IndicatorRating[]
+  plan             DevelopmentPlan?
+  deviceInventory  DeviceInventory?
+  networkChecklist NetworkChecklist?
+
+  @@unique([schoolId, cycleNumber])
+}
+
+// Order 675 Annex 2 numeric device counts — feeds the D2 compliance check.
+model DeviceInventory {
+  id                    Int    @id @default(autoincrement())
+  cycleId               Int    @unique
+  cycle                 AssessmentCycle @relation(fields: [cycleId], references: [id])
+  classroomPCs          Int    @default(0)
+  interactivePanels     Int    @default(0)
+  itRoomPCs             Int    @default(0)
+  managementPCs         Int    @default(0)
+  methodicalCentrePCs   Int    @default(0)
+  libraryPCs            Int    @default(0)
+  printers              Int    @default(0)
+  multifunctionPrinters Int    @default(0)
+}
+
+// Order 675 Annex 5 network/security checklist — feeds the D1 compliance check.
+model NetworkChecklist {
+  id                Int    @id @default(autoincrement())
+  cycleId           Int    @unique
+  cycle             AssessmentCycle @relation(fields: [cycleId], references: [id])
+  wifiWholeSchool   Boolean @default(false)
+  subnetsSeparated  Boolean @default(false)
+  wifi80211n        Boolean @default(false)
+  wifi80211ac       Boolean @default(false)
+  firewallActive    Boolean @default(false)
+  contentFiltering  Boolean @default(false)
+}
+
+model IndicatorRating {
+  id            Int      @id @default(autoincrement())
+  cycleId       Int
+  cycle         AssessmentCycle @relation(fields: [cycleId], references: [id])
+  indicatorCode String
+  indicator     Indicator @relation(fields: [indicatorCode], references: [code])
+  // 0-5, or null if not yet rated in this cycle (a first-cycle draft starts
+  // every indicator as an unrated placeholder row, not a missing row — see
+  // cycleService.startFirstCycle).
+  level         Int?
+  // MAINTAINED | GREW | DECAYED | null (first cycle, no prior state to compare)
+  changeState   String?
+  comment       String?  // Digipeegel-style justification/exception field (UC-S3)
+  updatedAt     DateTime @updatedAt
+
+  evidences Evidence[]
+
+  @@unique([cycleId, indicatorCode])
+}
+
+model Evidence {
+  id          Int      @id @default(autoincrement())
+  ratingId    Int
+  rating      IndicatorRating @relation(fields: [ratingId], references: [id])
+  type        String   // document | observation_log | survey | usage_data | it_audit | photo | minutes | certification | external_validation
+  description String
+  source      String?
+  filePath    String?
+  createdAt   DateTime @default(now())
+  // set true once a peer/meta-mentor validation record exists for this
+  // indicator/cycle — this is the flag the donation-matching eligibility
+  // gate (Process 5, step 3) checks. See ValidationRecord below.
+}
+
+model ValidationRecord {
+  id              Int      @id @default(autoincrement())
+  cycleId         Int
+  reviewerName    String
+  reviewerType    String   // peer_school | meta_mentor | external_evaluator
+  indicatorCode   String?  // null = validates the whole cycle
+  verdict         String   // agree | disagree
+  reliabilityNote String?  // broadly_reliable | optimistic | conservative
+  notes           String?
+  createdAt       DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Digital development plan (Annex C)
+// ---------------------------------------------------------------------------
+
+model DevelopmentPlan {
+  id           Int       @id @default(autoincrement())
+  cycleId      Int       @unique
+  cycle        AssessmentCycle @relation(fields: [cycleId], references: [id])
+  publishedAt  DateTime?
+  fundingSource String?
+  approvingAuthority String?
+  stakeholderConsultationNotes String?
+
+  priorities PlanPriority[]
+}
+
+model PlanPriority {
+  id            Int      @id @default(autoincrement())
+  planId        Int
+  plan          DevelopmentPlan @relation(fields: [planId], references: [id])
+  indicatorCode String
+  indicator     Indicator @relation(fields: [indicatorCode], references: [code])
+  currentLevel  Int
+  targetLevel   Int
+  rationale     String
+  actions       String
+  responsible   String?
+  timeline      String?
+  // achieved | partial | dropped | in_progress (set at the START of the
+  // *next* cycle, when reviewing this priority's outcome)
+  outcomeStatus String?
+}
+
+// NOTE: an earlier version of this schema had a DonationQuery /
+// DonationQueryResult pair implementing an automated donation-matching
+// engine (scoring/ranking schools against a partner's offer). Removed by
+// explicit design decision: "do not create any automatic match-making
+// engine for donations... situations are evaluated on a case by case
+// approach." Partners, Ministry and territorial authorities now get a
+// filterable/sortable read-only overview instead — see
+// services/schoolOverview.js's filterRows/toCsv, not a scoring service.
+
+// ---------------------------------------------------------------------------
+// Cross-cutting
+// ---------------------------------------------------------------------------
+
+model AuditLogEntry {
+  id         Int      @id @default(autoincrement())
+  userId     Int?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String
+  entityType String
+  entityId   String?
+  details    String?
+  createdAt  DateTime @default(now())
+}
