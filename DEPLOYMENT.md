@@ -110,7 +110,13 @@ Hostinger rebuilding automatically on every push — no SSH required.
    SESSION_SECRET=<generate a long random string>
    NODE_ENV=production
    SIME_PROVIDER=mock
+   DEMO_MODE=false
    ```
+   `DEMO_MODE=false` is required as soon as real schools are being
+   onboarded here: it hides the demo-accounts panel on the login page.
+   Real school accounts (created via `/admin/schools/new`) already get a
+   random one-time password regardless of this flag — `DEMO_MODE` only
+   controls whether the *fictional* demo logins are advertised publicly.
    Use hPanel's File Manager or the built-in terminal to create the
    `digipuls-data` directory **once**, outside the app's own deployment
    folder, before the first deploy.

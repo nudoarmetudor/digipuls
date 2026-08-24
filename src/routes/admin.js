@@ -5,6 +5,7 @@ const { requireRole } = require('../middleware/auth');
 const simeService = require('../services/sime/simeService');
 const { bandFor } = require('../data/order675');
 const { logAction } = require('../services/audit');
+const { generateTempPassword } = require('../utils/password');
 
 const router = express.Router();
 router.use(requireRole('ADMIN'));
@@ -48,20 +49,31 @@ router.post('/schools', async (req, res) => {
     },
   });
 
+  let tempPassword = null;
+  let teamAccountEmail = null;
   if (teamEmail) {
+    // A real school account never gets a fixed/shared password — a random
+    // one-time password is generated and shown to the admin exactly once
+    // here; the account is forced to set its own password on first login
+    // (see mustChangePassword, enforced in app.js).
+    tempPassword = generateTempPassword();
+    teamAccountEmail = teamEmail;
     await prisma.user.create({
       data: {
         email: teamEmail,
-        passwordHash: await bcrypt.hash('DigiPuls2026!', 10),
+        passwordHash: await bcrypt.hash(tempPassword, 10),
         name: teamName || `Echipa digitală — ${name}`,
         role: 'SCHOOL_TEAM',
         schoolId: school.id,
+        mustChangePassword: true,
       },
     });
   }
 
   await logAction(req.session.user.id, 'PROVISION_SCHOOL', 'School', school.id, simeId ? `from SIME ${simeId}` : 'manual entry');
-  res.redirect(`/ministry/schools/${school.id}`);
+  res.render('admin/school-created', {
+    title: 'School created', wide: true, school, teamAccountEmail, tempPassword,
+  });
 });
 
 router.get('/audit-log', async (req, res) => {

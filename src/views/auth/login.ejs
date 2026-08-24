@@ -25,6 +25,7 @@
         <input type="password" name="password" required>
         <div style="margin-top:1.2rem;"><button class="btn" type="submit"><%= t('login_button') %></button></div>
       </form>
+      <% if (demoMode) { %>
       <div class="card card-flat" style="margin-top:1.5rem; background:var(--bg);">
         <h3><%= t('login_demo_accounts') %></h3>
         <p class="small"><%= t('login_demo_password_note') %> <span class="mono"><b>DigiPuls2026!</b></span></p>
@@ -41,6 +42,7 @@
           <tr><td>Admin (SIME provisioning)</td><td class="mono">admin@digipuls.md</td></tr>
         </table>
       </div>
+      <% } %>
     </div>
   </div>
 </body>

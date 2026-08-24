@@ -12,7 +12,7 @@
     <tr>
       <td><%= r.school.name %></td>
       <td><%= r.school.enrolmentBand %></td>
-      <td><% if (!r.cycle) { %><span class="badge">No data</span><% } else { %><span class="badge badge-<%= r.cycle.status.toLowerCase() %>"><%= r.cycle.status %></span><% } %></td>
+      <td><% if (!r.cycle) { %><span class="badge">No data</span><% } else { %><span class="badge badge-<%= r.cycle.status.toLowerCase() %>"><%= r.cycle.status %></span><% } %><% if (r.hasNewerDraft) { %><br><span class="small">(newer assessment in progress — confirmed data below stays official)</span><% } %></td>
       <% ['A','B','C','D'].forEach(d => { %><td><%= r.domainScores && r.domainScores[d] !== null ? r.domainScores[d].toFixed(1) : '—' %></td><% }) %>
       <td><% if (r.deviceCompliance && r.networkCompliance) { %><span class="badge badge-<%= (r.deviceCompliance.compliant && r.networkCompliance.compliant) ? 'pass' : 'fail' %>"><%= (r.deviceCompliance.compliant && r.networkCompliance.compliant) ? 'OK' : 'GAP' %></span><% } else { %>—<% } %></td>
       <td><a class="plain" href="/territorial/schools/<%= r.school.id %>">Details →</a></td>

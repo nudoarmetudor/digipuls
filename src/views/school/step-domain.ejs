@@ -1,6 +1,8 @@
 <h1><%= school.name %> — <%= lang==='ro'?'Ciclul':'Cycle' %> <%= cycle.cycleNumber %></h1>
 <%- include('_step-nav', { activeStep: domainCode }) %>
 
+<% if (errorMessage) { %><div class="flash flash-error"><%= errorMessage %></div><% } %>
+
 <div class="card">
   <h2 style="margin-top:0;border:none;"><%= t('domain_label') %> <%= domainCode %> — <%= domainName %></h2>
   <p class="small"><%= domainIntro %></p>

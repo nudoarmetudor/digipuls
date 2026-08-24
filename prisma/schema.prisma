@@ -37,8 +37,13 @@ model User {
   territoryId  Int?
   territory    Territory? @relation(fields: [territoryId], references: [id])
   createdAt    DateTime @default(now())
+  // Forces a password-change screen before anything else is reachable —
+  // set true whenever an account is provisioned with a system-generated
+  // one-time password (see admin.js), never true for the demo seed logins.
+  mustChangePassword Boolean @default(false)
 
   auditEntries AuditLogEntry[]
+  confirmedCycles AssessmentCycle[] @relation("CycleConfirmedBy")
 }
 
 // A school is provisioned either from the SIME registry (see services/sime)
@@ -108,7 +113,11 @@ model AssessmentCycle {
   cycleNumber      Int       // 1, 2, 3... per school
   startedAt        DateTime  @default(now())
   confirmedAt      DateTime?
-  // DRAFT | CONFIRMED
+  confirmedById    Int?
+  confirmedBy      User?     @relation("CycleConfirmedBy", fields: [confirmedById], references: [id])
+  // DRAFT | CONFIRMED — once CONFIRMED, ratings/evidence/device/network
+  // become immutable (enforced in routes/school.js, not just the UI); the
+  // only way to change anything further is to start a continuation cycle.
   status           String    @default("DRAFT")
   previousCycleId  Int?      @unique
   previousCycle    AssessmentCycle? @relation("CycleContinuation", fields: [previousCycleId], references: [id])

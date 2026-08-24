@@ -8,6 +8,7 @@ const cycleService = require('../services/cycleService');
 const { logAction } = require('../services/audit');
 const { renderWheel, itemsFromRatings } = require('../services/wheelChart');
 const { computeStepStatuses, finalizeReviewStatus, overallProgress } = require('../services/stepStatus');
+const { ValidationError, toLevel, toNonNegativeInt } = require('../utils/validate');
 
 const router = express.Router();
 router.use(requireRole('SCHOOL_TEAM'));
@@ -61,6 +62,22 @@ async function loadCycleForSchool(req, res, next) {
   next();
 }
 
+// A confirmed cycle is the school's official, on-the-record declaration —
+// Ministry/partner dashboards and history compare against it. Without this
+// guard the mutating routes below would silently keep writing after
+// confirmation, which would make "confirmed" meaningless (the record could
+// change after being reported on). Only a new continuation cycle may make
+// further changes.
+function requireDraftCycle(req, res, next) {
+  if (req.cycle.status !== 'DRAFT') {
+    const msg = encodeURIComponent(
+      'This cycle is confirmed and locked — it cannot be edited. Start a continuation cycle from the school dashboard to make further changes.'
+    );
+    return res.redirect(`/school/cycles/${req.cycle.id}/step/review?error=${msg}`);
+  }
+  next();
+}
+
 function stepStatusesFor(cycle) {
   return finalizeReviewStatus(computeStepStatuses(cycle));
 }
@@ -109,6 +126,7 @@ router.get('/cycles/:id/step/:stepKey', loadCycleForSchool, async (req, res) => 
       school, cycle, stepStatuses, domainCode: stepKey, domainName: localeData.DOMAINS[stepKey],
       domainIntro: '', indicators, ratedInDomain, totalInDomain: indicators.length,
       isContinuation: !!cycle.previousCycleId,
+      errorMessage: req.query.error || null,
     });
   }
 
@@ -119,6 +137,7 @@ router.get('/cycles/:id/step/:stepKey', loadCycleForSchool, async (req, res) => 
       title: `Cycle ${cycle.cycleNumber} — Infrastructure`, wide: true,
       school, cycle, stepStatuses, deviceCompliance, networkCompliance,
       isContinuation: !!cycle.previousCycleId,
+      errorMessage: req.query.error || null,
     });
   }
 
@@ -144,14 +163,22 @@ router.get('/cycles/:id/step/:stepKey', loadCycleForSchool, async (req, res) => 
   return res.status(404).render('error', { title: 'Not found', message: 'Unknown step.' });
 });
 
-router.post('/cycles/:id/ratings/:code', loadCycleForSchool, async (req, res) => {
+router.post('/cycles/:id/ratings/:code', loadCycleForSchool, requireDraftCycle, async (req, res) => {
   const cycle = req.cycle;
   const { code } = req.params;
-  let level = Number(req.body.level);
   const comment = req.body.comment || null;
+  const returnStep = req.body.returnStep || code[0];
 
   const rating = cycle.ratings.find((r) => r.indicatorCode === code);
   if (!rating) return res.status(400).send('Unknown indicator');
+
+  let level;
+  try {
+    level = toLevel(req.body.level);
+  } catch (e) {
+    if (!(e instanceof ValidationError)) throw e;
+    return res.redirect(`/school/cycles/${cycle.id}/step/${returnStep}?error=${encodeURIComponent(e.message)}#ind-${code}`);
+  }
 
   // Hard enforcement of the compliance floor described in Annex A v2: D1/D2
   // cannot be rated above 0 while the school fails Order 675's mandatory
@@ -177,11 +204,10 @@ router.post('/cycles/:id/ratings/:code', loadCycleForSchool, async (req, res) =>
     await prisma.indicatorRating.update({ where: { id: rating.id }, data: { level, comment } });
   }
   await logAction(req.session.user.id, 'SET_RATING', 'IndicatorRating', rating.id, `${code} -> level ${level}`);
-  const returnStep = req.body.returnStep || code[0];
   res.redirect(`/school/cycles/${cycle.id}/step/${returnStep}#ind-${code}`);
 });
 
-router.post('/cycles/:id/ratings/:code/evidence', loadCycleForSchool, async (req, res) => {
+router.post('/cycles/:id/ratings/:code/evidence', loadCycleForSchool, requireDraftCycle, async (req, res) => {
   const cycle = req.cycle;
   const { code } = req.params;
   const rating = cycle.ratings.find((r) => r.indicatorCode === code);
@@ -196,11 +222,16 @@ router.post('/cycles/:id/ratings/:code/evidence', loadCycleForSchool, async (req
   res.redirect(`/school/cycles/${cycle.id}/step/${returnStep}#ind-${code}`);
 });
 
-router.post('/cycles/:id/device', loadCycleForSchool, async (req, res) => {
+router.post('/cycles/:id/device', loadCycleForSchool, requireDraftCycle, async (req, res) => {
   const cycle = req.cycle;
   const fields = ['classroomPCs', 'interactivePanels', 'itRoomPCs', 'managementPCs', 'methodicalCentrePCs', 'libraryPCs', 'printers', 'multifunctionPrinters'];
   const data = {};
-  fields.forEach((f) => { data[f] = Number(req.body[f]) || 0; });
+  try {
+    fields.forEach((f) => { data[f] = toNonNegativeInt(req.body[f] === '' ? 0 : req.body[f], f); });
+  } catch (e) {
+    if (!(e instanceof ValidationError)) throw e;
+    return res.redirect(`/school/cycles/${cycle.id}/step/infra?error=${encodeURIComponent(e.message)}`);
+  }
   await prisma.deviceInventory.upsert({
     where: { cycleId: cycle.id },
     update: data,
@@ -210,7 +241,7 @@ router.post('/cycles/:id/device', loadCycleForSchool, async (req, res) => {
   res.redirect(`/school/cycles/${cycle.id}/step/infra`);
 });
 
-router.post('/cycles/:id/network', loadCycleForSchool, async (req, res) => {
+router.post('/cycles/:id/network', loadCycleForSchool, requireDraftCycle, async (req, res) => {
   const cycle = req.cycle;
   const fields = ['wifiWholeSchool', 'subnetsSeparated', 'wifi80211n', 'wifi80211ac', 'firewallActive', 'contentFiltering'];
   const data = {};
@@ -226,6 +257,7 @@ router.post('/cycles/:id/network', loadCycleForSchool, async (req, res) => {
 
 router.post('/cycles/:id/confirm', loadCycleForSchool, async (req, res) => {
   const cycle = req.cycle;
+  if (cycle.status === 'CONFIRMED') return res.redirect(`/school/cycles/${cycle.id}/plan`);
   const school = await getSchool(req);
   const unrated = cycle.ratings.filter((r) => r.level === null || r.level === undefined);
   if (unrated.length > 0) {
@@ -241,7 +273,10 @@ router.post('/cycles/:id/confirm', loadCycleForSchool, async (req, res) => {
     );
     return res.redirect(`/school/cycles/${cycle.id}/step/review?error=${msg}`);
   }
-  await prisma.assessmentCycle.update({ where: { id: cycle.id }, data: { status: 'CONFIRMED', confirmedAt: new Date() } });
+  await prisma.assessmentCycle.update({
+    where: { id: cycle.id },
+    data: { status: 'CONFIRMED', confirmedAt: new Date(), confirmedById: req.session.user.id },
+  });
   await prisma.school.update({ where: { id: school.id }, data: { enrolmentBand: require('../data/order675').bandFor(school.enrolmentTotal) } });
   await logAction(req.session.user.id, 'CONFIRM_CYCLE', 'AssessmentCycle', cycle.id, null);
   res.redirect(`/school/cycles/${cycle.id}/plan`);

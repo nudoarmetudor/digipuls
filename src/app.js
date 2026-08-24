@@ -5,6 +5,13 @@ const expressLayouts = require('express-ejs-layouts');
 const morgan = require('morgan');
 const path = require('path');
 
+// No silent fallback in production — sessions signed with the checked-in
+// dev secret are not secure once real accounts/data exist on this instance.
+if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
+  console.error('SESSION_SECRET must be set in production. Refusing to start with the default dev secret.');
+  process.exit(1);
+}
+
 const app = express();
 
 // Hostinger (and most PaaS-style Node hosts) terminate TLS at a reverse
@@ -40,6 +47,10 @@ app.use(
 app.use((req, res, next) => {
   res.locals.currentUser = req.session.user || null;
   res.locals.currentPath = req.path;
+  // Gates the login page's demo-accounts panel — off by default once real
+  // schools are being onboarded (see DEPLOYMENT.md). Defaults to on so
+  // local `npm run dev` + `npm run seed` still shows it out of the box.
+  res.locals.demoMode = process.env.DEMO_MODE !== 'false';
   next();
 });
 
@@ -61,6 +72,15 @@ app.get('/lang/:code', (req, res) => {
   // protocol-relative URL (//evil.com would still start with "/").
   const back = req.query.back && /^\/(?!\/)/.test(req.query.back) ? req.query.back : '/';
   res.redirect(back);
+});
+
+// Forced first-login password change: nothing else is reachable for an
+// account still carrying a system-generated one-time password.
+app.use((req, res, next) => {
+  const user = req.session.user;
+  const allowed = req.path === '/change-password' || req.path === '/logout' || req.path.startsWith('/lang/');
+  if (user && user.mustChangePassword && !allowed) return res.redirect('/change-password');
+  next();
 });
 
 app.use('/', require('./routes/auth'));

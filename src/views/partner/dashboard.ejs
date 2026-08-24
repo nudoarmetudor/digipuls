@@ -47,7 +47,7 @@
       <td><%= r.school.name %></td>
       <td><%= r.school.territory ? r.school.territory.name : '—' %></td>
       <td><%= r.school.enrolmentBand %></td>
-      <td><% if (!r.cycle) { %><span class="badge"><%= lang==='ro'?'Fără date':'No data' %></span><% } else { %><span class="badge badge-<%= r.cycle.status.toLowerCase() %>"><%= STATUS_LABELS[r.cycle.status] %></span><% } %></td>
+      <td><% if (!r.cycle) { %><span class="badge"><%= lang==='ro'?'Fără date':'No data' %></span><% } else { %><span class="badge badge-<%= r.cycle.status.toLowerCase() %>"><%= STATUS_LABELS[r.cycle.status] %></span><% } %><% if (r.hasNewerDraft) { %><br><span class="small"><%= lang==='ro'?'(evaluare nouă în lucru)':'(newer assessment in progress)' %></span><% } %></td>
       <% ['A','B','C','D'].forEach(d => { %><td><%= r.domainScores && r.domainScores[d] !== null ? r.domainScores[d].toFixed(1) : '—' %></td><% }) %>
       <td><% if (r.deviceCompliance && r.networkCompliance) { %><span class="badge badge-<%= (r.deviceCompliance.compliant && r.networkCompliance.compliant) ? 'pass' : 'fail' %>"><%= (r.deviceCompliance.compliant && r.networkCompliance.compliant) ? t('ok') : (lang==='ro'?'DECALAJ':'GAP') %></span><% } else { %>—<% } %></td>
     </tr>

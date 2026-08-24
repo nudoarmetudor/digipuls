@@ -1,9 +1,12 @@
 <h1><%= school.name %> — <%= lang==='ro'?'Ciclul':'Cycle' %> <%= cycle.cycleNumber %></h1>
 <%- include('_step-nav', { activeStep: 'infra' }) %>
 
+<% if (errorMessage) { %><div class="flash flash-error"><%= errorMessage %></div><% } %>
+
 <div class="card">
   <h3><%= t('order675_data_title') %></h3>
   <p class="small"><%= t('order675_data_caption') %></p>
+  <p class="small" style="color:var(--grey);"><%= t('order675_scope_note') %></p>
   <div class="grid-2">
     <div>
       <h3 style="font-size:0.9rem;"><%= t('device_inventory') %></h3>
@@ -37,7 +40,7 @@
   </div>
 
   <% if (deviceCompliance) { %>
-    <h3 style="margin-top:1.2rem;">D2 — <%= lang==='ro'?'conformitate echipamente Ordinul 675':'Order 675 device compliance' %> (<%= lang==='ro'?'bandă':'band' %> <%= deviceCompliance.band %>)
+    <h3 style="margin-top:1.2rem;">D2 — <%= lang==='ro'?'verificare cantitativă echipamente, Ordinul 675':'Order 675 quantitative equipment check' %> (<%= lang==='ro'?'bandă':'band' %> <%= deviceCompliance.band %>)
       <span class="badge badge-<%= deviceCompliance.compliant ? 'pass' : 'fail' %>"><%= deviceCompliance.compliant ? t('compliant') : t('non_compliant') %></span>
     </h3>
     <table>
@@ -48,7 +51,7 @@
     </table>
   <% } %>
   <% if (networkCompliance) { %>
-    <h3 style="margin-top:1.2rem;">D1 — <%= lang==='ro'?'conformitate rețea Ordinul 675':'Order 675 network compliance' %>
+    <h3 style="margin-top:1.2rem;">D1 — <%= lang==='ro'?'listă de verificare rețea, Ordinul 675':'Order 675 network checklist' %>
       <span class="badge badge-<%= networkCompliance.compliant ? 'pass' : 'fail' %>"><%= networkCompliance.compliant ? t('compliant') : t('non_compliant') %></span>
     </h3>
     <table>

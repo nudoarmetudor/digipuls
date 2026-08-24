@@ -22,6 +22,27 @@ function domainScore(ratings, domain) {
 // pass/fail) for display and filtering, and stops there — no ranking,
 // no automated recommendation. Case-by-case judgement stays with whoever
 // is looking at the table.
+/**
+ * Given a school's cycles (any order), picks:
+ * - currentCycle: the most recent cycle regardless of status (drives the
+ *   status badge/link — a school with only a draft in progress should
+ *   still show that).
+ * - officialCycle: the most recent CONFIRMED cycle specifically — the one
+ *   Ministry/partner/territorial views and domain scores must be computed
+ *   from, so a newer draft never makes an already-confirmed assessment
+ *   disappear.
+ * - hasNewerDraft: true when a draft cycle exists that's more recent than
+ *   the official one.
+ * Pure function (no I/O) so it's unit-testable without a database.
+ */
+function selectOfficialAndCurrentCycle(cycles) {
+  const sorted = cycles.slice().sort((a, b) => b.cycleNumber - a.cycleNumber);
+  const currentCycle = sorted[0] || null;
+  const officialCycle = sorted.find((c) => c.status === 'CONFIRMED') || null;
+  const hasNewerDraft = !!(currentCycle && officialCycle && currentCycle.id !== officialCycle.id && currentCycle.status === 'DRAFT');
+  return { currentCycle, officialCycle, hasNewerDraft };
+}
+
 async function schoolsWithLatestCycle(where = {}) {
   const schools = await prisma.school.findMany({
     where,
@@ -29,20 +50,22 @@ async function schoolsWithLatestCycle(where = {}) {
       territory: true,
       cycles: {
         orderBy: { cycleNumber: 'desc' },
-        take: 1,
         include: { ratings: true, deviceInventory: true, networkChecklist: true, plan: true },
       },
     },
   });
   return schools.map((s) => {
-    const cycle = s.cycles[0];
-    const confirmed = !!(cycle && cycle.status === 'CONFIRMED');
+    const { currentCycle, officialCycle, hasNewerDraft } = selectOfficialAndCurrentCycle(s.cycles);
+    const confirmed = !!officialCycle;
     const domainScores = confirmed
-      ? { A: domainScore(cycle.ratings, 'A'), B: domainScore(cycle.ratings, 'B'), C: domainScore(cycle.ratings, 'C'), D: domainScore(cycle.ratings, 'D') }
+      ? { A: domainScore(officialCycle.ratings, 'A'), B: domainScore(officialCycle.ratings, 'B'), C: domainScore(officialCycle.ratings, 'C'), D: domainScore(officialCycle.ratings, 'D') }
       : null;
-    const deviceCompliance = confirmed && cycle.deviceInventory ? checkDeviceCompliance(s, cycle.deviceInventory) : null;
-    const networkCompliance = confirmed && cycle.networkChecklist ? checkNetworkCompliance(cycle.networkChecklist) : null;
-    return { school: s, cycle, confirmed, domainScores, deviceCompliance, networkCompliance };
+    const deviceCompliance = confirmed && officialCycle.deviceInventory ? checkDeviceCompliance(s, officialCycle.deviceInventory) : null;
+    const networkCompliance = confirmed && officialCycle.networkChecklist ? checkNetworkCompliance(officialCycle.networkChecklist) : null;
+    return {
+      school: s, cycle: currentCycle, officialCycle, confirmed, hasNewerDraft,
+      domainScores, deviceCompliance, networkCompliance,
+    };
   });
 }
 
@@ -93,14 +116,20 @@ function filterRows(rows, query = {}) {
 }
 
 function toCsv(rows) {
-  const header = ['School', 'Territory', 'Band', 'Status', 'A', 'B', 'C', 'D', 'Order675_Compliant'];
+  // Status must reflect the *official* (latest-confirmed) record, not the
+  // current cycle — otherwise a school with a confirmed cycle 2 and a new
+  // draft cycle 3 would export as "DRAFT" even though the A/B/C/D scores in
+  // the same row are real, confirmed data. A separate column flags the
+  // in-progress draft instead of overloading Status with it.
+  const header = ['School', 'Territory', 'Band', 'Status', 'Newer_Draft_In_Progress', 'A', 'B', 'C', 'D', 'Order675_Quantitative_Check'];
   const lines = [header.join(',')];
   rows.forEach((r) => {
     const line = [
       r.school.name,
       r.school.territory ? r.school.territory.name : '',
       r.school.enrolmentBand,
-      r.cycle ? r.cycle.status : 'NO_DATA',
+      r.confirmed ? 'CONFIRMED' : (r.cycle ? r.cycle.status : 'NO_DATA'),
+      r.hasNewerDraft ? 'YES' : '',
       r.domainScores?.A ?? '', r.domainScores?.B ?? '', r.domainScores?.C ?? '', r.domainScores?.D ?? '',
       r.deviceCompliance && r.networkCompliance ? (r.deviceCompliance.compliant && r.networkCompliance.compliant) : '',
     ].map((v) => `"${String(v).replace(/"/g, '""')}"`);
@@ -109,4 +138,4 @@ function toCsv(rows) {
   return lines.join('\n');
 }
 
-module.exports = { schoolsWithLatestCycle, domainScore, filterRows, toCsv, ENROLMENT_BANDS };
+module.exports = { schoolsWithLatestCycle, domainScore, filterRows, toCsv, ENROLMENT_BANDS, selectOfficialAndCurrentCycle };

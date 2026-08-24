@@ -87,7 +87,8 @@ function renderWheel(items, opts = {}) {
     const color = DOMAIN_COLORS[item.domain] || '#888';
     const opacity = item.level === null || item.level === undefined ? 0.15 : 0.85;
     svg += `<path d="${wedgePath(cx, cy, Math.max(r, innerHole + 2), start, end, innerHole)}" fill="${color}" fill-opacity="${opacity}" stroke="white" stroke-width="1">`;
-    svg += `<title>${item.code}${item.name ? ' — ' + item.name : ''}: Level ${item.level ?? '—'}</title>`;
+    const levelText = item.tooltipSuffix === 'band' ? `Band ${item.level ?? '—'} of 4` : `Level ${item.level ?? '—'}`;
+    svg += `<title>${item.code}${item.name ? ' — ' + item.name : ''}: ${levelText}</title>`;
     svg += '</path>';
   });
 
@@ -118,12 +119,30 @@ function itemsFromRatings(ratings, indicators) {
     });
 }
 
+// Public disclosure policy is band-level only ("Just starting"..."Leading"),
+// never raw indicator/domain averages — so the wheel used for the public
+// tier must actually encode a band, not a continuous score rounded to one
+// decimal. These thresholds mirror routes/public.js's band() text labels;
+// kept in sync manually since both are small and stable — see ROADMAP.md
+// for unifying them into one shared function.
+const PUBLIC_BAND_THRESHOLDS = [1, 2, 3, 4]; // score < threshold[i] -> band i; else band 4
+function scoreToBandIndex(score) {
+  if (score === null || score === undefined) return null;
+  for (let i = 0; i < PUBLIC_BAND_THRESHOLDS.length; i++) {
+    if (score < PUBLIC_BAND_THRESHOLDS[i]) return i;
+  }
+  return PUBLIC_BAND_THRESHOLDS.length; // 4 = top band
+}
+
 function itemsFromDomainScores(domainScores) {
   return DOMAIN_ORDER.map((d) => ({
     code: d,
     domain: d,
     name: `Domain ${d}`,
-    level: domainScores[d] === null || domainScores[d] === undefined ? null : Math.round(domainScores[d] * 10) / 10,
+    level: scoreToBandIndex(domainScores[d]),
+    // Rendered in the tooltip instead of "Level N" — the public wheel must
+    // never reveal the raw average through a hover/DOM-inspection either.
+    tooltipSuffix: 'band',
   }));
 }
 

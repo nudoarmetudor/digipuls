@@ -4,7 +4,7 @@ const { requireRole } = require('../middleware/auth');
 const { INDICATORS, DOMAINS } = require('../data/indicators');
 const { checkDeviceCompliance, checkNetworkCompliance } = require('../data/order675');
 const { logAction } = require('../services/audit');
-const { schoolsWithLatestCycle, filterRows, toCsv, ENROLMENT_BANDS } = require('../services/schoolOverview');
+const { schoolsWithLatestCycle, filterRows, toCsv, ENROLMENT_BANDS, selectOfficialAndCurrentCycle } = require('../services/schoolOverview');
 const { renderWheel, itemsFromRatings } = require('../services/wheelChart');
 
 const router = express.Router();
@@ -44,13 +44,19 @@ router.get('/schools/:id', async (req, res) => {
     include: { territory: true, cycles: { orderBy: { cycleNumber: 'desc' }, include: { ratings: true, deviceInventory: true, networkChecklist: true, plan: { include: { priorities: true } } } } },
   });
   if (!school) return res.status(404).render('error', { title: 'Not found', message: 'School not found.' });
-  const latest = school.cycles[0];
+  // The official record shown here (wheel, compliance, validations) must
+  // come from the latest CONFIRMED cycle — never from a newer draft, which
+  // would otherwise make an already-confirmed assessment vanish the moment
+  // the school opens a continuation cycle. currentCycle (any status) only
+  // drives the "in progress" note.
+  const { currentCycle, officialCycle: latest, hasNewerDraft } = selectOfficialAndCurrentCycle(school.cycles);
   const deviceCompliance = latest?.deviceInventory ? checkDeviceCompliance(school, latest.deviceInventory) : null;
   const networkCompliance = latest?.networkChecklist ? checkNetworkCompliance(latest.networkChecklist) : null;
   const validations = latest ? await prisma.validationRecord.findMany({ where: { cycleId: latest.id } }) : [];
   const wheelSvg = latest ? renderWheel(itemsFromRatings(latest.ratings, INDICATORS), { mode: 'indicators', size: 380 }) : null;
   res.render('ministry/school-detail', {
-    title: school.name, wide: true, school, latest, deviceCompliance, networkCompliance, validations, INDICATORS, DOMAINS, wheelSvg,
+    title: school.name, wide: true, school, latest, currentCycle, hasNewerDraft,
+    deviceCompliance, networkCompliance, validations, INDICATORS, DOMAINS, wheelSvg,
   });
 });
 

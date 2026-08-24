@@ -17,7 +17,7 @@
       <div class="stat"><div class="num" style="font-size:1rem;"><%= domains.C || '—' %></div><div class="label">C — <%= lang==='ro'?'Capacitate umană':'Human Capacity' %></div></div>
       <div class="stat"><div class="num" style="font-size:1rem;"><%= domains.D || '—' %></div><div class="label">D — <%= lang==='ro'?'Infrastructură':'Infrastructure' %></div></div>
     </div>
-    <p style="margin-top:1rem;"><%= lang==='ro' ? 'Standardele minime de echipamente/rețea (Ordinul 675)' : 'Order 675 minimum equipment/network standards' %>: <span class="badge badge-<%= compliant ? 'pass' : 'fail' %>"><%= compliant ? (lang==='ro'?'ÎNDEPLINITE':'MET') : (lang==='ro'?'NEÎNDEPLINITE ÎNCĂ':'NOT YET MET') %></span></p>
+    <p style="margin-top:1rem;"><%= lang==='ro' ? 'Cantitățile minime de echipamente/rețea (Ordinul 675)' : 'Minimum equipment/network quantities (Order 675)' %>: <span class="badge badge-<%= compliant ? 'pass' : 'fail' %>"><%= compliant ? (lang==='ro'?'ÎNDEPLINITE':'MET') : (lang==='ro'?'NEÎNDEPLINITE ÎNCĂ':'NOT YET MET') %></span></p>
     <p><%= lang==='ro' ? 'Plan de dezvoltare digitală' : 'Digital development plan' %>: <span class="badge badge-<%= hasPlan ? 'pass' : 'fail' %>"><%= hasPlan ? (lang==='ro'?'EXISTĂ':'EXISTS') : (lang==='ro'?'NEPUBLICAT ÎNCĂ':'NOT YET PUBLISHED') %></span></p>
   </div>
 

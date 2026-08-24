@@ -28,11 +28,12 @@
   </table>
 </div>
 
+<% if (errorMessage) { %><div class="flash flash-error"><%= errorMessage %></div><% } %>
+
 <% if (cycle.status === 'DRAFT') { %>
 <div class="card">
   <h2 style="margin-top:0;border:none;"><%= t('assessment_confirm_title') %></h2>
   <p class="small"><%= t('assessment_confirm_body') %></p>
-  <% if (errorMessage) { %><div class="flash flash-error"><%= errorMessage %></div><% } %>
   <form method="POST" action="/school/cycles/<%= cycle.id %>/confirm">
     <button class="btn" type="submit"><%= t('assessment_confirm_button') %></button>
   </form>

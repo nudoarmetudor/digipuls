@@ -2,12 +2,17 @@
 <p class="subtitle"><%= school.territory.name %> · Enrolment: <%= school.enrolmentTotal %></p>
 
 <% if (latest) { %>
+<% if (hasNewerDraft) { %>
+<div class="card card-flat" style="background:var(--bg);">
+  <p class="small">A new assessment (cycle #<%= currentCycle.cycleNumber %>) is in progress at the school. What's shown below remains the last officially confirmed result until that cycle is itself confirmed.</p>
+</div>
+<% } %>
 <div class="card" style="text-align:center;">
   <h2 style="margin-top:0;border:none;"><%= t('wheel_title') %></h2>
   <%- wheelSvg %>
 </div>
 <div class="card">
-  <h2 style="margin-top:0;border:none;">Latest cycle (#<%= latest.cycleNumber %>) — <span class="badge badge-<%= latest.status.toLowerCase() %>"><%= latest.status %></span></h2>
+  <h2 style="margin-top:0;border:none;">Latest confirmed cycle (#<%= latest.cycleNumber %>) — <span class="badge badge-<%= latest.status.toLowerCase() %>"><%= latest.status %></span></h2>
   <table>
     <tr><th>Indicator</th><th>Level</th></tr>
     <% INDICATORS.forEach(ind => {
@@ -18,7 +23,7 @@
   </table>
 </div>
 <% } else { %>
-<div class="card"><p>No assessment cycle yet.</p></div>
+<div class="card"><p><% if (currentCycle) { %>An assessment cycle is in progress (draft), but none has been confirmed yet.<% } else { %>No assessment cycle yet.<% } %></p></div>
 <% } %>
 
 <div class="card">

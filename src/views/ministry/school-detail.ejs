@@ -2,8 +2,20 @@
 <p class="subtitle">SIME: <span class="mono"><%= school.simeId || '—' %></span> · Territory: <%= school.territory ? school.territory.name : '—' %> · Enrolment: <%= school.enrolmentTotal %> (band <%= school.enrolmentBand %>)</p>
 
 <% if (!latest) { %>
-  <div class="card"><p><%= lang==='ro'?'Niciun ciclu de autoevaluare început încă.':'No assessment cycle started yet.' %></p></div>
+  <div class="card">
+    <p>
+      <% if (currentCycle) { %><%= lang==='ro'?'Un ciclu de autoevaluare este în lucru (nivel proiect), dar niciunul nu a fost încă confirmat — nu există încă un rezultat oficial.':'An assessment cycle is in progress (draft), but none has been confirmed yet — there is no official result to show here yet.' %>
+      <% } else { %><%= lang==='ro'?'Niciun ciclu de autoevaluare început încă.':'No assessment cycle started yet.' %><% } %>
+    </p>
+  </div>
 <% } else { %>
+  <% if (hasNewerDraft) { %>
+    <div class="card card-flat" style="background:var(--bg);">
+      <p class="small"><%= lang==='ro'
+        ? 'O nouă evaluare (ciclul ' + currentCycle.cycleNumber + ') este în lucru la nivelul școlii. Ceea ce vedeți mai jos rămâne ultimul rezultat oficial confirmat, până când noul ciclu este la rândul lui confirmat.'
+        : 'A new assessment (cycle ' + currentCycle.cycleNumber + ') is in progress at the school. What you see below remains the last officially confirmed result until that new cycle is itself confirmed.' %></p>
+    </div>
+  <% } %>
   <div class="card" style="text-align:center;">
     <h2 style="margin-top:0;border:none;"><%= t('wheel_title') %> — <%= lang==='ro'?'Ciclul':'Cycle' %> <%= latest.cycleNumber %></h2>
     <%- wheelSvg %>
@@ -29,7 +41,7 @@
 
   <div class="grid-2">
     <div class="card">
-      <h2 style="margin-top:0;border:none;">D1 — <%= lang==='ro'?'Conformitate rețea':'Network compliance' %></h2>
+      <h2 style="margin-top:0;border:none;">D1 — <%= lang==='ro'?'Listă de verificare rețea':'Network checklist' %></h2>
       <% if (networkCompliance) { %>
         <p><span class="badge badge-<%= networkCompliance.compliant ? 'pass' : 'fail' %>"><%= networkCompliance.compliant ? t('compliant') : t('non_compliant') %></span></p>
         <ul class="small">
@@ -38,7 +50,7 @@
       <% } %>
     </div>
     <div class="card">
-      <h2 style="margin-top:0;border:none;">D2 — <%= lang==='ro'?'Conformitate echipamente':'Device compliance' %></h2>
+      <h2 style="margin-top:0;border:none;">D2 — <%= lang==='ro'?'Verificare cantitativă echipamente':'Quantitative equipment check' %></h2>
       <% if (deviceCompliance) { %>
         <p><span class="badge badge-<%= deviceCompliance.compliant ? 'pass' : 'fail' %>"><%= deviceCompliance.compliant ? t('compliant') : t('non_compliant') %></span></p>
         <table>
@@ -49,6 +61,7 @@
       <% } %>
     </div>
   </div>
+  <p class="small" style="color:var(--grey);"><%= t('order675_scope_note') %></p>
 
   <div class="card">
     <h2 style="margin-top:0;border:none;">Validation records</h2>

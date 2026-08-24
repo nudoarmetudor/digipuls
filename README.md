@@ -1,8 +1,8 @@
 # DigiPuls — MVP prototype
 
-DigiPuls is Moldova's digital-school-maturity self-assessment, planning, and multi-stakeholder status platform — the software implementation of the **Moldova Digital School Framework (MDSF)**, replacing Oglinda Digitală. This is a **local-only MVP prototype**: it exists to prove the design in the MDSF vault (`../11_Platform_Design/`) is actually buildable and internally consistent, and to give schools, the Ministry, and partners something concrete to react to before a production build.
+DigiPuls is Moldova's digital-school-maturity self-assessment, planning, and multi-stakeholder status platform — the software implementation of the **Moldova Digital School Framework (MDSF)**, replacing Oglinda Digitală. It started as a local-only MVP prototype to prove the design in the MDSF vault (`../11_Platform_Design/`) was buildable and internally consistent, and is now moving into real use: it runs live (see "Deploying it" below) and real Moldovan schools are being onboarded via `/admin/schools/new`.
 
-**This is not production software.** No deployment hardening, no real SIME connection, no HTTPS, a dev-grade session store, and a SQLite file database. See "Not yet built" below for the honest gap list before this goes anywhere near a real server.
+**Read this before trusting any specific claim below**: an external review of this repo (product/data-model/governance/security lens) found several places where a claim in this README was stronger than what the code actually guaranteed — e.g. "confirmed" assessments that could still be silently edited, dashboards that could drop a school's confirmed record once a new draft cycle started, "Order 675 compliant" implying more verification than the data model supports. The P0 findings from that review have been fixed (immutable confirmation, draft-vs-confirmed separation, real per-school one-time passwords, honest Order 675 wording, basic input validation and rate limiting, a starter test suite). The **"Implementation status" table below states what's actually true today**, and [ROADMAP.md](ROADMAP.md) tracks everything from that review not yet addressed (P1–P3) so it isn't silently dropped. Still missing before this is a fully hardened national system: PostgreSQL, per-person actor identity (today's school login is shared per school, not per person), a real external-validation workflow, and MFA — see ROADMAP.md.
 
 **Visual identity**: the UI uses the DigiProf/Clasa Viitorului brand palette (`accelerator.clasaviitorului.md`) — shades of cyan (`#307e8c` primary, `#286872`/`#1f4b53` darker) and purple (`#622582` primary, `#4a1c63` darker) only, plus the grey/blue/red/green status-check colors used by the assessment wizard's step navigator (not started / in progress / needs attention / complete).
 
@@ -41,14 +41,40 @@ Try it: log in as any school account, click **RO** in the top navigation, and th
 Every piece below traces directly to a specific design document in the MDSF vault (`../` from this folder) — nothing here was invented fresh:
 
 - **The 19-indicator, 6-level self-assessment instrument** (Annex A v2/v3) — full text, quantitative benchmarks, seeded as reference data (`src/data/indicators.js`).
-- **The integrated Level-0 compliance floor** for D1 (network) and D2 (devices) — Order 675/2024's actual specs and numeric quotas (`src/data/order675.js`), enforced server-side: a school genuinely cannot rate D1/D2 above 0 while non-compliant, no matter what they select in the UI.
-- **The 2-year continuation cycle** (maintain/grow/decay) — `src/services/cycleService.js`. A renewal cycle starts from the prior cycle's data, not a blank form, and the change state (grew/decayed/maintained) is derived automatically from the level delta.
-- **A step-by-step assessment wizard, not a single long form** — `src/services/stepStatus.js` + `src/routes/school.js`. The 19-indicator assessment is a real multi-week, multi-actor process (principal, deputy principal, teachers, the educational technologist, an external validator, meta-mentors), so it's split into independently-saveable steps (domains A–D, equipment/network, review), each showing a grey/blue/red/green status pill computed from actual data completeness. Nothing blocks a contributor from saving one field and coming back later; only final confirmation is gated, and its validation errors surface inline on the review step.
-- **A transparent school overview for Ministry and partners, not an automated matching engine** — `src/services/schoolOverview.js`. Partner/donor decisions are case-by-case and every partner's projects differ, so instead of a scoring/ranking engine, Ministry and partner dashboards get filterable, sortable, CSV-exportable views of real school data (band, compliance, per-domain scores) — visibility and overview, no automated recommendation.
-- **Six role-based views**: school, Ministry, territorial authority, financing partner, strategic partner, and an unauthenticated public tier — each scoped exactly as designed, not just permission-gated versions of the same screen.
+- **A Level-0 quantitative floor for D1 (network) and D2 (devices)** — Order 675/2024's numeric device quotas and network checklist (`src/data/order675.js`), enforced server-side: a school genuinely cannot rate D1/D2 above 0 while it fails these specific checks, no matter what they select in the UI. **Scope, precisely**: this checks declared equipment *quantities* (Annex 2) and a network *checklist* (Annex 5) — it does not verify technical specifications (Annex 1), supplementary equipment (Annex 3), or room-usage mandates (Annex 4). The UI now says "quantitative equipment check," not "Order 675 compliant," to match.
+- **A continuation-cycle mechanism** (maintain/grow/decay) — `src/services/cycleService.js`. A renewal cycle starts from the prior confirmed cycle's data, not a blank form, and the change state (grew/decayed/maintained) is derived automatically from the level delta. This is a mechanism a school can trigger any time after confirming — there is no enforced/reminded 2-year schedule yet (tracked in ROADMAP.md).
+- **A step-by-step assessment wizard, not a single long form** — `src/services/stepStatus.js` + `src/routes/school.js`. The 19-indicator assessment is a real multi-week, multi-actor process (principal, deputy principal, teachers, the educational technologist, an external validator, meta-mentors), so it's split into independently-saveable steps (domains A–D, equipment/network, review), each showing a grey/blue/red/green status pill computed from actual data completeness. Nothing blocks a contributor from saving one field and coming back later — each section saves the moment you press its own save button (not real autosave) — and confirmation is the only gated action, with validation errors surfacing inline on the review step. **Once a cycle is confirmed it is immutable**: the rating/evidence/device/network routes reject further writes against it, so a confirmed record can't silently change after Ministry/partners have seen it — the only way to change anything further is to start a continuation cycle.
+- **A transparent school overview for Ministry and partners, not an automated matching engine** — `src/services/schoolOverview.js`. Partner/donor decisions are case-by-case and every partner's projects differ, so instead of a scoring/ranking engine, Ministry and partner dashboards get filterable, sortable, CSV-exportable views of real school data (band, compliance, per-domain scores) — visibility and overview, no automated recommendation. The one exception, disclosed directly on the page: the strategic-partner dashboard applies one transparent, fixed sort (lowest Domain C average) for training-cohort triage — a disclosed sort, not a matching/recommendation engine.
+- **Six role-based views**: school, Ministry, territorial authority, financing partner, strategic partner, and an unauthenticated public tier — each scoped exactly as designed, not just permission-gated versions of the same screen. Every dashboard/detail view separates "the current cycle" (any status) from "the latest **confirmed** cycle" — a school opening a new continuation cycle never makes its last confirmed assessment disappear from Ministry/partner/territorial views.
 - **The SIME integration seam** — `src/services/sime/`. The one automated cross-system integration DigiPuls keeps: an import → check/validate → edit → submit onboarding flow that looks up a school in SIME and pre-fills the new-school form, so an admin edits/confirms rather than retyping. A documented interface (`simeProvider.interface.js`), a working mock provider with a small fake registry, and a service that throws loudly (not silently) if `SIME_PROVIDER=live` is set, since no real integration exists yet. See below.
-- **An audit trail** (`AuditLogEntry`) — every rating change, evidence addition, cycle confirmation, donation-query action, and provisioning event is logged.
+- **An audit trail** (`AuditLogEntry`) — every rating change, evidence addition, cycle confirmation, login, password change, territorial flag, and provisioning event is logged.
 - **The evidence threshold** (Level 2+ requires evidence) enforced at cycle-confirmation time, not just suggested in the UI.
+- **Real-account security basics**: schools provisioned via `/admin/schools/new` get a random one-time password (shown once to the admin) with a forced password-change on first login — never a fixed/shared password. Login is rate-limited. `SESSION_SECRET` is mandatory in production (the app refuses to start without it).
+
+## Implementation status
+
+Precise, so nothing here means something weaker than it sounds:
+
+| Capability | Status |
+|---|---|
+| 19-indicator/6-level self-assessment | Implemented |
+| Per-indicator evidence (text/type/source metadata) | Implemented |
+| Evidence *file* upload | Not implemented — `uploads/` reserved, `multer` installed but unwired |
+| Order 675 D1 network checklist / D2 device quantities | Implemented, scope-limited (see above) — not full Annex 1/3/4 verification |
+| Confirmed-cycle immutability | Implemented |
+| Latest-draft vs. latest-confirmed separation | Implemented |
+| Continuation-cycle mechanism (maintain/grow/decay) | Implemented; no enforced 2-year schedule/reminders yet |
+| Step-by-step wizard with real-data-driven status | Implemented |
+| Multi-actor assessment | Partial — shared per-school login today, not per-person attribution (P1) |
+| External validation workflow | Data model exists (`ValidationRecord`); no enforced workflow yet (P1) |
+| Transparent (non-automated) Ministry/partner overview | Implemented, including the one disclosed strategic-partner sort |
+| SIME integration | Mock provider + full seam; no live API connection |
+| Server-side input validation | Partial — rating levels and device counts validated; not a full schema-validation layer (P1) |
+| Auth hardening | Partial — one-time passwords, forced change, rate limiting, mandatory prod secret; no MFA/password-reset yet |
+| Automated tests | Partial — `npm test` covers Order 675 rules, draft/confirmed selection, step-status colors, input validation; no route-level/integration tests yet |
+| Database | SQLite (fine at current scale); Postgres migration tracked in ROADMAP.md |
+
+See [ROADMAP.md](ROADMAP.md) for everything in "Partial"/"Not implemented" above, tracked in priority order.
 
 ## Quick start
 
@@ -60,7 +86,7 @@ npm run seed
 npm run dev
 ```
 
-Then open **http://localhost:3000**. The login page lists all demo accounts — every seeded account uses the password `DigiPuls2026!`.
+Then open **http://localhost:3000**. With `DEMO_MODE` at its local default (`true`), the login page lists all demo accounts — every seeded account uses the password `DigiPuls2026!`. Set `DEMO_MODE=false` (as the live instance does) to hide that panel once real accounts exist — real accounts never use a fixed password regardless of this flag.
 
 Or, in one shot: `npm run setup && npm run dev`.
 
@@ -85,8 +111,8 @@ Or, in one shot: `npm run setup && npm run dev`.
 
 ### Try the transparent overview yourself
 1. Log in as `ministry@digipuls.md` or `unicef@digipuls.md` (financing partner).
-2. Filter the school table by enrolment band, cycle status, Order 675 compliance, or a minimum per-domain score — every filter is a plain, disclosed criterion, not a hidden score.
-3. Export the filtered set as CSV. There is no ranking or recommendation — partner/donor decisions stay case-by-case, per the design brief.
+2. Filter the school table by enrolment band, cycle status, the Order 675 quantitative check, or a minimum per-domain score — every filter is a plain, disclosed criterion, not a hidden score.
+3. Export the filtered set as CSV. There is no automated matching/ranking on these views — partner/donor decisions stay case-by-case, per the design brief. (The one exception is the strategic-partner dashboard's single disclosed training-need sort — see its own page caption.)
 
 ## Architecture
 
@@ -150,7 +176,7 @@ These are real, acknowledged gaps — flagged the same way every open design que
 - **Live SIME integration**, per above — the seam exists, the real connection doesn't.
 - **Offline/low-connectivity resilience** — not attempted in this MVP; the design doc's own irony (the schools that most need this tool often have the weakest connectivity) is unaddressed here.
 - **Data protection hardening for evidence** — the "prefer aggregates over named individuals" guidance from the design docs isn't enforced by the UI, only documented as a principle.
-- **Production-grade auth** — plaintext-adjacent demo passwords, no password reset, no rate limiting, no MFA. Fine for a local prototype demo, not fine for real deployment.
+- **Full production-grade auth** — one-time passwords, forced first-login change, and basic login rate-limiting now exist; still no self-service password reset and no MFA. See ROADMAP.md.
 
 ## Deploying it — see DEPLOYMENT.md
 

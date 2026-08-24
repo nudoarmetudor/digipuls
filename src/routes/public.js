@@ -54,7 +54,7 @@ router.get('/schools/:id', async (req, res) => {
   const deviceCompliance = cycle.deviceInventory ? checkDeviceCompliance(school, cycle.deviceInventory) : null;
   const networkCompliance = cycle.networkChecklist ? checkNetworkCompliance(cycle.networkChecklist) : null;
   const compliant = !!(deviceCompliance?.compliant && networkCompliance?.compliant);
-  const hasPlan = !!cycle.plan;
+  const hasPlan = !!(cycle.plan && cycle.plan.publishedAt);
 
   // Richer, opt-in detail: raw domain averages instead of just bands.
   const rawDomainScores = { A: domainScore(cycle.ratings, 'A'), B: domainScore(cycle.ratings, 'B'), C: domainScore(cycle.ratings, 'C'), D: domainScore(cycle.ratings, 'D') };

@@ -86,6 +86,7 @@
       <td>
         <% if (!r.cycle) { %><span class="badge"><%= lang==='ro'?'Fără date':'No data' %></span>
         <% } else { %><span class="badge badge-<%= r.cycle.status.toLowerCase() %>"><%= STATUS_LABELS[r.cycle.status] %></span><% } %>
+        <% if (r.hasNewerDraft) { %><br><span class="small"><%= lang==='ro'?'(nouă evaluare în lucru — cea confirmată de mai jos rămâne oficială)':'(newer assessment in progress — the confirmed one below stays official)' %></span><% } %>
       </td>
       <% ['A','B','C','D'].forEach(d => { %>
         <td><%= r.domainScores && r.domainScores[d] !== null ? r.domainScores[d].toFixed(1) : '—' %></td>
