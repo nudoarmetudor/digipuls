@@ -14,12 +14,17 @@
     "setup": "npm install && npx prisma migrate dev --name init && npm run seed",
     "studio": "prisma studio"
   },
-  "keywords": ["digipuls", "mdsf", "moldova", "education"],
+  "keywords": [
+    "digipuls",
+    "mdsf",
+    "moldova",
+    "education"
+  ],
   "author": "",
   "license": "GPL-3.0",
   "type": "commonjs",
   "dependencies": {
-    "@prisma/client": "^5.22.0",
+    "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.4.2",
     "ejs": "^6.0.1",
@@ -28,6 +33,6 @@
     "express-session": "^1.19.0",
     "morgan": "^1.11.0",
     "multer": "^2.2.0",
-    "prisma": "^5.22.0"
+    "prisma": "^6.19.3"
   }
 }
