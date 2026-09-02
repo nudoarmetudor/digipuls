@@ -2,7 +2,9 @@
 
 DigiPuls is Moldova's digital-school-maturity self-assessment, planning, and multi-stakeholder status platform — the software implementation of the **Moldova Digital School Framework (MDSF)**, replacing Oglinda Digitală. It started as a local-only MVP prototype to prove the design in the MDSF vault (`../11_Platform_Design/`) was buildable and internally consistent, and is now moving into real use: it runs live (see "Deploying it" below) and real Moldovan schools are being onboarded via `/admin/schools/new`.
 
-**Read this before trusting any specific claim below**: an external review of this repo (product/data-model/governance/security lens) found several places where a claim in this README was stronger than what the code actually guaranteed — e.g. "confirmed" assessments that could still be silently edited, dashboards that could drop a school's confirmed record once a new draft cycle started, "Order 675 compliant" implying more verification than the data model supports. The P0 findings from that review have been fixed (immutable confirmation, draft-vs-confirmed separation, real per-school one-time passwords, honest Order 675 wording, basic input validation and rate limiting, a starter test suite). The **"Implementation status" table below states what's actually true today**, and [ROADMAP.md](ROADMAP.md) tracks everything from that review not yet addressed (P1–P3) so it isn't silently dropped. Still missing before this is a fully hardened national system: PostgreSQL, per-person actor identity (today's school login is shared per school, not per person), a real external-validation workflow, and MFA — see ROADMAP.md.
+**Read this before trusting any specific claim below**: an external review of this repo (product/data-model/governance/security lens) found several places where a claim in this README was stronger than what the code actually guaranteed — e.g. "confirmed" assessments that could still be silently edited, dashboards that could drop a school's confirmed record once a new draft cycle started, "Order 675 compliant" implying more verification than the data model supports. The P0 findings from that review have been fixed (immutable confirmation, draft-vs-confirmed separation, real per-school one-time passwords, honest Order 675 wording, basic input validation and rate limiting, a starter test suite). The **"Implementation status" table below states what's actually true today**, and [ROADMAP.md](ROADMAP.md) tracks everything from that review not yet addressed (P1–P3) so it isn't silently dropped. Still missing before this is a fully hardened national system: per-person actor identity (today's school login is shared per school, not per person), a real external-validation workflow, and MFA — see ROADMAP.md.
+
+**Database note**: this ran on SQLite during local development, but production moved to MySQL after SQLite's file-locking turned out not to work reliably on Hostinger's shared-hosting storage — DB-touching requests (like login) hung indefinitely rather than failing loudly. See [DEPLOYMENT.md](DEPLOYMENT.md) for the full story and setup.
 
 **Visual identity**: the UI uses the DigiProf/Clasa Viitorului brand palette (`accelerator.clasaviitorului.md`) — shades of cyan (`#307e8c` primary, `#286872`/`#1f4b53` darker) and purple (`#622582` primary, `#4a1c63` darker) only, plus the grey/blue/red/green status-check colors used by the assessment wizard's step navigator (not started / in progress / needs attention / complete).
 
@@ -72,7 +74,7 @@ Precise, so nothing here means something weaker than it sounds:
 | Server-side input validation | Partial — rating levels and device counts validated; not a full schema-validation layer (P1) |
 | Auth hardening | Partial — one-time passwords, forced change, rate limiting, mandatory prod secret; no MFA/password-reset yet |
 | Automated tests | Partial — `npm test` covers Order 675 rules, draft/confirmed selection, step-status colors, input validation; no route-level/integration tests yet |
-| Database | SQLite (fine at current scale); Postgres migration tracked in ROADMAP.md |
+| Database | MySQL in production (Hostinger's included database); switched from SQLite after a real hosting-storage incompatibility — see DEPLOYMENT.md |
 
 See [ROADMAP.md](ROADMAP.md) for everything in "Partial"/"Not implemented" above, tracked in priority order.
 
@@ -117,8 +119,8 @@ Or, in one shot: `npm run setup && npm run dev`.
 ## Architecture
 
 - **Node.js + Express** (server-rendered EJS views, no frontend build step — `npm run dev` is the whole toolchain).
-- **Prisma ORM + SQLite** for local dev. The schema (`prisma/schema.prisma`) uses no SQLite-only features; moving to production is: change the `datasource` provider to `postgresql`, set `DATABASE_URL`, re-run `prisma migrate deploy`. No application code should need to change.
-- **express-session** with the default in-memory store — fine for one local process, **not** fine for production (sessions would vanish on restart and can't scale past one instance; swap for a real session store, e.g. `connect-pg-simple` once on Postgres).
+- **Prisma ORM + MySQL**. Originally SQLite for zero-config local dev; moved to MySQL (schema unchanged in spirit — just the `datasource` provider and a few `@db.Text` annotations on long free-text fields) after SQLite's file-locking proved unreliable on Hostinger's shared-hosting storage. See [DEPLOYMENT.md](DEPLOYMENT.md).
+- **express-session** with the default in-memory store — fine for one process, **not** fine for production at scale (sessions vanish on restart and can't be shared across multiple instances; swap for a real session store, e.g. `connect-mysql`/`express-mysql-session`, when that starts to matter).
 - No frontend framework — plain EJS templates + a hand-written stylesheet (`public/css/style.css`) + a small amount of vanilla JS (the SIME autocomplete). Deliberately boring, so a small team can read and extend it without a build pipeline.
 
 ```
@@ -183,6 +185,5 @@ These are real, acknowledged gaps — flagged the same way every open design que
 **This has now happened**: DigiPuls runs live at [digipuls.lappsus.com](https://digipuls.lappsus.com) on Hostinger, deployed straight from this repo. [DEPLOYMENT.md](DEPLOYMENT.md) documents that setup step-by-step, plus a generic git-based install for any other Linux server (VPS, systemd/pm2 + nginx).
 
 Further hardening for a larger real-world rollout, still worth doing beyond what's live today:
-1. Swap SQLite for Postgres in `prisma/schema.prisma` (`provider = "postgresql"`) if concurrent write load ever becomes an issue — 24–1150 schools confirming a cycle a few times a year is well within SQLite's comfort zone, so this isn't urgent.
-2. Swap the in-memory session store for a persistent one (`connect-pg-simple`/`connect-sqlite3`) so logins survive an app restart.
-3. Move file evidence uploads (once actually built — see "Not yet built" above) to object storage rather than local disk if running more than one instance.
+1. Swap the in-memory session store for a persistent one (`express-mysql-session` is the natural pairing with the current MySQL database) so logins survive an app restart.
+2. Move file evidence uploads (once actually built — see "Not yet built" above) to object storage rather than local disk if running more than one instance.

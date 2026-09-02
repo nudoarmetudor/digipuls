@@ -1,12 +1,13 @@
 // DigiPuls — Prisma schema
-// Local dev uses SQLite (zero-config, file-based). To move to production,
-// change the datasource below to "postgresql" and set DATABASE_URL — the
-// rest of the schema is written to be portable (no SQLite-only features
-// used deliberately, aside from the default String-based enums, which map
-// cleanly onto real enums when moving to Postgres).
+// Runs on MySQL (Hostinger's included database service — see DEPLOYMENT.md).
+// Originally prototyped against SQLite for local dev; moved to MySQL after
+// discovering SQLite's file-locking doesn't work reliably on this host's
+// storage (DB-touching requests hung indefinitely rather than erroring).
+// Free-text fields below are explicitly @db.Text since MySQL's default
+// String mapping is VARCHAR(191), too short for real assessment prose.
 
 datasource db {
-  provider = "sqlite"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -80,7 +81,7 @@ model Indicator {
   code        String   @id // e.g. "A1", "B5", "D2"
   domain      String   // "A" | "B" | "C" | "D"
   name        String
-  description String
+  description String   @db.Text
   sortOrder   Int
 
   levels  IndicatorLevel[]
@@ -94,10 +95,10 @@ model IndicatorLevel {
   indicator           Indicator @relation(fields: [indicatorCode], references: [code])
   level               Int    // 0-5
   levelName           String // "Below floor" | "Accidental" | ... | "Continuous innovation"
-  description         String
-  engagementBenchmark String?
-  frequencyBenchmark  String?
-  evidenceBenchmark   String?
+  description         String  @db.Text
+  engagementBenchmark String? @db.Text
+  frequencyBenchmark  String? @db.Text
+  evidenceBenchmark   String? @db.Text
 
   @@unique([indicatorCode, level])
 }
@@ -171,7 +172,7 @@ model IndicatorRating {
   level         Int?
   // MAINTAINED | GREW | DECAYED | null (first cycle, no prior state to compare)
   changeState   String?
-  comment       String?  // Digipeegel-style justification/exception field (UC-S3)
+  comment       String?  @db.Text // Digipeegel-style justification/exception field (UC-S3)
   updatedAt     DateTime @updatedAt
 
   evidences Evidence[]
@@ -184,7 +185,7 @@ model Evidence {
   ratingId    Int
   rating      IndicatorRating @relation(fields: [ratingId], references: [id])
   type        String   // document | observation_log | survey | usage_data | it_audit | photo | minutes | certification | external_validation
-  description String
+  description String   @db.Text
   source      String?
   filePath    String?
   createdAt   DateTime @default(now())
@@ -201,7 +202,7 @@ model ValidationRecord {
   indicatorCode   String?  // null = validates the whole cycle
   verdict         String   // agree | disagree
   reliabilityNote String?  // broadly_reliable | optimistic | conservative
-  notes           String?
+  notes           String?  @db.Text
   createdAt       DateTime @default(now())
 }
 
@@ -216,7 +217,7 @@ model DevelopmentPlan {
   publishedAt  DateTime?
   fundingSource String?
   approvingAuthority String?
-  stakeholderConsultationNotes String?
+  stakeholderConsultationNotes String? @db.Text
 
   priorities PlanPriority[]
 }
@@ -229,8 +230,8 @@ model PlanPriority {
   indicator     Indicator @relation(fields: [indicatorCode], references: [code])
   currentLevel  Int
   targetLevel   Int
-  rationale     String
-  actions       String
+  rationale     String   @db.Text
+  actions       String   @db.Text
   responsible   String?
   timeline      String?
   // achieved | partial | dropped | in_progress (set at the START of the
@@ -258,6 +259,6 @@ model AuditLogEntry {
   action     String
   entityType String
   entityId   String?
-  details    String?
+  details    String?  @db.Text
   createdAt  DateTime @default(now())
 }

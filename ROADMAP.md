@@ -44,10 +44,11 @@ review's own priority tiers, kept here so none of it gets silently dropped.
 - **Full input-validation layer.** The P0 pass added pragmatic guards on the
   highest-risk fields (rating level, device counts); a schema-validation
   library (e.g. Zod) across every route is the more complete version.
-- **PostgreSQL + a persistent session store.** SQLite is fine for this
-  scale's write throughput, but production operations (concurrent editors,
-  backups, monitoring, recovery) want Postgres; sessions should survive an
-  app restart (`connect-pg-simple` or similar).
+- **A persistent session store.** Production already moved from SQLite to
+  MySQL (see DEPLOYMENT.md — SQLite's file-locking didn't work reliably on
+  Hostinger's shared-hosting storage); sessions should now similarly move
+  off the in-memory store to `express-mysql-session` so logins survive an
+  app restart.
 - **CI.** GitHub Actions running `npm test` + `npx prisma migrate diff`
   sanity checks on every PR, so the test suite this session started
   actually gates merges.
