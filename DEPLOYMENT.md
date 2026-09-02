@@ -16,6 +16,18 @@ just change the `datasource` provider in `prisma/schema.prisma` back to
 `sqlite` and regenerate the migration (`npx prisma migrate diff --from-empty
 --to-schema-datamodel prisma/schema.prisma --script`).
 
+**A second issue surfaced right after the MySQL move**: login intermittently
+crashed with `PANIC: timer has gone away` from Prisma's query engine —
+a known Rust/Tokio-runtime panic that happens on hosts that suspend/resume
+the Node process between requests (which this Web App hosting appears to
+do). It was NOT the MySQL connection itself — plain page loads worked fine,
+only database-touching requests occasionally panicked. Fixed by upgrading
+`prisma`/`@prisma/client` from `5.22.0` to `6.19.3` (stayed on the 6.x line
+rather than 7.x, which requires a breaking rework — driver adapters,
+`prisma.config.ts`, no more schema-level `url` — out of scope for a bug
+fix). Verified fixed with several repeated login attempts, including after
+a deliberate idle gap, against the live instance.
+
 Two paths are documented below:
 
 - **A — Any Linux server, via git** (VPS, a colleague's server, a future
