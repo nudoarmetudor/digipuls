@@ -11,8 +11,14 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// driverAdapters routes queries through a pure-JS MySQL driver instead of
+// Prisma's Rust query engine. Required here, not optional: the production
+// host is CloudLinux shared hosting, whose LVE process/thread limits kill
+// the Rust engine's Tokio worker threads mid-query, producing intermittent
+// "PANIC: timer has gone away" crashes. See DEPLOYMENT.md.
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 // ---------------------------------------------------------------------------
