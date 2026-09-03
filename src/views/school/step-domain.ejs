@@ -1,19 +1,26 @@
-<h1><%= school.name %> — <%= lang==='ro'?'Ciclul':'Cycle' %> <%= cycle.cycleNumber %></h1>
+<h1><%= school.name %> — <%= t('cycle') %> <%= cycle.cycleNumber %></h1>
 <%- include('_step-nav', { activeStep: domainCode }) %>
 
-<% if (errorMessage) { %><div class="flash flash-error"><%= errorMessage %></div><% } %>
+<% if (errorMessage) { %><div class="flash flash-error" role="alert"><%= errorMessage %></div><% } %>
 
 <div class="card">
-  <h2 style="margin-top:0;border:none;"><%= t('domain_label') %> <%= domainCode %> — <%= domainName %></h2>
+  <h2 class="plain-heading"><%= t('domain_label') %> <%= domainCode %> — <%= domainName %></h2>
   <p class="small"><%= domainIntro %></p>
-  <div class="progress-bar-track"><div class="progress-bar-fill" style="width:<%= Math.round(100*ratedInDomain/totalInDomain) %>%"></div></div>
-  <p class="small"><%= ratedInDomain %>/<%= totalInDomain %> <%= lang==='ro'?'evaluați în acest domeniu':'rated in this domain' %></p>
+  <%
+    const domainPct = totalInDomain ? Math.round((100 * ratedInDomain) / totalInDomain) : 0;
+  %>
+  <div class="progress-bar-track" role="progressbar" aria-valuenow="<%= ratedInDomain %>"
+       aria-valuemin="0" aria-valuemax="<%= totalInDomain %>"
+       aria-label="<%= ratedInDomain %>/<%= totalInDomain %> <%= t('rated_in_domain') %>">
+    <div class="progress-bar-fill" style="width:<%= domainPct %>%"></div>
+  </div>
+  <p class="small"><%= ratedInDomain %>/<%= totalInDomain %> <%= t('rated_in_domain') %></p>
 </div>
 
 <% indicators.forEach(ind => { %>
   <%- include('_indicator-block', { ind, cycle, lang, t, CHANGE_STATE_LABELS }) %>
 <% }) %>
 
-<div class="card" style="text-align:center;">
-  <a class="btn btn-secondary" href="/school/cycles/<%= cycle.id %>"><%= lang==='ro'?'← Înapoi la prezentare generală':'← Back to overview' %></a>
+<div class="card card-centre">
+  <a class="btn btn-secondary" href="/school/cycles/<%= cycle.id %>"><span aria-hidden="true">←</span> <%= t('back_to_overview') %></a>
 </div>

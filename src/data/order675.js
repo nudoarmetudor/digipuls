@@ -55,15 +55,19 @@ function checkDeviceCompliance({ enrolmentTotal, classroomsTotal, studentsGrades
   const requiredItRooms = itRoomsRequired(studentsGrades7to12 || 0);
   const requiredItRoomPCs = requiredItRooms * 15;
 
+  // Each check carries a labelKey (+ params where the label is dynamic) rather
+  // than a finished English string: the same result object is rendered in
+  // three languages by the views, and dropped into the CSV export in English.
+  // The English 'label' is kept alongside for that export and for logs.
   const checks = [
-    { key: 'classroomPCs', label: 'Classroom PCs/laptops (≥50% of classrooms equipped)', required: requiredClassroomDevices, actual: inventory.classroomPCs },
-    { key: 'interactivePanels', label: 'Interactive panels (1 per equipped classroom)', required: requiredClassroomDevices, actual: inventory.interactivePanels },
-    { key: 'itRoomPCs', label: `IT-room PCs (${requiredItRooms} room(s) × 15)`, required: requiredItRoomPCs, actual: inventory.itRoomPCs },
-    { key: 'managementPCs', label: 'Management PCs/laptops', required: quotas.managementPCs, actual: inventory.managementPCs },
-    { key: 'methodicalCentrePCs', label: 'Methodical-centre PCs/laptops', required: quotas.methodicalCentrePCs, actual: inventory.methodicalCentrePCs },
-    { key: 'libraryPCs', label: 'Library PCs/AiOs', required: quotas.libraryPCs, actual: inventory.libraryPCs },
-    { key: 'printers', label: 'Printers', required: quotas.printers, actual: inventory.printers },
-    { key: 'multifunctionPrinters', label: 'Multifunction printers', required: quotas.multifunctionPrinters, actual: inventory.multifunctionPrinters },
+    { key: 'classroomPCs', labelKey: 'o675_classroomPCs', label: 'Classroom PCs/laptops (≥50% of classrooms equipped)', required: requiredClassroomDevices, actual: inventory.classroomPCs },
+    { key: 'interactivePanels', labelKey: 'o675_interactivePanels', label: 'Interactive panels (1 per equipped classroom)', required: requiredClassroomDevices, actual: inventory.interactivePanels },
+    { key: 'itRoomPCs', labelKey: 'o675_itRoomPCs', labelParams: { rooms: requiredItRooms }, label: `IT-room PCs (${requiredItRooms} room(s) × 15)`, required: requiredItRoomPCs, actual: inventory.itRoomPCs },
+    { key: 'managementPCs', labelKey: 'o675_managementPCs', label: 'Management PCs/laptops', required: quotas.managementPCs, actual: inventory.managementPCs },
+    { key: 'methodicalCentrePCs', labelKey: 'o675_methodicalCentrePCs', label: 'Methodical-centre PCs/laptops', required: quotas.methodicalCentrePCs, actual: inventory.methodicalCentrePCs },
+    { key: 'libraryPCs', labelKey: 'o675_libraryPCs', label: 'Library PCs/AiOs', required: quotas.libraryPCs, actual: inventory.libraryPCs },
+    { key: 'printers', labelKey: 'o675_printers', label: 'Printers', required: quotas.printers, actual: inventory.printers },
+    { key: 'multifunctionPrinters', labelKey: 'o675_multifunctionPrinters', label: 'Multifunction printers', required: quotas.multifunctionPrinters, actual: inventory.multifunctionPrinters },
   ].map((c) => ({ ...c, pass: (c.actual || 0) >= c.required }));
 
   return {
@@ -74,12 +78,12 @@ function checkDeviceCompliance({ enrolmentTotal, classroomsTotal, studentsGrades
 }
 
 const NETWORK_CHECKLIST_ITEMS = [
-  { key: 'wifiWholeSchool', label: 'Whole-school WiFi/LAN coverage' },
-  { key: 'subnetsSeparated', label: '≥2–3 separated, password-protected subnets (Administration/Teachers, Students, Guest)' },
-  { key: 'wifi80211n', label: '802.11n WiFi standard (40MHz, 600Mbps, 2.4+5GHz)' },
-  { key: 'wifi80211ac', label: '802.11ac WiFi standard (up to 160MHz, 1Gbps, 5GHz)' },
-  { key: 'firewallActive', label: 'Active firewall' },
-  { key: 'contentFiltering', label: 'Content filtering for the student network' },
+  { key: 'wifiWholeSchool', labelKey: 'o675_wifiWholeSchool', label: 'Whole-school WiFi/LAN coverage' },
+  { key: 'subnetsSeparated', labelKey: 'o675_subnetsSeparated', label: '≥2–3 separated, password-protected subnets (Administration/Teachers, Students, Guest)' },
+  { key: 'wifi80211n', labelKey: 'o675_wifi80211n', label: '802.11n WiFi standard (40MHz, 600Mbps, 2.4+5GHz)' },
+  { key: 'wifi80211ac', labelKey: 'o675_wifi80211ac', label: '802.11ac WiFi standard (up to 160MHz, 1Gbps, 5GHz)' },
+  { key: 'firewallActive', labelKey: 'o675_firewallActive', label: 'Active firewall' },
+  { key: 'contentFiltering', labelKey: 'o675_contentFiltering', label: 'Content filtering for the student network' },
 ];
 
 function checkNetworkCompliance(networkChecklist) {

@@ -1,69 +1,104 @@
-<h1><%= school.name %> — <%= lang==='ro'?'Ciclul':'Cycle' %> <%= cycle.cycleNumber %></h1>
+<%
+const deviceFields = ['classroomPCs', 'interactivePanels', 'itRoomPCs', 'managementPCs',
+  'methodicalCentrePCs', 'libraryPCs', 'printers', 'multifunctionPrinters'];
+const networkFields = ['wifiWholeSchool', 'subnetsSeparated', 'wifi80211n',
+  'wifi80211ac', 'firewallActive', 'contentFiltering'];
+const inv = cycle.deviceInventory || {};
+const nc = cycle.networkChecklist || {};
+%>
+<h1><%= school.name %> — <%= t('cycle') %> <%= cycle.cycleNumber %></h1>
 <%- include('_step-nav', { activeStep: 'infra' }) %>
 
-<% if (errorMessage) { %><div class="flash flash-error"><%= errorMessage %></div><% } %>
+<% if (errorMessage) { %><div class="flash flash-error" role="alert"><%= errorMessage %></div><% } %>
 
 <div class="card">
-  <h3><%= t('order675_data_title') %></h3>
+  <h2 class="plain-heading"><%= t('order675_data_title') %></h2>
   <p class="small"><%= t('order675_data_caption') %></p>
-  <p class="small" style="color:var(--grey);"><%= t('order675_scope_note') %></p>
+  <p class="small"><%= t('order675_scope_note') %></p>
+
   <div class="grid-2">
-    <div>
-      <h3 style="font-size:0.9rem;"><%= t('device_inventory') %></h3>
+    <section aria-labelledby="inv-h">
+      <h3 id="inv-h" style="font-size:0.95rem;"><%= t('device_inventory') %></h3>
       <form method="POST" action="/school/cycles/<%= cycle.id %>/device">
         <div class="grid-2">
-          <div><label><%= lang==='ro'?'PC-uri/laptopuri clase':'Classroom PCs/laptops' %></label><input type="number" name="classroomPCs" value="<%= cycle.deviceInventory ? cycle.deviceInventory.classroomPCs : 0 %>"></div>
-          <div><label><%= lang==='ro'?'Panouri interactive':'Interactive panels' %></label><input type="number" name="interactivePanels" value="<%= cycle.deviceInventory ? cycle.deviceInventory.interactivePanels : 0 %>"></div>
-          <div><label><%= lang==='ro'?'PC-uri sala IT':'IT-room PCs' %></label><input type="number" name="itRoomPCs" value="<%= cycle.deviceInventory ? cycle.deviceInventory.itRoomPCs : 0 %>"></div>
-          <div><label><%= lang==='ro'?'PC-uri conducere':'Management PCs' %></label><input type="number" name="managementPCs" value="<%= cycle.deviceInventory ? cycle.deviceInventory.managementPCs : 0 %>"></div>
-          <div><label><%= lang==='ro'?'PC-uri centru metodic':'Methodical-centre PCs' %></label><input type="number" name="methodicalCentrePCs" value="<%= cycle.deviceInventory ? cycle.deviceInventory.methodicalCentrePCs : 0 %>"></div>
-          <div><label><%= lang==='ro'?'PC-uri bibliotecă':'Library PCs' %></label><input type="number" name="libraryPCs" value="<%= cycle.deviceInventory ? cycle.deviceInventory.libraryPCs : 0 %>"></div>
-          <div><label><%= lang==='ro'?'Imprimante':'Printers' %></label><input type="number" name="printers" value="<%= cycle.deviceInventory ? cycle.deviceInventory.printers : 0 %>"></div>
-          <div><label><%= lang==='ro'?'Imprimante multifuncționale':'Multifunction printers' %></label><input type="number" name="multifunctionPrinters" value="<%= cycle.deviceInventory ? cycle.deviceInventory.multifunctionPrinters : 0 %>"></div>
+          <% deviceFields.forEach(f => { %>
+            <div>
+              <label for="dev-<%= f %>"><%= t('dev_' + f) %></label>
+              <input type="number" id="dev-<%= f %>" name="<%= f %>" min="0" step="1" value="<%= inv[f] || 0 %>">
+            </div>
+          <% }) %>
         </div>
         <div style="margin-top:0.6rem;"><button class="btn btn-sm" type="submit"><%= t('save_inventory') %></button></div>
       </form>
-    </div>
-    <div>
-      <h3 style="font-size:0.9rem;"><%= t('network_checklist') %></h3>
+    </section>
+
+    <section aria-labelledby="net-h">
+      <h3 id="net-h" style="font-size:0.95rem;"><%= t('network_checklist') %></h3>
       <form method="POST" action="/school/cycles/<%= cycle.id %>/network">
-        <% const nc = cycle.networkChecklist || {}; %>
-        <label><input type="checkbox" name="wifiWholeSchool" <%= nc.wifiWholeSchool ? 'checked' : '' %> style="width:auto;display:inline"> <%= lang==='ro'?'Acoperire WiFi/LAN în toată școala':'Whole-school WiFi/LAN coverage' %></label>
-        <label><input type="checkbox" name="subnetsSeparated" <%= nc.subnetsSeparated ? 'checked' : '' %> style="width:auto;display:inline"> <%= lang==='ro'?'Subrețele separate (admin/elevi/oaspeți)':'Separated subnets (admin/students/guest)' %></label>
-        <label><input type="checkbox" name="wifi80211n" <%= nc.wifi80211n ? 'checked' : '' %> style="width:auto;display:inline"> <%= lang==='ro'?'Standard 802.11n':'802.11n standard' %></label>
-        <label><input type="checkbox" name="wifi80211ac" <%= nc.wifi80211ac ? 'checked' : '' %> style="width:auto;display:inline"> <%= lang==='ro'?'Standard 802.11ac':'802.11ac standard' %></label>
-        <label><input type="checkbox" name="firewallActive" <%= nc.firewallActive ? 'checked' : '' %> style="width:auto;display:inline"> <%= lang==='ro'?'Firewall activ':'Active firewall' %></label>
-        <label><input type="checkbox" name="contentFiltering" <%= nc.contentFiltering ? 'checked' : '' %> style="width:auto;display:inline"> <%= lang==='ro'?'Filtrare de conținut':'Content filtering' %></label>
+        <% networkFields.forEach(f => { %>
+          <label class="checkbox" for="net-<%= f %>">
+            <input type="checkbox" id="net-<%= f %>" name="<%= f %>" <%= nc[f] ? 'checked' : '' %>>
+            <span><%= t('net_' + f) %></span>
+          </label>
+        <% }) %>
         <div style="margin-top:0.6rem;"><button class="btn btn-sm" type="submit"><%= t('save_checklist') %></button></div>
       </form>
-    </div>
+    </section>
   </div>
 
   <% if (deviceCompliance) { %>
-    <h3 style="margin-top:1.2rem;">D2 — <%= lang==='ro'?'verificare cantitativă echipamente, Ordinul 675':'Order 675 quantitative equipment check' %> (<%= lang==='ro'?'bandă':'band' %> <%= deviceCompliance.band %>)
+    <h3 id="d2-h" style="margin-top:1.4rem;">
+      D2 — <%= t('d2_heading') %> (<%= t('band') %> <%= deviceCompliance.band %>)
       <span class="badge badge-<%= deviceCompliance.compliant ? 'pass' : 'fail' %>"><%= deviceCompliance.compliant ? t('compliant') : t('non_compliant') %></span>
     </h3>
-    <table>
-      <tr><th><%= t('requirement') %></th><th><%= t('required') %></th><th><%= t('actual') %></th><th></th></tr>
-      <% deviceCompliance.checks.forEach(c => { %>
-        <tr><td><%= c.label %></td><td><%= c.required %></td><td><%= c.actual %></td><td><span class="badge badge-<%= c.pass ? 'pass' : 'fail' %>"><%= c.pass ? t('ok') : t('short') %></span></td></tr>
-      <% }) %>
-    </table>
+    <div class="table-scroll">
+      <table aria-labelledby="d2-h">
+        <thead>
+          <tr>
+            <th scope="col"><%= t('requirement') %></th>
+            <th scope="col"><%= t('required') %></th>
+            <th scope="col"><%= t('actual') %></th>
+            <th scope="col"><%= t('th_status') %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% deviceCompliance.checks.forEach(c => { %>
+            <tr>
+              <th scope="row" style="background:none;font-weight:400;color:inherit;"><%= t(c.labelKey, c.labelParams) %></th>
+              <td><%= c.required %></td>
+              <td><%= c.actual %></td>
+              <td><span class="badge badge-<%= c.pass ? 'pass' : 'fail' %>"><%= c.pass ? t('ok') : t('short') %></span></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
   <% } %>
+
   <% if (networkCompliance) { %>
-    <h3 style="margin-top:1.2rem;">D1 — <%= lang==='ro'?'listă de verificare rețea, Ordinul 675':'Order 675 network checklist' %>
+    <h3 id="d1-h" style="margin-top:1.4rem;">
+      D1 — <%= t('d1_heading') %>
       <span class="badge badge-<%= networkCompliance.compliant ? 'pass' : 'fail' %>"><%= networkCompliance.compliant ? t('compliant') : t('non_compliant') %></span>
     </h3>
-    <table>
-      <tr><th><%= t('requirement') %></th><th></th></tr>
-      <% networkCompliance.checks.forEach(c => { %>
-        <tr><td><%= c.label %></td><td><span class="badge badge-<%= c.pass ? 'pass' : 'fail' %>"><%= c.pass ? t('ok') : t('missing') %></span></td></tr>
-      <% }) %>
-    </table>
-    <p class="small"><b><%= lang==='ro'?'Notă:':'Note:' %></b> <%= t('compliance_note') %></p>
+    <div class="table-scroll">
+      <table aria-labelledby="d1-h">
+        <thead>
+          <tr><th scope="col"><%= t('requirement') %></th><th scope="col"><%= t('th_status') %></th></tr>
+        </thead>
+        <tbody>
+          <% networkCompliance.checks.forEach(c => { %>
+            <tr>
+              <th scope="row" style="background:none;font-weight:400;color:inherit;"><%= t(c.labelKey) %></th>
+              <td><span class="badge badge-<%= c.pass ? 'pass' : 'fail' %>"><%= c.pass ? t('ok') : t('missing') %></span></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <p class="small"><b><%= t('note') %>:</b> <%= t('compliance_note') %></p>
   <% } %>
 </div>
 
-<div class="card" style="text-align:center;">
-  <a class="btn btn-secondary" href="/school/cycles/<%= cycle.id %>"><%= lang==='ro'?'← Înapoi la prezentare generală':'← Back to overview' %></a>
+<div class="card card-centre">
+  <a class="btn btn-secondary" href="/school/cycles/<%= cycle.id %>"><span aria-hidden="true">←</span> <%= t('back_to_overview') %></a>
 </div>

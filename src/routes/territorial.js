@@ -13,7 +13,7 @@ router.get('/', async (req, res) => {
   const rows = await schoolsWithLatestCycle({ territoryId });
   const confirmedRows = rows.filter((r) => r.confirmed);
   res.render('territorial/dashboard', {
-    title: 'Regional dashboard', wide: true, rows,
+    title: res.locals.t('territorial_title'), wide: true, rows,
     territoryName: req.session.user.territoryName,
     totalSchools: rows.length, confirmedCount: confirmedRows.length,
   });
@@ -25,12 +25,12 @@ router.get('/schools/:id', async (req, res) => {
     include: { territory: true, cycles: { orderBy: { cycleNumber: 'desc' }, include: { ratings: true } } },
   });
   if (!school || school.territoryId !== req.session.user.territoryId) {
-    return res.status(403).render('error', { title: 'Access denied', message: 'This school is outside your territory.' });
+    return res.status(403).render('error', { title: res.locals.t('err_access_denied'), message: res.locals.t('err_outside_territory') });
   }
   // Same rule as the Ministry detail view: the official record is the
   // latest CONFIRMED cycle, never a newer draft in progress.
   const { currentCycle, officialCycle: latest, hasNewerDraft } = selectOfficialAndCurrentCycle(school.cycles);
-  const wheelSvg = latest ? renderWheel(itemsFromRatings(latest.ratings, INDICATORS), { mode: 'indicators', size: 380 }) : null;
+  const wheelSvg = latest ? renderWheel(itemsFromRatings(latest.ratings, INDICATORS), { mode: 'indicators', size: 380, t: res.locals.t }) : null;
   res.render('territorial/school-detail', { title: school.name, wide: true, school, latest, currentCycle, hasNewerDraft, INDICATORS, DOMAINS, wheelSvg });
 });
 
@@ -41,7 +41,7 @@ router.post('/schools/:id/flag', async (req, res) => {
   // version (UC-T3) this stands in for.
   const school = await prisma.school.findUnique({ where: { id: Number(req.params.id) } });
   if (!school || school.territoryId !== req.session.user.territoryId) {
-    return res.status(403).render('error', { title: 'Access denied', message: 'This school is outside your territory.' });
+    return res.status(403).render('error', { title: res.locals.t('err_access_denied'), message: res.locals.t('err_outside_territory') });
   }
   const { logAction } = require('../services/audit');
   await logAction(req.session.user.id, 'TERRITORIAL_FLAG', 'School', req.params.id, req.body.reason);

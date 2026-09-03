@@ -1,16 +1,34 @@
-<h1>Training-needs dashboard</h1>
-<p class="subtitle">Domain C only — teacher competence (C1), internal PD/mentoring capacity (C3), AI literacy (C4). Sorted by highest training need first, for planning DigiProf-B/-C cohorts and mentor assignments.</p>
-<p class="small" style="color:var(--grey);">This is one transparent, disclosed sort on a single, fixed criterion (lowest C1+C3+C4 average) for training-cohort triage — not an automated donor-matching or scoring engine, and not a substitute for a case-by-case look at any specific school.</p>
+<h1><%= t('strategic_title') %></h1>
+<p class="subtitle"><%= t('strategic_subtitle') %></p>
+<p class="small"><%= t('strategic_method_note') %></p>
 
-<table>
-  <tr><th>School</th><th>C1 — Teacher competence</th><th>C3 — PD/mentoring capacity</th><th>C4 — AI literacy</th></tr>
-  <% rows.forEach(r => { %>
-    <tr>
-      <td><%= r.school.name %></td>
-      <td><span class="badge badge-level<%= r.c1 ?? 0 %>">L<%= r.c1 ?? '—' %></span></td>
-      <td><span class="badge badge-level<%= r.c3 ?? 0 %>">L<%= r.c3 ?? '—' %></span></td>
-      <td><span class="badge badge-level<%= r.c4 ?? 0 %>">L<%= r.c4 ?? '—' %></span></td>
-    </tr>
-  <% }) %>
-</table>
-<% if (rows.length === 0) { %><div class="card"><p>No schools with confirmed data yet.</p></div><% } %>
+<% if (rows.length === 0) { %>
+  <div class="card"><p><%= t('no_confirmed_schools') %></p></div>
+<% } else { %>
+  <div class="table-scroll">
+    <table>
+      <caption><%= t('strategic_title') %></caption>
+      <thead>
+        <tr>
+          <th scope="col"><%= t('school') %></th>
+          <th scope="col"><%= t('th_c1') %></th>
+          <th scope="col"><%= t('th_c3') %></th>
+          <th scope="col"><%= t('th_c4') %></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% rows.forEach(r => { %>
+          <tr>
+            <th scope="row" style="background:none;font-weight:400;color:inherit;"><%= r.school.name %></th>
+            <% ['c1', 'c3', 'c4'].forEach(key => { %>
+              <td>
+                <% if (r[key] === null || r[key] === undefined) { %>—
+                <% } else { %><span class="badge badge-level<%= r[key] %>"><%= t('level_label') %> <%= r[key] %></span><% } %>
+              </td>
+            <% }) %>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+<% } %>

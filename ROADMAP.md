@@ -66,8 +66,19 @@ review's own priority tiers, kept here so none of it gets silently dropped.
   not an enforced/reminded lifecycle (`renewalDueAt`, mid-cycle check-ins).
 - **Optimistic concurrency.** Two contributors editing the same indicator
   concurrently currently means last-write-wins with no conflict signal.
-- **Responsive/mobile layout pass** and **WCAG 2.2 AA accessibility pass**
-  (focus states, ARIA on status pills, a textual equivalent for the wheel).
+- **An accessibility audit with real assistive-technology users.** The
+  responsive and WCAG 2.1 AA work listed here has since been done — focus
+  states, landmarks, labelled controls, ARIA on the status pills, a textual
+  equivalent for the wheel, reflow at 150% text and 390px width, plus viewer
+  preferences for colour scheme, contrast, text size, motion and link
+  underlining (see BRAND.md §7). What remains is the part that can't be done
+  by inspection: testing with people who actually use screen readers,
+  magnification and switch access, in Romanian and Russian as well as
+  English. Everything above is a claim about the code; only this is evidence
+  about the experience.
+- **Gagauz as a fourth language.** EN/RO/RU are complete and test-enforced.
+  Gagauz was raised in the design docs as a possible need; adding it is one
+  more dictionary plus one more `indicators.*.js`, not a redesign.
 - **Public-disclosure model refinement.** The wheel's public "domains" mode
   now bands scores rather than showing a continuous value (fixed this
   session), and `hasPlan` now requires `publishedAt` — but the broader

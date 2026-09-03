@@ -1,0 +1,49 @@
+<%
+/* Display & accessibility preferences.
+   A <details> + <form> rather than a scripted dropdown, so it opens, changes
+   and saves with JavaScript switched off; a11y.js then removes the Apply
+   button and applies each change instantly instead. Every group is a real
+   <fieldset>/<legend> radio group — screen readers announce the group name
+   and the current selection, and arrow keys move within a group. */
+const groups = [
+  { key: 'theme',     legend: t('a11y_theme'),     options: [['system', t('a11y_theme_system')], ['light', t('a11y_theme_light')], ['dark', t('a11y_theme_dark')]] },
+  { key: 'contrast',  legend: t('a11y_contrast'),  options: [['normal', t('a11y_contrast_normal')], ['high', t('a11y_contrast_high')]] },
+  { key: 'text',      legend: t('a11y_text'),      options: [['md', t('a11y_text_md')], ['lg', t('a11y_text_lg')], ['xl', t('a11y_text_xl')], ['xxl', t('a11y_text_xxl')]] },
+  { key: 'motion',    legend: t('a11y_motion'),    options: [['full', t('a11y_motion_full')], ['reduced', t('a11y_motion_reduced')]] },
+  { key: 'underline', legend: t('a11y_underline'), options: [['off', t('a11y_underline_off')], ['on', t('a11y_underline_on')]] },
+];
+%>
+<details class="a11y">
+  <summary aria-label="<%= t('a11y_settings_title') %>">
+    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none"
+         stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <circle cx="12" cy="12" r="9"/><path d="M12 3v18"/><path d="M12 8h6"/><path d="M12 16h6"/>
+    </svg>
+    <%= t('a11y_settings') %>
+  </summary>
+  <div class="a11y-panel" data-a11y-panel>
+    <form method="POST" action="/preferences">
+      <input type="hidden" name="back" value="<%= currentPath %>">
+      <h2 class="plain-heading" style="font-size:1rem;"><%= t('a11y_settings_title') %></h2>
+      <p class="small"><%= t('a11y_intro') %></p>
+      <% groups.forEach(function (g) { %>
+        <fieldset>
+          <legend><%= g.legend %></legend>
+          <div class="a11y-choices">
+            <% g.options.forEach(function (opt) { %>
+              <label>
+                <input type="radio" name="<%= g.key %>" value="<%= opt[0] %>" <%= prefs[g.key] === opt[0] ? 'checked' : '' %>>
+                <%= opt[1] %>
+              </label>
+            <% }) %>
+          </div>
+        </fieldset>
+      <% }) %>
+      <div class="a11y-apply">
+        <button class="btn btn-sm" type="submit"><%= t('a11y_apply') %></button>
+      </div>
+      <p class="visually-hidden" role="status" aria-live="polite"
+         data-a11y-status data-saved-message="<%= t('a11y_saved') %>"></p>
+    </form>
+  </div>
+</details>

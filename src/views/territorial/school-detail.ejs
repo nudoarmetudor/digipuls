@@ -1,35 +1,53 @@
 <h1><%= school.name %></h1>
-<p class="subtitle"><%= school.territory.name %> · Enrolment: <%= school.enrolmentTotal %></p>
+<p class="subtitle"><%= school.territory.name %> · <%= t('enrolment') %>: <%= school.enrolmentTotal %></p>
 
 <% if (latest) { %>
-<% if (hasNewerDraft) { %>
-<div class="card card-flat" style="background:var(--bg);">
-  <p class="small">A new assessment (cycle #<%= currentCycle.cycleNumber %>) is in progress at the school. What's shown below remains the last officially confirmed result until that cycle is itself confirmed.</p>
-</div>
-<% } %>
-<div class="card" style="text-align:center;">
-  <h2 style="margin-top:0;border:none;"><%= t('wheel_title') %></h2>
-  <%- wheelSvg %>
-</div>
-<div class="card">
-  <h2 style="margin-top:0;border:none;">Latest confirmed cycle (#<%= latest.cycleNumber %>) — <span class="badge badge-<%= latest.status.toLowerCase() %>"><%= latest.status %></span></h2>
-  <table>
-    <tr><th>Indicator</th><th>Level</th></tr>
-    <% INDICATORS.forEach(ind => {
-         const r = latest.ratings.find(x => x.indicatorCode === ind.code);
-    %>
-      <tr><td><%= ind.code %> — <%= ind.name %></td><td><% if (r && r.level !== null) { %><span class="badge badge-level<%= r.level %>">L<%= r.level %></span><% } else { %>—<% } %></td></tr>
-    <% }) %>
-  </table>
-</div>
+  <% if (hasNewerDraft) { %>
+    <div class="card card-flat">
+      <p class="small"><%= t('territorial_newer_draft', { n: currentCycle.cycleNumber }) %></p>
+    </div>
+  <% } %>
+
+  <div class="card card-centre">
+    <figure>
+      <h2 class="plain-heading"><%= t('wheel_title') %></h2>
+      <%- wheelSvg %>
+      <figcaption><%= t('wheel_caption') %></figcaption>
+    </figure>
+  </div>
+
+  <div class="card">
+    <h2 class="plain-heading" id="ratings-h">
+      <%= t('territorial_latest_confirmed') %> (#<%= latest.cycleNumber %>) —
+      <span class="badge badge-<%= latest.status.toLowerCase() %>"><%= STATUS_LABELS[latest.status] %></span>
+    </h2>
+    <div class="table-scroll">
+      <table aria-labelledby="ratings-h">
+        <thead>
+          <tr><th scope="col"><%= t('th_indicator') %></th><th scope="col"><%= t('level_label') %></th></tr>
+        </thead>
+        <tbody>
+          <% INDICATORS.forEach(ind => {
+               const r = latest.ratings.find(x => x.indicatorCode === ind.code);
+          %>
+            <tr>
+              <th scope="row" style="background:none;font-weight:400;color:inherit;"><%= ind.code %> — <%= ind.name %></th>
+              <td><% if (r && r.level !== null) { %><span class="badge badge-level<%= r.level %>"><%= t('level_label') %> <%= r.level %></span><% } else { %>—<% } %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
 <% } else { %>
-<div class="card"><p><% if (currentCycle) { %>An assessment cycle is in progress (draft), but none has been confirmed yet.<% } else { %>No assessment cycle yet.<% } %></p></div>
+  <div class="card"><p><%= currentCycle ? t('territorial_no_confirmed') : t('territorial_no_cycle') %></p></div>
 <% } %>
 
 <div class="card">
-  <h2 style="margin-top:0;border:none;">Flag for Ministry attention</h2>
+  <h2 class="plain-heading"><%= t('flag_title') %></h2>
   <form method="POST" action="/territorial/schools/<%= school.id %>/flag">
-    <textarea name="reason" placeholder="e.g. stalled renewal, repeated decay pattern, local context the data doesn't capture" required></textarea>
-    <div style="margin-top:0.6rem;"><button class="btn btn-sm" type="submit">Flag</button></div>
+    <label for="flag-reason"><%= t('flag_title') %></label>
+    <textarea id="flag-reason" name="reason" placeholder="<%= t('flag_placeholder') %>" required></textarea>
+    <div style="margin-top:0.6rem;"><button class="btn btn-sm" type="submit"><%= t('flag_button') %></button></div>
   </form>
 </div>

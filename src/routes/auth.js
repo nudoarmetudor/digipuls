@@ -7,7 +7,7 @@ const { loginRateLimit, recordFailedAttempt, clearAttempts } = require('../middl
 const router = express.Router();
 
 router.get('/login', (req, res) => {
-  res.render('auth/login', { title: 'Log in', error: null, layout: false });
+  res.render('auth/login', { title: res.locals.t('login_title'), error: null, layout: false });
 });
 
 router.post('/login', loginRateLimit, async (req, res) => {
@@ -15,13 +15,13 @@ router.post('/login', loginRateLimit, async (req, res) => {
   const user = await prisma.user.findUnique({ where: { email }, include: { school: true, territory: true } });
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     recordFailedAttempt(req);
-    return res.render('auth/login', { title: 'Log in', error: res.locals.t('login_error'), layout: false });
+    return res.render('auth/login', { title: res.locals.t('login_title'), error: res.locals.t('login_error'), layout: false });
   }
   clearAttempts(req);
   // Regenerate the session on privilege change (login) rather than reusing
   // the pre-login session id — standard session-fixation hardening.
   req.session.regenerate((err) => {
-    if (err) return res.status(500).render('error', { title: 'Login failed', message: 'Could not start a session.' });
+    if (err) return res.status(500).render('error', { title: res.locals.t('err_login_failed'), message: res.locals.t('err_session_start') });
     req.session.user = {
       id: user.id,
       name: user.name,
@@ -50,7 +50,7 @@ router.post('/logout', (req, res) => {
 // reachable until this is done (enforced in app.js's global middleware).
 router.get('/change-password', (req, res) => {
   if (!req.session.user) return res.redirect('/login');
-  res.render('auth/change-password', { title: 'Set a new password', error: null, layout: false });
+  res.render('auth/change-password', { title: res.locals.t('change_password_title'), error: null, layout: false });
 });
 
 router.post('/change-password', async (req, res) => {
@@ -58,7 +58,7 @@ router.post('/change-password', async (req, res) => {
   const { newPassword, confirmPassword } = req.body;
   if (!newPassword || newPassword.length < 10 || newPassword !== confirmPassword) {
     return res.render('auth/change-password', {
-      title: 'Set a new password',
+      title: res.locals.t('change_password_title'),
       error: res.locals.t('change_password_error'),
       layout: false,
     });

@@ -1,13 +1,38 @@
-<h1>Schools — public digital maturity summaries</h1>
-<p class="subtitle">No login required. No ranking or leaderboard — you can look up individual schools, not compare a sorted national table.</p>
+<h1><%= t('public_list_title') %></h1>
+<p class="subtitle"><%= t('public_list_subtitle') %></p>
 
-<form method="GET" action="/public-view/schools">
-  <input type="text" name="q" value="<%= q %>" placeholder="Search by school name...">
+<form method="GET" action="/public-view/schools" role="search">
+  <label for="school-search"><%= t('public_search_label') %></label>
+  <div class="inline-fields">
+    <div>
+      <input type="search" id="school-search" name="q" value="<%= q %>" placeholder="<%= t('public_search_placeholder') %>">
+    </div>
+    <div style="flex:0 0 auto;display:flex;align-items:flex-end;">
+      <button class="btn" type="submit"><%= t('public_search_button') %></button>
+    </div>
+  </div>
 </form>
 
-<table style="margin-top:1rem;">
-  <tr><th>School</th><th></th></tr>
-  <% schools.forEach(s => { %>
-    <tr><td><%= s.name %></td><td><a class="plain" href="/public-view/schools/<%= s.id %>">View summary →</a></td></tr>
-  <% }) %>
-</table>
+<div class="table-scroll" style="margin-top:1rem;">
+  <table>
+    <caption><%= t('schools') %> (<%= schools.length %>)</caption>
+    <thead>
+      <tr>
+        <th scope="col"><%= t('school') %></th>
+        <th scope="col"><span class="visually-hidden"><%= t('public_view_summary') %></span></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% schools.forEach(s => { %>
+        <tr>
+          <th scope="row" style="background:none;font-weight:400;color:inherit;"><%= s.name %></th>
+          <td>
+            <a class="plain" href="/public-view/schools/<%= s.id %>">
+              <%= t('public_view_summary') %><span class="visually-hidden"> — <%= s.name %></span> <span aria-hidden="true">→</span>
+            </a>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>

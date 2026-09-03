@@ -1,75 +1,100 @@
-<div class="indicator-block" id="ind-<%= ind.code %>">
-  <h3><%= ind.code %>. <%= ind.name %></h3>
+<%
+/* One indicator: the level picker, its comment box, and (from level 2 up) the
+   evidence sub-form. Every control gets a real id/for pair — ids are prefixed
+   with the indicator code because 19 of these render on one page and duplicate
+   ids would send every label to the first block. */
+const evidenceTypes = [
+  ['document', t('ev_document')],
+  ['observation_log', t('ev_observation_log')],
+  ['survey', t('ev_survey')],
+  ['usage_data', t('ev_usage_data')],
+  ['it_audit', t('ev_it_audit')],
+  ['photo', t('ev_photo')],
+  ['minutes', t('ev_minutes')],
+  ['certification', t('ev_certification')],
+  ['external_validation', t('ev_external_validation')],
+];
+%>
+<section class="indicator-block" id="ind-<%= ind.code %>" aria-labelledby="ind-<%= ind.code %>-h">
+  <h3 id="ind-<%= ind.code %>-h"><%= ind.code %>. <%= ind.name %></h3>
   <p class="small"><%= ind.description %></p>
 
   <% if (ind.priorRating) { %>
-    <p class="small"><%= t('previous_cycle') %> <span class="badge badge-level<%= ind.priorRating.level %>"><%= t('level_label') %> <%= ind.priorRating.level %></span>
-    <% if (ind.rating && ind.rating.changeState) { %>
-      → <%= t('assessment_now') %> <span class="badge badge-level<%= ind.rating.level %>"><%= t('level_label') %> <%= ind.rating.level %></span>
-      <span class="badge badge-<%= ind.rating.changeState.toLowerCase() %>"><%= CHANGE_STATE_LABELS[ind.rating.changeState] %></span>
-    <% } %>
+    <p class="small">
+      <%= t('previous_cycle') %>
+      <span class="badge badge-level<%= ind.priorRating.level %>"><%= t('level_label') %> <%= ind.priorRating.level %></span>
+      <% if (ind.rating && ind.rating.changeState) { %>
+        <span aria-hidden="true">→</span> <%= t('assessment_now') %>
+        <span class="badge badge-level<%= ind.rating.level %>"><%= t('level_label') %> <%= ind.rating.level %></span>
+        <span class="badge badge-<%= ind.rating.changeState.toLowerCase() %>"><%= CHANGE_STATE_LABELS[ind.rating.changeState] %></span>
+      <% } %>
     </p>
   <% } %>
 
   <form method="POST" action="/school/cycles/<%= cycle.id %>/ratings/<%= ind.code %>">
     <input type="hidden" name="returnStep" value="<%= ind.domain %>">
-    <div class="level-picker">
-      <% ind.levels.forEach(lv => { %>
-        <label class="level-option<%= ind.rating && ind.rating.level === lv.level ? ' selected' : '' %>">
-          <input type="radio" name="level" value="<%= lv.level %>" style="display:none"
-            <%= ind.rating && ind.rating.level === lv.level ? 'checked' : '' %>
-            onclick="this.closest('form').querySelectorAll('.level-option').forEach(el=>el.classList.remove('selected')); this.closest('label').classList.add('selected'); this.closest('form').querySelector('.level-desc-target').innerText = this.dataset.desc;"
-            data-desc="<%= lv.description %>">
-          <span class="lv-num"><%= lv.level %></span> — <%= lv.levelName %>
-        </label>
-      <% }) %>
-    </div>
+    <fieldset style="border:none;padding:0;margin:0;">
+      <legend class="visually-hidden"><%= t('level_options_label') %> — <%= ind.code %></legend>
+      <div class="level-picker">
+        <% ind.levels.forEach(lv => { %>
+          <label class="level-option<%= ind.rating && ind.rating.level === lv.level ? ' selected' : '' %>">
+            <input type="radio" name="level" value="<%= lv.level %>" class="visually-hidden"
+              <%= ind.rating && ind.rating.level === lv.level ? 'checked' : '' %>
+              data-desc="<%= lv.description %>"
+              onclick="this.closest('form').querySelectorAll('.level-option').forEach(el=>el.classList.remove('selected')); this.closest('label').classList.add('selected'); this.closest('form').querySelector('.level-desc-target').innerText = this.dataset.desc;">
+            <span class="lv-num"><%= lv.level %></span> — <%= lv.levelName %>
+          </label>
+        <% }) %>
+      </div>
+    </fieldset>
     <div class="level-desc">
-      <span class="level-desc-target"><%= ind.rating && ind.rating.level !== null ? ind.levels[ind.rating.level].description : t('assessment_select_level') %></span>
+      <span class="level-desc-target" role="status" aria-live="polite"><%= ind.rating && ind.rating.level !== null ? ind.levels[ind.rating.level].description : t('assessment_select_level') %></span>
     </div>
-    <label><%= t('assessment_comment_label') %></label>
-    <textarea name="comment"><%= ind.rating ? (ind.rating.comment || '') : '' %></textarea>
-    <div style="margin-top:0.6rem;"><button class="btn btn-sm" type="submit"><%= t('assessment_save_rating') %></button></div>
+    <label for="comment-<%= ind.code %>"><%= t('assessment_comment_label') %></label>
+    <textarea id="comment-<%= ind.code %>" name="comment"><%= ind.rating ? (ind.rating.comment || '') : '' %></textarea>
+    <div style="margin-top:0.6rem;">
+      <button class="btn btn-sm" type="submit">
+        <%= t('assessment_save_rating') %><span class="visually-hidden"> — <%= ind.code %></span>
+      </button>
+    </div>
   </form>
 
   <% if (ind.rating && ind.rating.level >= 2) { %>
-    <div style="margin-top:1rem; padding-top:0.8rem; border-top:1px dashed var(--border);">
-      <h3 style="font-size:0.95rem;"><%= t('assessment_evidence_required') %> <span class="small"><%= t('assessment_evidence_required_note') %></span></h3>
+    <div class="evidence-block">
+      <h4 style="font-size:0.95rem;margin:0 0 0.4rem;">
+        <%= t('assessment_evidence_required') %> <span class="small"><%= t('assessment_evidence_required_note') %></span>
+      </h4>
       <% if (ind.rating.evidences && ind.rating.evidences.length) { %>
         <ul class="small">
           <% ind.rating.evidences.forEach(ev => { %>
-            <li><b><%= ev.type %></b>: <%= ev.description %> <% if (ev.source) { %>— <i><%= ev.source %></i><% } %></li>
+            <li><b><%= t('ev_' + ev.type) %></b>: <%= ev.description %><% if (ev.source) { %> — <i><%= ev.source %></i><% } %></li>
           <% }) %>
         </ul>
       <% } else { %>
-        <p class="small" style="color:var(--red);"><%= t('assessment_no_evidence') %></p>
+        <p class="small text-bad"><%= t('assessment_no_evidence') %></p>
       <% } %>
       <form method="POST" action="/school/cycles/<%= cycle.id %>/ratings/<%= ind.code %>/evidence">
         <input type="hidden" name="returnStep" value="<%= ind.domain %>">
         <div class="inline-fields">
           <div>
-            <label><%= t('evidence_type_label') %></label>
-            <select name="type">
-              <option value="document"><%= lang==='ro'?'Document/politică':'Document/policy' %></option>
-              <option value="observation_log"><%= lang==='ro'?'Jurnal de observare':'Observation log' %></option>
-              <option value="survey"><%= lang==='ro'?'Rezultate sondaj':'Survey results' %></option>
-              <option value="usage_data"><%= lang==='ro'?'Date de utilizare':'Usage data' %></option>
-              <option value="it_audit"><%= lang==='ro'?'Audit IT':'IT audit' %></option>
-              <option value="photo"><%= lang==='ro'?'Fotografie/link':'Photo/link' %></option>
-              <option value="minutes"><%= lang==='ro'?'Proces-verbal':'Meeting minutes' %></option>
-              <option value="certification"><%= lang==='ro'?'Certificare':'Certification record' %></option>
-              <option value="external_validation"><%= lang==='ro'?'Validare externă':'External validation' %></option>
+            <label for="ev-type-<%= ind.code %>"><%= t('evidence_type_label') %></label>
+            <select id="ev-type-<%= ind.code %>" name="type">
+              <% evidenceTypes.forEach(et => { %><option value="<%= et[0] %>"><%= et[1] %></option><% }) %>
             </select>
           </div>
           <div>
-            <label><%= t('evidence_source_label') %></label>
-            <input type="text" name="source" placeholder="<%= lang==='ro' ? 'ex. ședința echipei digitale, 12 mar' : 'e.g. digital team meeting, 12 Mar' %>">
+            <label for="ev-source-<%= ind.code %>"><%= t('evidence_source_label') %></label>
+            <input type="text" id="ev-source-<%= ind.code %>" name="source" placeholder="<%= t('evidence_source_placeholder') %>">
           </div>
         </div>
-        <label><%= t('evidence_description_label') %></label>
-        <textarea name="description" required placeholder="<%= lang==='ro' ? 'Între martie și mai, 6 profesori au aplicat X în Y lecții; ... a evoluat de la ... la ..., pe baza ...' : 'Between March and May, 6 teachers applied X in Y lessons; ... evolved from ... to ..., based on ...' %>"></textarea>
-        <div style="margin-top:0.5rem;"><button class="btn btn-sm btn-secondary" type="submit"><%= t('assessment_add_evidence') %></button></div>
+        <label for="ev-desc-<%= ind.code %>"><%= t('evidence_description_label') %></label>
+        <textarea id="ev-desc-<%= ind.code %>" name="description" required placeholder="<%= t('evidence_description_placeholder') %>"></textarea>
+        <div style="margin-top:0.5rem;">
+          <button class="btn btn-sm btn-secondary" type="submit">
+            <%= t('assessment_add_evidence') %><span class="visually-hidden"> — <%= ind.code %></span>
+          </button>
+        </div>
       </form>
     </div>
   <% } %>
-</div>
+</section>

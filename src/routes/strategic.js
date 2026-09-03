@@ -23,7 +23,7 @@ router.get('/', async (req, res) => {
   );
   withCScores.sort((a, b) => (a.c1 + a.c3 + a.c4) - (b.c1 + b.c3 + b.c4)); // lowest capacity first = highest training need
 
-  res.render('strategic/dashboard', { title: 'Training-needs dashboard', wide: true, rows: withCScores });
+  res.render('strategic/dashboard', { title: res.locals.t('strategic_title'), wide: true, rows: withCScores });
 });
 
 module.exports = router;

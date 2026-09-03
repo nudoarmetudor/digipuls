@@ -1,19 +1,26 @@
 <%
-// Expects: cycle, stepStatuses (array from computeStepStatuses+finalizeReviewStatus),
-// activeStep (key of current step, or null on the overview page).
-const STEP_LABELS_EN = { A: 'A — Leadership', B: 'B — Teaching', C: 'C — Human Capacity', D: 'D — Infrastructure', infra: 'Equipment & Network', review: 'Review & Confirm' };
-const STEP_LABELS_RO = { A: 'A — Conducere', B: 'B — Predare', C: 'C — Capacitate umană', D: 'D — Infrastructură', infra: 'Echipamente și rețea', review: 'Revizuire și confirmare' };
-const stepLabels = lang === 'ro' ? STEP_LABELS_RO : STEP_LABELS_EN;
+// Expects: cycle, stepStatuses (from computeStepStatuses + finalizeReviewStatus),
+// activeStep (key of the current step, or null on the overview page).
+//
+// The coloured dot is decorative. Its meaning is repeated as text inside a
+// visually-hidden span, so the state reaches anyone who can't distinguish the
+// four colours — which is the whole point of a status indicator.
+const stepLabels = { A: t('step_A'), B: t('step_B'), C: t('step_C'), D: t('step_D'), infra: t('step_infra'), review: t('step_review') };
+const stateLabels = { grey: t('step_state_grey'), blue: t('step_state_blue'), red: t('step_state_red'), green: t('step_state_green') };
 %>
-<div class="step-nav">
+<nav class="step-nav" aria-label="<%= t('steps_label') %>">
   <% stepStatuses.forEach(s => {
        let status = s.status;
        if (s.kind === 'review' && cycle.status === 'CONFIRMED') status = 'green';
+       const href = s.kind === 'review'
+         ? `/school/cycles/${cycle.id}/step/review`
+         : `/school/cycles/${cycle.id}/step/${s.key}`;
   %>
-    <a href="<%= s.kind === 'review' ? `/school/cycles/${cycle.id}/step/review` : `/school/cycles/${cycle.id}/step/${s.key}` %>"
-       class="step-pill step-<%= status %><%= activeStep === s.key ? ' step-active' : '' %>">
-      <span class="step-dot"></span>
+    <a href="<%= href %>" class="step-pill step-<%= status %>"
+       <%- activeStep === s.key ? 'aria-current="step"' : '' %>>
+      <span class="step-dot" aria-hidden="true"></span>
       <%= stepLabels[s.key] %>
+      <span class="visually-hidden"> — <%= stateLabels[status] %></span>
     </a>
   <% }) %>
-</div>
+</nav>

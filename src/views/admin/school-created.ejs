@@ -1,29 +1,31 @@
-<h1>School created</h1>
+<h1><%= t('admin_created_title') %></h1>
 
-<div class="card" style="border-left:4px solid #2e7d32;">
-  <p><b><%= school.name %></b> has been provisioned (band <%= school.enrolmentBand %>).</p>
+<div class="card card-ok">
+  <p><%= t('admin_created_body', { name: school.name, band: school.enrolmentBand }) %></p>
 </div>
 
 <% if (teamAccountEmail) { %>
   <div class="card">
-    <h2 style="margin-top:0;border:none;">Digital team login — save this now</h2>
-    <p class="small" style="color:var(--red);">
-      This one-time password is shown <b>only once</b>, right now. It is not stored anywhere in
-      recoverable form. Copy it and hand it to the school's digital team through a trusted
-      channel — they will be required to set their own password on first login.
-    </p>
-    <table>
-      <tr><th>Email</th><td class="mono"><%= teamAccountEmail %></td></tr>
-      <tr><th>Temporary password</th><td class="mono"><b><%= tempPassword %></b></td></tr>
-    </table>
+    <h2 class="plain-heading"><%= t('admin_temp_pw_title') %></h2>
+    <p class="small text-bad" role="alert"><%= t('admin_temp_pw_warning') %></p>
+    <div class="table-scroll">
+      <table>
+        <tbody>
+          <tr><th scope="row"><%= t('th_email') %></th><td class="mono"><%= teamAccountEmail %></td></tr>
+          <tr><th scope="row"><%= t('th_temp_password') %></th><td class="mono"><b><%= tempPassword %></b></td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 <% } else { %>
   <div class="card">
-    <p class="small">No digital-team account was created for this school. Add one later from the school's admin record if needed.</p>
+    <p class="small"><%= t('admin_no_team_account') %></p>
   </div>
 <% } %>
 
-<div class="card" style="text-align:center;">
-  <a class="btn" href="/ministry/schools/<%= school.id %>">Go to school record →</a>
-  <a class="btn btn-secondary" href="/admin/schools/new">Add another school</a>
+<div class="card card-centre">
+  <div class="btn-row" style="justify-content:center;">
+    <a class="btn" href="/ministry/schools/<%= school.id %>"><%= t('admin_go_to_record') %> <span aria-hidden="true">→</span></a>
+    <a class="btn btn-secondary" href="/admin/schools/new"><%= t('admin_add_another') %></a>
+  </div>
 </div>

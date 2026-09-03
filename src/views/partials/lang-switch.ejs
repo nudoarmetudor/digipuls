@@ -1,0 +1,17 @@
+<%
+/* Language switcher. Each link carries hreflang and its own lang attribute so
+   a screen reader pronounces "Русский" with Russian phonetics rather than
+   spelling it out in the current interface language, and aria-current marks
+   the active one for people who can't see the underline. */
+%>
+<nav class="lang-switch" aria-label="<%= t('lang_switch_label') %>">
+  <% SUPPORTED_LANGS.forEach(function (code, i) { %>
+    <% if (i > 0) { %><span aria-hidden="true">/</span><% } %>
+    <a href="/lang/<%= code %>?back=<%= encodeURIComponent(currentPath) %>"
+       hreflang="<%= code %>" lang="<%= code %>"
+       <%- lang === code ? 'aria-current="true"' : '' %>>
+      <span aria-hidden="true"><%= LANG_SHORT[code] %></span>
+      <span class="visually-hidden"><%= LANG_NAMES[code] %></span>
+    </a>
+  <% }) %>
+</nav>

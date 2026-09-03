@@ -22,7 +22,7 @@ router.get('/sime/search', async (req, res) => {
 
 router.get('/schools/new', async (req, res) => {
   const territories = await prisma.territory.findMany({ orderBy: { name: 'asc' } });
-  res.render('admin/school-new', { title: 'Add school (SIME lookup)', wide: true, territories });
+  res.render('admin/school-new', { title: res.locals.t('admin_add_title'), wide: true, territories });
 });
 
 router.post('/schools', async (req, res) => {
@@ -72,7 +72,7 @@ router.post('/schools', async (req, res) => {
 
   await logAction(req.session.user.id, 'PROVISION_SCHOOL', 'School', school.id, simeId ? `from SIME ${simeId}` : 'manual entry');
   res.render('admin/school-created', {
-    title: 'School created', wide: true, school, teamAccountEmail, tempPassword,
+    title: res.locals.t('admin_created_title'), wide: true, school, teamAccountEmail, tempPassword,
   });
 });
 

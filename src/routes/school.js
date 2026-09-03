@@ -27,7 +27,7 @@ router.get('/', async (req, res) => {
   const latest = cycles[0];
   const hasConfirmedPrior = cycles.some((c) => c.status === 'CONFIRMED');
   res.render('school/dashboard', {
-    title: 'School dashboard', wide: true, school, cycles, latest, hasConfirmedPrior,
+    title: res.locals.t('nav_dashboard'), wide: true, school, cycles, latest, hasConfirmedPrior,
   });
 });
 
@@ -56,7 +56,7 @@ async function loadCycleForSchool(req, res, next) {
     },
   });
   if (!cycle || cycle.schoolId !== req.session.user.schoolId) {
-    return res.status(404).render('error', { title: 'Not found', message: 'Assessment cycle not found for your school.' });
+    return res.status(404).render('error', { title: res.locals.t('err_not_found'), message: res.locals.t('err_cycle_not_found') });
   }
   req.cycle = cycle;
   next();
@@ -71,7 +71,7 @@ async function loadCycleForSchool(req, res, next) {
 function requireDraftCycle(req, res, next) {
   if (req.cycle.status !== 'DRAFT') {
     const msg = encodeURIComponent(
-      'This cycle is confirmed and locked — it cannot be edited. Start a continuation cycle from the school dashboard to make further changes.'
+      res.locals.t('err_cycle_locked')
     );
     return res.redirect(`/school/cycles/${req.cycle.id}/step/review?error=${msg}`);
   }
@@ -92,7 +92,7 @@ router.get('/cycles/:id', loadCycleForSchool, async (req, res) => {
   const cycle = req.cycle;
   const school = await getSchool(req);
   const localeData = getIndicatorData(req.lang);
-  const wheelSvg = renderWheel(itemsFromRatings(cycle.ratings, localeData.INDICATORS), { mode: 'indicators' });
+  const wheelSvg = renderWheel(itemsFromRatings(cycle.ratings, localeData.INDICATORS), { mode: 'indicators', t: res.locals.t });
 
   res.render('school/cycle-overview', {
     title: `Cycle ${cycle.cycleNumber}`, wide: true,
@@ -151,7 +151,7 @@ router.get('/cycles/:id/step/:stepKey', loadCycleForSchool, async (req, res) => 
         rating: ratingsByCode.get(ind.code) || null,
       })),
     }));
-    const wheelSvg = renderWheel(itemsFromRatings(cycle.ratings, localeData.INDICATORS), { mode: 'indicators' });
+    const wheelSvg = renderWheel(itemsFromRatings(cycle.ratings, localeData.INDICATORS), { mode: 'indicators', t: res.locals.t });
     return res.render('school/step-review', {
       title: `Cycle ${cycle.cycleNumber} — Review`, wide: true,
       school, cycle, stepStatuses, domains, wheelSvg,
@@ -160,7 +160,7 @@ router.get('/cycles/:id/step/:stepKey', loadCycleForSchool, async (req, res) => 
     });
   }
 
-  return res.status(404).render('error', { title: 'Not found', message: 'Unknown step.' });
+  return res.status(404).render('error', { title: res.locals.t('err_not_found'), message: res.locals.t('err_unknown_step') });
 });
 
 router.post('/cycles/:id/ratings/:code', loadCycleForSchool, requireDraftCycle, async (req, res) => {
@@ -170,14 +170,15 @@ router.post('/cycles/:id/ratings/:code', loadCycleForSchool, requireDraftCycle, 
   const returnStep = req.body.returnStep || code[0];
 
   const rating = cycle.ratings.find((r) => r.indicatorCode === code);
-  if (!rating) return res.status(400).send('Unknown indicator');
+  if (!rating) return res.status(400).send(res.locals.t('err_unknown_indicator'));
 
   let level;
   try {
     level = toLevel(req.body.level);
   } catch (e) {
     if (!(e instanceof ValidationError)) throw e;
-    return res.redirect(`/school/cycles/${cycle.id}/step/${returnStep}?error=${encodeURIComponent(e.message)}#ind-${code}`);
+    const msg = encodeURIComponent(res.locals.t('err_invalid_level'));
+    return res.redirect(`/school/cycles/${cycle.id}/step/${returnStep}?error=${msg}#ind-${code}`);
   }
 
   // Hard enforcement of the compliance floor described in Annex A v2: D1/D2
@@ -211,7 +212,7 @@ router.post('/cycles/:id/ratings/:code/evidence', loadCycleForSchool, requireDra
   const cycle = req.cycle;
   const { code } = req.params;
   const rating = cycle.ratings.find((r) => r.indicatorCode === code);
-  if (!rating) return res.status(400).send('Unknown indicator');
+  if (!rating) return res.status(400).send(res.locals.t('err_unknown_indicator'));
 
   const { type, description, source } = req.body;
   await prisma.evidence.create({
@@ -230,7 +231,8 @@ router.post('/cycles/:id/device', loadCycleForSchool, requireDraftCycle, async (
     fields.forEach((f) => { data[f] = toNonNegativeInt(req.body[f] === '' ? 0 : req.body[f], f); });
   } catch (e) {
     if (!(e instanceof ValidationError)) throw e;
-    return res.redirect(`/school/cycles/${cycle.id}/step/infra?error=${encodeURIComponent(e.message)}`);
+    const msg = encodeURIComponent(res.locals.t('err_invalid_number'));
+    return res.redirect(`/school/cycles/${cycle.id}/step/infra?error=${msg}`);
   }
   await prisma.deviceInventory.upsert({
     where: { cycleId: cycle.id },
@@ -293,7 +295,7 @@ router.get('/cycles/:id/plan', loadCycleForSchool, async (req, res) => {
       })
     : null;
   res.render('school/plan', {
-    title: 'Digital development plan', wide: true,
+    title: res.locals.t('plan_title'), wide: true,
     cycle, plan: cycle.plan, priorPlan, indicators: getIndicatorData(req.lang).INDICATORS,
   });
 });
@@ -307,7 +309,7 @@ router.post('/cycles/:id/plan/priorities', loadCycleForSchool, async (req, res) 
   const { indicatorCode, currentLevel, targetLevel, rationale, actions, responsible, timeline } = req.body;
   const existingCount = await prisma.planPriority.count({ where: { planId: plan.id } });
   if (existingCount >= 5) {
-    return res.status(400).render('error', { title: 'Priority limit', message: 'This plan already has 5 priorities — the recommended maximum (soft guide, per Annex C.2). Remove one before adding another if you believe this is a genuine exception.' });
+    return res.status(400).render('error', { title: res.locals.t('err_priority_limit'), message: res.locals.t('err_priority_limit_body') });
   }
   await prisma.planPriority.create({
     data: {
@@ -333,7 +335,7 @@ router.post('/cycles/:id/plan/details', loadCycleForSchool, async (req, res) => 
 
 router.post('/cycles/:id/plan/publish', loadCycleForSchool, async (req, res) => {
   const cycle = req.cycle;
-  if (!cycle.plan) return res.status(400).render('error', { title: 'No plan', message: 'Add at least one priority before publishing.' });
+  if (!cycle.plan) return res.status(400).render('error', { title: res.locals.t('err_no_plan'), message: res.locals.t('err_no_plan_body') });
   await prisma.developmentPlan.update({ where: { id: cycle.plan.id }, data: { publishedAt: new Date() } });
   await logAction(req.session.user.id, 'PUBLISH_PLAN', 'DevelopmentPlan', cycle.plan.id, null);
   res.redirect(`/school/cycles/${cycle.id}/plan/document`);
@@ -346,8 +348,8 @@ router.get('/cycles/:id/plan/document', loadCycleForSchool, async (req, res) => 
     where: { cycleId: cycle.id },
     include: { priorities: { include: { indicator: true } } },
   });
-  if (!plan) return res.status(404).render('error', { title: 'No plan', message: 'This cycle has no plan yet.' });
-  res.render('school/plan-document', { title: 'Digital Development Plan', layout: false, school, cycle, plan });
+  if (!plan) return res.status(404).render('error', { title: res.locals.t('err_no_plan'), message: res.locals.t('err_no_plan_yet') });
+  res.render('school/plan-document', { title: res.locals.t('plan_title'), layout: false, school, cycle, plan });
 });
 
 // -------------------- Progress over time --------------------
@@ -369,9 +371,9 @@ router.get('/history', async (req, res) => {
   }));
   const cycleWheels = cycles.map((c) => ({
     cycleNumber: c.cycleNumber,
-    svg: renderWheel(itemsFromRatings(c.ratings, localeIndicators), { mode: 'indicators', size: 260, showLabels: false }),
+    svg: renderWheel(itemsFromRatings(c.ratings, localeIndicators), { mode: 'indicators', size: 260, showLabels: false, t: res.locals.t }),
   }));
-  res.render('school/history', { title: 'My progress over time', wide: true, school, cycles, history, cycleWheels });
+  res.render('school/history', { title: res.locals.t('history_title'), wide: true, school, cycles, history, cycleWheels });
 });
 
 module.exports = router;

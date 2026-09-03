@@ -1,17 +1,37 @@
-<h1>Order 675 quantitative monitor</h1>
-<p class="subtitle">Tracks the Ministry's Order 675/2024 monitoring mandate against declared equipment quantities and network checklists. <%= rows.length %> of <%= allCount %> confirmed schools have a gap against those quantitative checks.</p>
-<p class="small" style="color:var(--grey);"><%= t('order675_scope_note') %></p>
+<h1><%= t('compliance_title') %></h1>
+<p class="subtitle"><%= t('compliance_subtitle', { gaps: rows.length, total: allCount }) %></p>
+<p class="small"><%= t('order675_scope_note') %></p>
 
-<table>
-  <tr><th>School</th><th>Territory</th><th>Network (D1)</th><th>Devices (D2)</th><th></th></tr>
-  <% rows.forEach(r => { %>
-    <tr>
-      <td><%= r.school.name %></td>
-      <td><%= r.school.territory ? r.school.territory.name : '—' %></td>
-      <td><span class="badge badge-<%= r.networkCompliance.compliant ? 'pass' : 'fail' %>"><%= r.networkCompliance.compliant ? 'OK' : 'GAP' %></span></td>
-      <td><span class="badge badge-<%= r.deviceCompliance.compliant ? 'pass' : 'fail' %>"><%= r.deviceCompliance.compliant ? 'OK' : 'GAP' %></span></td>
-      <td><a class="plain" href="/ministry/schools/<%= r.school.id %>">Details →</a></td>
-    </tr>
-  <% }) %>
-</table>
-<% if (rows.length === 0) { %><div class="card"><p>All confirmed schools are compliant.</p></div><% } %>
+<% if (rows.length === 0) { %>
+  <div class="card"><p><%= t('compliance_all_ok') %></p></div>
+<% } else { %>
+  <div class="table-scroll">
+    <table>
+      <caption><%= t('compliance_title') %></caption>
+      <thead>
+        <tr>
+          <th scope="col"><%= t('school') %></th>
+          <th scope="col"><%= t('territory') %></th>
+          <th scope="col"><%= t('th_network_d1') %></th>
+          <th scope="col"><%= t('th_devices_d2') %></th>
+          <th scope="col"><span class="visually-hidden"><%= t('details') %></span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% rows.forEach(r => { %>
+          <tr>
+            <th scope="row" style="background:none;font-weight:400;color:inherit;"><%= r.school.name %></th>
+            <td><%= r.school.territory ? r.school.territory.name : '—' %></td>
+            <td><span class="badge badge-<%= r.networkCompliance.compliant ? 'pass' : 'fail' %>"><%= r.networkCompliance.compliant ? t('ok') : t('gap') %></span></td>
+            <td><span class="badge badge-<%= r.deviceCompliance.compliant ? 'pass' : 'fail' %>"><%= r.deviceCompliance.compliant ? t('ok') : t('gap') %></span></td>
+            <td>
+              <a class="plain" href="/ministry/schools/<%= r.school.id %>">
+                <%= t('details') %><span class="visually-hidden"> — <%= r.school.name %></span> <span aria-hidden="true">→</span>
+              </a>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+<% } %>

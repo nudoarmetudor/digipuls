@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="f" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#307e8c"/><stop offset="1" stop-color="#622582"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#f)"/>
+  <!-- Simplified for 16px: ring dropped, pulse only, thicker stroke. -->
+  <path d="M8 32 L18 32 L22 20 L29 44 L35 25 L39 32 L56 32" fill="none" stroke="#ffffff"
+        stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

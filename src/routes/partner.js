@@ -17,7 +17,7 @@ router.get('/', async (req, res) => {
   const allRows = await schoolsWithLatestCycle();
   const rows = filterRows(allRows, req.query);
   res.render('partner/dashboard', {
-    title: 'School overview', wide: true, rows, totalSchools: allRows.length, filteredCount: rows.length, bands: ENROLMENT_BANDS, query: req.query,
+    title: res.locals.t('partner_title'), wide: true, rows, totalSchools: allRows.length, filteredCount: rows.length, bands: ENROLMENT_BANDS, query: req.query,
   });
 });
 

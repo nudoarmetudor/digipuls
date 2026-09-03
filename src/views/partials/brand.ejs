@@ -1,0 +1,19 @@
+<%
+/* The mark is inlined rather than <img>-ed so it inherits currentColor and
+   therefore stays legible in light, dark and high-contrast themes without
+   shipping a separate file per theme. Decorative: the wordmark beside it
+   already names the product, so the SVG is hidden from assistive tech. */
+%>
+<a href="/" class="brand">
+  <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+    <g fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" opacity="0.75">
+      <path d="M34.92 8.18 A24 24 0 0 1 55.82 29.08"/>
+      <path d="M55.82 34.92 A24 24 0 0 1 34.92 55.82"/>
+      <path d="M29.08 55.82 A24 24 0 0 1 8.18 34.92"/>
+      <path d="M8.18 29.08 A24 24 0 0 1 29.08 8.18"/>
+    </g>
+    <path d="M6 32 L19 32 L23 21 L29 43 L34 26 L38 32 L58 32" fill="none" stroke="currentColor"
+          stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <span class="brand-word">Digi<span>Puls</span></span>
+</a>

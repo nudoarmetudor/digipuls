@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-labelledby="dp-mark-title">
+  <title id="dp-mark-title">DigiPuls</title>
+  <defs>
+    <linearGradient id="dp-ring" x1="0" y1="8" x2="64" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#307e8c"/>
+      <stop offset="0.55" stop-color="#4a5b8c"/>
+      <stop offset="1" stop-color="#622582"/>
+    </linearGradient>
+    <style>
+      /* The pulse sits inside the ring, so it needs to hold contrast against
+         whatever the mark is placed on. Deep cyan on light, pale cyan on dark. */
+      .dp-pulse { stroke: #1f4b53; }
+      @media (prefers-color-scheme: dark) { .dp-pulse { stroke: #7fc4d1; } }
+    </style>
+  </defs>
+  <!-- Four arcs = the four MDSF domains, echoing the maturity wheel. -->
+  <g fill="none" stroke="url(#dp-ring)" stroke-width="6" stroke-linecap="round">
+    <path d="M34.92 8.18 A24 24 0 0 1 55.82 29.08"/>
+    <path d="M55.82 34.92 A24 24 0 0 1 34.92 55.82"/>
+    <path d="M29.08 55.82 A24 24 0 0 1 8.18 34.92"/>
+    <path d="M8.18 29.08 A24 24 0 0 1 29.08 8.18"/>
+  </g>
+  <!-- The pulse: the live signal running through the ring and out both sides. -->
+  <path class="dp-pulse" d="M6 32 L19 32 L23 21 L29 43 L34 26 L38 32 L58 32"
+        fill="none" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

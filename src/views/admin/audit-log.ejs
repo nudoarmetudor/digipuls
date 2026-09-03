@@ -1,14 +1,28 @@
-<h1>Audit log</h1>
-<p class="subtitle">Last 200 entries — durable, attributable record of anything that could feed a decision (per "DigiPuls - additional requirements and open questions resolved.md").</p>
-<table>
-  <tr><th>When</th><th>User</th><th>Action</th><th>Entity</th><th>Details</th></tr>
-  <% entries.forEach(e => { %>
-    <tr>
-      <td class="small"><%= new Date(e.createdAt).toLocaleString() %></td>
-      <td class="small"><%= e.user ? e.user.name : '—' %></td>
-      <td class="small mono"><%= e.action %></td>
-      <td class="small"><%= e.entityType %> #<%= e.entityId %></td>
-      <td class="small"><%= e.details || '' %></td>
-    </tr>
-  <% }) %>
-</table>
+<h1><%= t('audit_title') %></h1>
+<p class="subtitle"><%= t('audit_subtitle') %></p>
+
+<div class="table-scroll">
+  <table>
+    <caption><%= t('audit_title') %> (<%= entries.length %>)</caption>
+    <thead>
+      <tr>
+        <th scope="col"><%= t('th_when') %></th>
+        <th scope="col"><%= t('th_user') %></th>
+        <th scope="col"><%= t('th_action') %></th>
+        <th scope="col"><%= t('th_entity') %></th>
+        <th scope="col"><%= t('th_details') %></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% entries.forEach(e => { %>
+        <tr>
+          <td class="small"><%= new Date(e.createdAt).toLocaleString(lang) %></td>
+          <td class="small"><%= e.user ? e.user.name : '—' %></td>
+          <td class="small mono"><%= e.action %></td>
+          <td class="small"><%= e.entityType %> #<%= e.entityId %></td>
+          <td class="small"><%= e.details || '' %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>

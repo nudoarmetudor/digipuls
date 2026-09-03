@@ -1,0 +1,45 @@
+<%
+/* Primary navigation. `links` is built per role rather than rendered and then
+   hidden, so a role never has another role's routes sitting in its DOM.
+   aria-current="page" marks the active item — the underline alone wouldn't
+   reach a screen-reader user. */
+const links = [];
+if (currentUser) {
+  if (currentUser.role === 'SCHOOL_TEAM') {
+    links.push(['/school', t('nav_dashboard')], ['/school/history', t('nav_my_progress')]);
+  } else if (currentUser.role === 'MINISTRY' || currentUser.role === 'ADMIN') {
+    links.push(['/ministry', t('nav_national_dashboard')], ['/ministry/compliance', t('nav_compliance')]);
+    if (currentUser.role === 'ADMIN') {
+      links.push(['/admin/schools/new', t('nav_add_school')], ['/admin/audit-log', t('nav_audit_log')]);
+    }
+  } else if (currentUser.role === 'TERRITORIAL') {
+    links.push(['/territorial', t('nav_regional_dashboard')]);
+  } else if (currentUser.role === 'PARTNER') {
+    links.push(['/partner', t('nav_my_offers')]);
+  } else if (currentUser.role === 'STRATEGIC_PARTNER') {
+    links.push(['/strategic', t('nav_training_dashboard')]);
+  }
+}
+links.push(['/public-view/schools', t('nav_public_view')]);
+%>
+<header class="topbar">
+  <%- include('brand') %>
+  <nav class="topbar-nav" aria-label="<%= t('nav_primary_label') %>">
+    <% links.forEach(function (l) { %>
+      <a href="<%= l[0] %>" <%- currentPath === l[0] ? 'aria-current="page"' : '' %>><%= l[1] %></a>
+    <% }) %>
+    <%- include('lang-switch') %>
+    <%- include('display-settings') %>
+    <% if (currentUser) { %>
+      <span class="userbox">
+        <span><%= currentUser.name %></span>
+        <span class="role-chip"><%= currentUser.role %></span>
+      </span>
+      <form action="/logout" method="POST">
+        <button class="btn btn-sm btn-secondary" type="submit"><%= t('nav_logout') %></button>
+      </form>
+    <% } else { %>
+      <a href="/login"><%= t('nav_login') %></a>
+    <% } %>
+  </nav>
+</header>

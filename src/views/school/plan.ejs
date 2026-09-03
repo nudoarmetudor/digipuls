@@ -1,24 +1,34 @@
-<h1><%= t('plan_title') %> — <%= lang==='ro'?'Ciclul':'Cycle' %> <%= cycle.cycleNumber %></h1>
+<h1><%= t('plan_title') %> — <%= t('cycle') %> <%= cycle.cycleNumber %></h1>
 <p class="subtitle"><%= t('plan_subtitle') %></p>
 
 <% if (priorPlan && priorPlan.priorities.length) { %>
-<div class="card card-flat" style="background:var(--bg);">
-  <h2 style="margin-top:0;border:none;"><%= t('plan_previous_priorities') %></h2>
-  <table>
-    <tr><th><%= t('th_indicator') %></th><th><%= t('th_target') %></th><th><%= t('th_outcome') %></th></tr>
-    <% priorPlan.priorities.forEach(p => { %>
-      <tr><td><%= p.indicatorCode %></td><td><%= t('level_label') %> <%= p.currentLevel %> → <%= p.targetLevel %></td><td><%= p.outcomeStatus || t('not_yet_reviewed') %></td></tr>
-    <% }) %>
-  </table>
+<div class="card card-flat">
+  <h2 class="plain-heading" id="prior-priorities"><%= t('plan_previous_priorities') %></h2>
+  <div class="table-scroll">
+    <table aria-labelledby="prior-priorities">
+      <thead>
+        <tr><th scope="col"><%= t('th_indicator') %></th><th scope="col"><%= t('th_target') %></th><th scope="col"><%= t('th_outcome') %></th></tr>
+      </thead>
+      <tbody>
+        <% priorPlan.priorities.forEach(p => { %>
+          <tr>
+            <th scope="row" style="background:none;font-weight:400;color:inherit;"><%= p.indicatorCode %></th>
+            <td><%= t('level_label') %> <%= p.currentLevel %> <span aria-hidden="true">→</span> <%= p.targetLevel %></td>
+            <td><%= p.outcomeStatus || t('not_yet_reviewed') %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
 </div>
 <% } %>
 
 <div class="card">
-  <h2 style="margin-top:0;border:none;"><%= t('plan_priorities') %> (<%= plan ? plan.priorities.length : 0 %>/5)</h2>
+  <h2 class="plain-heading"><%= t('plan_priorities') %> (<%= plan ? plan.priorities.length : 0 %>/5)</h2>
   <% if (plan && plan.priorities.length) { %>
     <% plan.priorities.forEach(p => { %>
-      <div class="indicator-block" style="margin-bottom:0.6rem;">
-        <h3><%= p.indicatorCode %> — <%= t('level_label') %> <%= p.currentLevel %> → <%= p.targetLevel %></h3>
+      <div class="indicator-block">
+        <h3><%= p.indicatorCode %> — <%= t('level_label') %> <%= p.currentLevel %> <span aria-hidden="true">→</span> <%= p.targetLevel %></h3>
         <p class="small"><b><%= t('rationale_label') %>:</b> <%= p.rationale %></p>
         <p class="small"><b><%= t('actions_label') %>:</b> <%= p.actions %></p>
         <p class="small"><b><%= t('responsible_label') %>:</b> <%= p.responsible || '—' %> · <b><%= t('timeline_label') %>:</b> <%= p.timeline || '—' %></p>
@@ -30,21 +40,33 @@
   <form method="POST" action="/school/cycles/<%= cycle.id %>/plan/priorities">
     <div class="inline-fields">
       <div>
-        <label><%= t('linked_indicator') %></label>
-        <select name="indicatorCode" required>
+        <label for="p-indicator"><%= t('linked_indicator') %></label>
+        <select id="p-indicator" name="indicatorCode" required>
           <% indicators.forEach(i => { %><option value="<%= i.code %>"><%= i.code %> — <%= i.name %></option><% }) %>
         </select>
       </div>
-      <div><label><%= t('current_level_label') %></label><input type="number" name="currentLevel" min="0" max="5" required></div>
-      <div><label><%= t('target_level_label') %></label><input type="number" name="targetLevel" min="0" max="5" required></div>
+      <div>
+        <label for="p-current"><%= t('current_level_label') %></label>
+        <input type="number" id="p-current" name="currentLevel" min="0" max="5" required>
+      </div>
+      <div>
+        <label for="p-target"><%= t('target_level_label') %></label>
+        <input type="number" id="p-target" name="targetLevel" min="0" max="5" required>
+      </div>
     </div>
-    <label><%= t('rationale_field') %></label>
-    <textarea name="rationale" required></textarea>
-    <label><%= t('actions_field') %></label>
-    <textarea name="actions" required></textarea>
+    <label for="p-rationale"><%= t('rationale_field') %></label>
+    <textarea id="p-rationale" name="rationale" required></textarea>
+    <label for="p-actions"><%= t('actions_field') %></label>
+    <textarea id="p-actions" name="actions" required></textarea>
     <div class="inline-fields">
-      <div><label><%= t('responsible_persons') %></label><input type="text" name="responsible"></div>
-      <div><label><%= t('timeline_field') %></label><input type="text" name="timeline" placeholder="<%= lang==='ro'?'ex. Lunile 1-6':'e.g. Months 1-6' %>"></div>
+      <div>
+        <label for="p-responsible"><%= t('responsible_persons') %></label>
+        <input type="text" id="p-responsible" name="responsible">
+      </div>
+      <div>
+        <label for="p-timeline"><%= t('timeline_field') %></label>
+        <input type="text" id="p-timeline" name="timeline" placeholder="<%= t('timeline_placeholder') %>">
+      </div>
     </div>
     <div style="margin-top:0.8rem;"><button class="btn" type="submit"><%= t('plan_add_priority') %></button></div>
   </form>
@@ -52,21 +74,21 @@
 </div>
 
 <div class="card">
-  <h2 style="margin-top:0;border:none;"><%= t('plan_funding_title') %></h2>
+  <h2 class="plain-heading"><%= t('plan_funding_title') %></h2>
   <form method="POST" action="/school/cycles/<%= cycle.id %>/plan/details">
-    <label><%= t('funding_source') %></label>
-    <input type="text" name="fundingSource" value="<%= plan ? (plan.fundingSource || '') : '' %>" placeholder="<%= lang==='ro' ? 'bugetul școlii / cofinanțare locală / donator extern / Minister' : 'school budget / local co-funding / external donor / Ministry' %>">
-    <label><%= t('approving_authority') %></label>
-    <input type="text" name="approvingAuthority" value="<%= plan ? (plan.approvingAuthority || '') : '' %>">
-    <label><%= t('consultation_notes') %></label>
-    <textarea name="stakeholderConsultationNotes"><%= plan ? (plan.stakeholderConsultationNotes || '') : '' %></textarea>
+    <label for="p-funding"><%= t('funding_source') %></label>
+    <input type="text" id="p-funding" name="fundingSource" value="<%= plan ? (plan.fundingSource || '') : '' %>" placeholder="<%= t('funding_placeholder') %>">
+    <label for="p-authority"><%= t('approving_authority') %></label>
+    <input type="text" id="p-authority" name="approvingAuthority" value="<%= plan ? (plan.approvingAuthority || '') : '' %>">
+    <label for="p-consultation"><%= t('consultation_notes') %></label>
+    <textarea id="p-consultation" name="stakeholderConsultationNotes"><%= plan ? (plan.stakeholderConsultationNotes || '') : '' %></textarea>
     <div style="margin-top:0.6rem;"><button class="btn btn-sm" type="submit"><%= t('plan_save_details') %></button></div>
   </form>
 </div>
 
 <% if (plan && plan.priorities.length && !plan.publishedAt) { %>
-<div class="card" style="border-left:4px solid var(--green);">
-  <h2 style="margin-top:0;border:none;"><%= t('plan_publish_title') %></h2>
+<div class="card card-ok">
+  <h2 class="plain-heading"><%= t('plan_publish_title') %></h2>
   <p class="small"><%= t('publish_caption') %></p>
   <form method="POST" action="/school/cycles/<%= cycle.id %>/plan/publish">
     <button class="btn" type="submit"><%= t('plan_publish_button') %></button>
@@ -74,7 +96,7 @@
 </div>
 <% } else if (plan && plan.publishedAt) { %>
 <div class="card">
-  <p><%= t('plan_published') %> <%= new Date(plan.publishedAt).toLocaleDateString() %>.</p>
-  <a class="btn btn-secondary" href="/school/cycles/<%= cycle.id %>/plan/document" target="_blank"><%= t('plan_view_document') %></a>
+  <p><%= t('plan_published') %> <%= new Date(plan.publishedAt).toLocaleDateString(lang) %>.</p>
+  <a class="btn btn-secondary" href="/school/cycles/<%= cycle.id %>/plan/document" target="_blank" rel="noopener"><%= t('plan_view_document') %></a>
 </div>
 <% } %>

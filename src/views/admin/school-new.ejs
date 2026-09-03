@@ -1,75 +1,139 @@
-<h1>Add school</h1>
-<p class="subtitle">Search the (mock) SIME registry to auto-fill a school's official data, or enter it manually. See README.md "SIME integration" for how this seam becomes a live API call later.</p>
+<h1><%= t('admin_add_title') %></h1>
+<p class="subtitle"><%= t('admin_add_subtitle') %></p>
 
 <div class="card">
-  <h2 style="margin-top:0;border:none;">1. Search SIME registry</h2>
-  <input type="text" id="sime-search" placeholder="Search by school name or SIME ID...">
-  <div id="sime-results" style="margin-top:0.6rem;"></div>
+  <h2 class="plain-heading"><%= t('admin_step1') %></h2>
+  <label for="sime-search"><%= t('admin_sime_search_label') %></label>
+  <input type="search" id="sime-search" placeholder="<%= t('admin_sime_search_placeholder') %>"
+         aria-describedby="sime-results-status" autocomplete="off">
+  <p id="sime-results-status" class="visually-hidden" role="status" aria-live="polite"></p>
+  <div id="sime-results" style="margin-top:0.6rem;" aria-label="<%= t('admin_results_label') %>"></div>
 </div>
 
 <div class="card">
-  <h2 style="margin-top:0;border:none;">2. School details</h2>
+  <h2 class="plain-heading"><%= t('admin_step2') %></h2>
   <form method="POST" action="/admin/schools" id="school-form">
-    <label>SIME ID</label>
+    <label for="f-simeId"><%= t('sime_id') %></label>
     <input type="text" name="simeId" id="f-simeId">
-    <label>Name</label>
+
+    <label for="f-name"><%= t('f_name') %></label>
     <input type="text" name="name" id="f-name" required>
-    <label>Address</label>
+
+    <label for="f-address"><%= t('f_address') %></label>
     <input type="text" name="address" id="f-address">
+
     <div class="inline-fields">
       <div>
-        <label>Territory</label>
+        <label for="f-territoryId"><%= t('f_territory') %></label>
         <select name="territoryId" id="f-territoryId">
-          <% territories.forEach(t => { %><option value="<%= t.id %>"><%= t.name %></option><% }) %>
-          <option value="new">+ New territory (enter name below)</option>
+          <% territories.forEach(terr => { %><option value="<%= terr.id %>"><%= terr.name %></option><% }) %>
+          <option value="new"><%= t('f_new_territory_option') %></option>
         </select>
       </div>
-      <div><label>New territory name (if selected above)</label><input type="text" name="territoryName" id="f-territoryName"></div>
+      <div>
+        <label for="f-territoryName"><%= t('f_new_territory_name') %></label>
+        <input type="text" name="territoryName" id="f-territoryName">
+      </div>
     </div>
+
     <div class="inline-fields">
-      <div><label>Total enrolment</label><input type="number" name="enrolmentTotal" id="f-enrolmentTotal" required></div>
-      <div><label>Students grades 7-12</label><input type="number" name="studentsGrades7to12" id="f-studentsGrades7to12"></div>
-      <div><label>Total classrooms</label><input type="number" name="classroomsTotal" id="f-classroomsTotal"></div>
+      <div>
+        <label for="f-enrolmentTotal"><%= t('f_total_enrolment') %></label>
+        <input type="number" name="enrolmentTotal" id="f-enrolmentTotal" min="0" step="1" required>
+      </div>
+      <div>
+        <label for="f-studentsGrades7to12"><%= t('f_students_7_12') %></label>
+        <input type="number" name="studentsGrades7to12" id="f-studentsGrades7to12" min="0" step="1">
+      </div>
+      <div>
+        <label for="f-classroomsTotal"><%= t('f_total_classrooms') %></label>
+        <input type="number" name="classroomsTotal" id="f-classroomsTotal" min="0" step="1">
+      </div>
     </div>
-    <h3 style="margin-top:1rem;">Digital team login (optional, can be added later)</h3>
+
+    <h3 style="margin-top:1rem;"><%= t('admin_team_login_title') %></h3>
     <div class="inline-fields">
-      <div><label>Team email</label><input type="email" name="teamEmail"></div>
-      <div><label>Team display name</label><input type="text" name="teamName"></div>
+      <div>
+        <label for="f-teamEmail"><%= t('f_team_email') %></label>
+        <input type="email" name="teamEmail" id="f-teamEmail">
+      </div>
+      <div>
+        <label for="f-teamName"><%= t('f_team_name') %></label>
+        <input type="text" name="teamName" id="f-teamName">
+      </div>
     </div>
-    <div style="margin-top:1rem;"><button class="btn" type="submit">Create school</button></div>
+
+    <div style="margin-top:1rem;"><button class="btn" type="submit"><%= t('admin_create_school') %></button></div>
   </form>
 </div>
 
 <script>
-const searchInput = document.getElementById('sime-search');
-const resultsDiv = document.getElementById('sime-results');
-let debounce;
-searchInput.addEventListener('input', () => {
-  clearTimeout(debounce);
-  const q = searchInput.value.trim();
-  if (!q) { resultsDiv.innerHTML = ''; return; }
-  debounce = setTimeout(async () => {
-    const res = await fetch('/admin/sime/search?q=' + encodeURIComponent(q));
-    const data = await res.json();
-    resultsDiv.innerHTML = data.length
-      ? data.map(s => `<div class="card card-flat" style="background:var(--bg);cursor:pointer;padding:0.6rem 0.9rem;margin-bottom:0.4rem;" data-school='${JSON.stringify(s).replace(/'/g, "&apos;")}'>
-          <b>${s.name}</b> <span class="small mono">${s.simeId}</span><br>
-          <span class="small">${s.address} · enrolment ${s.enrolmentTotal}</span>
-        </div>`).join('')
-      : '<p class="small">No matches.</p>';
-    resultsDiv.querySelectorAll('[data-school]').forEach(el => {
-      el.addEventListener('click', () => {
-        const s = JSON.parse(el.getAttribute('data-school'));
-        document.getElementById('f-simeId').value = s.simeId;
-        document.getElementById('f-name').value = s.name;
-        document.getElementById('f-address').value = s.address;
-        document.getElementById('f-enrolmentTotal').value = s.enrolmentTotal;
-        document.getElementById('f-studentsGrades7to12').value = s.studentsGrades7to12;
-        document.getElementById('f-classroomsTotal').value = s.classroomsTotal;
-        document.getElementById('f-territoryId').value = 'new';
-        document.getElementById('f-territoryName').value = s.territory;
-      });
-    });
-  }, 200);
-});
+/* SIME lookup. Results are rendered as real <button>s inside a <ul> so they
+   can be reached by keyboard and are announced as a list of choices — the
+   earlier click-only <div>s were mouse-only. Result count goes to a live
+   region, because an autocomplete that only *looks* like it found something
+   is useless to a screen-reader user. */
+(function () {
+  var searchInput = document.getElementById('sime-search');
+  var resultsDiv = document.getElementById('sime-results');
+  var statusEl = document.getElementById('sime-results-status');
+  var noMatches = <%- JSON.stringify(t('admin_no_matches')) %>;
+  var debounce;
+
+  function fill(s) {
+    document.getElementById('f-simeId').value = s.simeId || '';
+    document.getElementById('f-name').value = s.name || '';
+    document.getElementById('f-address').value = s.address || '';
+    document.getElementById('f-enrolmentTotal').value = s.enrolmentTotal || '';
+    document.getElementById('f-studentsGrades7to12').value = s.studentsGrades7to12 || '';
+    document.getElementById('f-classroomsTotal').value = s.classroomsTotal || '';
+    document.getElementById('f-territoryId').value = 'new';
+    document.getElementById('f-territoryName').value = s.territory || '';
+    document.getElementById('f-name').focus();
+  }
+
+  searchInput.addEventListener('input', function () {
+    clearTimeout(debounce);
+    var q = searchInput.value.trim();
+    if (!q) { resultsDiv.innerHTML = ''; statusEl.textContent = ''; return; }
+    debounce = setTimeout(function () {
+      fetch('/admin/sime/search?q=' + encodeURIComponent(q))
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          resultsDiv.innerHTML = '';
+          statusEl.textContent = data.length ? String(data.length) : noMatches;
+          if (!data.length) {
+            var p = document.createElement('p');
+            p.className = 'small';
+            p.textContent = noMatches;
+            resultsDiv.appendChild(p);
+            return;
+          }
+          var ul = document.createElement('ul');
+          ul.style.cssText = 'list-style:none;padding:0;margin:0;';
+          data.forEach(function (s) {
+            var li = document.createElement('li');
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'card card-flat';
+            btn.style.cssText = 'display:block;width:100%;text-align:left;cursor:pointer;padding:0.6rem 0.9rem;margin-bottom:0.4rem;font:inherit;color:inherit;';
+            var name = document.createElement('b');
+            name.textContent = s.name;
+            var id = document.createElement('span');
+            id.className = 'small mono';
+            id.textContent = ' ' + s.simeId;
+            var meta = document.createElement('span');
+            meta.className = 'small';
+            meta.style.display = 'block';
+            meta.textContent = s.address + ' · ' + s.enrolmentTotal;
+            btn.append(name, id, meta);
+            btn.addEventListener('click', function () { fill(s); });
+            li.appendChild(btn);
+            ul.appendChild(li);
+          });
+          resultsDiv.appendChild(ul);
+        });
+    }, 200);
+  });
+})();
 </script>

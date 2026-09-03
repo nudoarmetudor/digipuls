@@ -1,49 +1,63 @@
-<!DOCTYPE html>
-<html lang="en">
+<%
+/* Rendered with layout:false so the login screen stays self-contained, but it
+   pulls in the same head/topbar/footer partials — otherwise the one page
+   every user sees first would be the one page without the language switcher
+   or the display settings. */
+const demoAccounts = [
+  [t('demo_school_high'), 'zadnipru@digipuls.md'],
+  [t('demo_school_device'), 'hasdeu@digipuls.md'],
+  [t('demo_school_network'), 'ghibu@digipuls.md'],
+  [t('demo_school_mid'), 'singera@digipuls.md'],
+  [t('demo_ministry'), 'ministry@digipuls.md'],
+  [t('demo_territorial'), 'territorial-chisinau@digipuls.md'],
+  [t('demo_partner'), 'unicef@digipuls.md'],
+  [t('demo_strategic'), 'clasaviitorului@digipuls.md'],
+  [t('demo_admin'), 'admin@digipuls.md'],
+];
+%><!DOCTYPE html>
+<html lang="<%= lang %>" <%- prefsAttrs %>>
 <head>
-  <meta charset="UTF-8">
-  <title>Log in — DigiPuls</title>
-  <link rel="stylesheet" href="/static/css/style.css">
+<%- include('../partials/head') %>
 </head>
 <body>
-  <div class="topbar">
-    <a href="/" class="brand">Digi<span>Puls</span></a>
-    <nav>
-      <a href="/lang/en" style="<%= lang==='en' ? 'text-decoration:underline;' : 'opacity:0.6;' %>">EN</a>
-      / <a href="/lang/ro" style="<%= lang==='ro' ? 'text-decoration:underline;' : 'opacity:0.6;' %>">RO</a>
-    </nav>
-  </div>
-  <div class="container" style="max-width: 420px; margin-top: 3rem;">
-    <div class="card">
-      <h1><%= t('login_title') %></h1>
-      <p class="subtitle"><%= t('login_subtitle') %></p>
-      <% if (error) { %><div class="flash flash-error"><%= error %></div><% } %>
-      <form method="POST" action="/login">
-        <label><%= t('login_email') %></label>
-        <input type="email" name="email" required autofocus>
-        <label><%= t('login_password') %></label>
-        <input type="password" name="password" required>
-        <div style="margin-top:1.2rem;"><button class="btn" type="submit"><%= t('login_button') %></button></div>
-      </form>
-      <% if (demoMode) { %>
-      <div class="card card-flat" style="margin-top:1.5rem; background:var(--bg);">
-        <h3><%= t('login_demo_accounts') %></h3>
-        <p class="small"><%= t('login_demo_password_note') %> <span class="mono"><b>DigiPuls2026!</b></span></p>
-        <table>
-          <tr><th>Role</th><th>Email</th></tr>
-          <tr><td>School (Chișinău, high maturity)</td><td class="mono">zadnipru@digipuls.md</td></tr>
-          <tr><td>School (Bălți, device-need)</td><td class="mono">hasdeu@digipuls.md</td></tr>
-          <tr><td>School (Orhei, non-compliant network)</td><td class="mono">ghibu@digipuls.md</td></tr>
-          <tr><td>School (Sîngera, mid-assessment)</td><td class="mono">singera@digipuls.md</td></tr>
-          <tr><td>Ministry</td><td class="mono">ministry@digipuls.md</td></tr>
-          <tr><td>Territorial (Chișinău)</td><td class="mono">territorial-chisinau@digipuls.md</td></tr>
-          <tr><td>Financing partner (UNICEF)</td><td class="mono">unicef@digipuls.md</td></tr>
-          <tr><td>Strategic partner (Clasa Viitorului)</td><td class="mono">clasaviitorului@digipuls.md</td></tr>
-          <tr><td>Admin (SIME provisioning)</td><td class="mono">admin@digipuls.md</td></tr>
-        </table>
+  <a class="skip-link" href="#main"><%= t('skip_to_content') %></a>
+  <%- include('../partials/topbar') %>
+  <main id="main" tabindex="-1">
+    <div class="container narrow">
+      <div class="card">
+        <h1><%= t('login_title') %></h1>
+        <p class="subtitle"><%= t('login_subtitle') %></p>
+        <% if (error) { %><div class="flash flash-error" role="alert"><%= error %></div><% } %>
+        <form method="POST" action="/login">
+          <label for="login-email"><%= t('login_email') %></label>
+          <input type="email" id="login-email" name="email" autocomplete="username" required autofocus>
+          <label for="login-password"><%= t('login_password') %></label>
+          <input type="password" id="login-password" name="password" autocomplete="current-password" required>
+          <div style="margin-top:1.2rem;"><button class="btn" type="submit"><%= t('login_button') %></button></div>
+        </form>
+
+        <% if (demoMode) { %>
+        <div class="card card-flat" style="margin-top:1.5rem;">
+          <h2 class="plain-heading" style="font-size:1rem;"><%= t('login_demo_accounts') %></h2>
+          <p class="small"><%= t('login_demo_password_note') %> <span class="mono"><b>DigiPuls2026!</b></span></p>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr><th scope="col"><%= t('login_role_column') %></th><th scope="col"><%= t('login_email') %></th></tr>
+              </thead>
+              <tbody>
+                <% demoAccounts.forEach(function (a) { %>
+                  <tr><td><%= a[0] %></td><td class="mono"><%= a[1] %></td></tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <% } %>
       </div>
-      <% } %>
     </div>
-  </div>
+  </main>
+  <%- include('../partials/footer') %>
+  <script src="/static/js/a11y.js" defer></script>
 </body>
 </html>

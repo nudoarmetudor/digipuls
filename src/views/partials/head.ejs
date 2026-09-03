@@ -1,0 +1,23 @@
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="<%= t('brand_tagline') %>">
+<title><%= typeof title !== 'undefined' && title ? title + ' — DigiPuls' : 'DigiPuls' %></title>
+<link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/css/style.css">
+<script>
+  /* Applies stored display preferences before first paint.
+     The server has already set these attributes from the dp_prefs cookie;
+     this only matters when cookies are blocked but localStorage isn't, and
+     when a preference was changed in another tab. Kept inline and tiny on
+     purpose — an external file would load too late to prevent a flash. */
+  (function () {
+    try {
+      var p = JSON.parse(localStorage.getItem('dp_prefs') || '{}');
+      var d = { theme: 'system', contrast: 'normal', text: 'md', motion: 'full', underline: 'off' };
+      Object.keys(d).forEach(function (k) {
+        if (p[k] && p[k] !== d[k]) document.documentElement.setAttribute('data-' + k, p[k]);
+      });
+    } catch (e) { /* nothing stored, or storage unavailable — defaults apply */ }
+  })();
+</script>

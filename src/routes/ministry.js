@@ -22,7 +22,7 @@ router.get('/', async (req, res) => {
   const territories = await prisma.territory.findMany({ orderBy: { name: 'asc' } });
 
   res.render('ministry/dashboard', {
-    title: 'National dashboard', wide: true,
+    title: res.locals.t('ministry_dashboard_title'), wide: true,
     rows, totalSchools: allRows.length, filteredCount: rows.length, confirmedCount: confirmedRows.length,
     avgA: avg('A'), avgB: avg('B'), avgC: avg('C'), avgD: avg('D'),
     complianceCount, territories, bands: ENROLMENT_BANDS, query: req.query,
@@ -43,7 +43,7 @@ router.get('/schools/:id', async (req, res) => {
     where: { id: Number(req.params.id) },
     include: { territory: true, cycles: { orderBy: { cycleNumber: 'desc' }, include: { ratings: true, deviceInventory: true, networkChecklist: true, plan: { include: { priorities: true } } } } },
   });
-  if (!school) return res.status(404).render('error', { title: 'Not found', message: 'School not found.' });
+  if (!school) return res.status(404).render('error', { title: res.locals.t('err_not_found'), message: res.locals.t('err_school_not_found') });
   // The official record shown here (wheel, compliance, validations) must
   // come from the latest CONFIRMED cycle — never from a newer draft, which
   // would otherwise make an already-confirmed assessment vanish the moment
@@ -53,7 +53,7 @@ router.get('/schools/:id', async (req, res) => {
   const deviceCompliance = latest?.deviceInventory ? checkDeviceCompliance(school, latest.deviceInventory) : null;
   const networkCompliance = latest?.networkChecklist ? checkNetworkCompliance(latest.networkChecklist) : null;
   const validations = latest ? await prisma.validationRecord.findMany({ where: { cycleId: latest.id } }) : [];
-  const wheelSvg = latest ? renderWheel(itemsFromRatings(latest.ratings, INDICATORS), { mode: 'indicators', size: 380 }) : null;
+  const wheelSvg = latest ? renderWheel(itemsFromRatings(latest.ratings, INDICATORS), { mode: 'indicators', size: 380, t: res.locals.t }) : null;
   res.render('ministry/school-detail', {
     title: school.name, wide: true, school, latest, currentCycle, hasNewerDraft,
     deviceCompliance, networkCompliance, validations, INDICATORS, DOMAINS, wheelSvg,
@@ -63,7 +63,7 @@ router.get('/schools/:id', async (req, res) => {
 router.get('/compliance', async (req, res) => {
   const rows = await schoolsWithLatestCycle();
   const nonCompliant = rows.filter((r) => r.confirmed && (!r.deviceCompliance?.compliant || !r.networkCompliance?.compliant));
-  res.render('ministry/compliance', { title: 'Order 675 compliance monitor', wide: true, rows: nonCompliant, allCount: rows.filter(r => r.confirmed).length });
+  res.render('ministry/compliance', { title: res.locals.t('compliance_title'), wide: true, rows: nonCompliant, allCount: rows.filter(r => r.confirmed).length });
 });
 
 module.exports = router;

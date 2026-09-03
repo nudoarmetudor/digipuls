@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 64" width="300" height="64" role="img" aria-labelledby="dp-logo-title">
+  <title id="dp-logo-title">DigiPuls — Moldova's digital school maturity platform</title>
+  <defs>
+    <linearGradient id="dp-ring-l" x1="0" y1="8" x2="64" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#307e8c"/>
+      <stop offset="0.55" stop-color="#4a5b8c"/>
+      <stop offset="1" stop-color="#622582"/>
+    </linearGradient>
+    <style>
+      .dp-pulse { stroke: #1f4b53; }
+      .dp-digi  { fill: #1f4b53; }
+      .dp-puls  { fill: #622582; }
+      @media (prefers-color-scheme: dark) {
+        .dp-pulse { stroke: #7fc4d1; }
+        .dp-digi  { fill: #d8eef2; }
+        .dp-puls  { fill: #c9a6db; }
+      }
+    </style>
+  </defs>
+  <g fill="none" stroke="url(#dp-ring-l)" stroke-width="6" stroke-linecap="round">
+    <path d="M34.92 8.18 A24 24 0 0 1 55.82 29.08"/>
+    <path d="M55.82 34.92 A24 24 0 0 1 34.92 55.82"/>
+    <path d="M29.08 55.82 A24 24 0 0 1 8.18 34.92"/>
+    <path d="M8.18 29.08 A24 24 0 0 1 29.08 8.18"/>
+  </g>
+  <path class="dp-pulse" d="M6 32 L19 32 L23 21 L29 43 L34 26 L38 32 L58 32"
+        fill="none" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Wordmark. Set in the brand UI stack rather than outlines so it stays
+       crisp and themeable in-product; outline the text before sending this
+       file to a printer. See BRAND.md, "Logo". -->
+  <text x="74" y="42" font-family="Inter, 'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif"
+        font-size="30" font-weight="700" letter-spacing="-0.4">
+    <tspan class="dp-digi">Digi</tspan><tspan class="dp-puls">Puls</tspan>
+  </text>
+</svg>

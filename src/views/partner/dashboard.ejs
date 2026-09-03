@@ -1,58 +1,81 @@
-<h1><%= lang==='ro' ? 'Prezentare generală a școlilor' : 'School overview' %></h1>
-<p class="subtitle"><%= lang==='ro'
-  ? 'Vizualizare și filtrare doar — fără potrivire automată. Fiecare decizie de finanțare este evaluată separat, în funcție de situația reală a fiecărei școli.'
-  : 'View and filter only — no automated matching. Each funding decision is evaluated case by case, against the real situation of each school.' %></p>
+<% const domainKeys = ['A', 'B', 'C', 'D']; %>
+<h1><%= t('partner_title') %></h1>
+<p class="subtitle"><%= t('partner_subtitle') %></p>
 
 <div class="card">
-  <h2 style="margin-top:0;border:none;"><%= lang==='ro' ? 'Filtre' : 'Filters' %></h2>
+  <h2 class="plain-heading"><%= t('filters') %></h2>
   <form method="GET" action="/partner">
     <div class="inline-fields">
       <div>
-        <label><%= lang==='ro'?'Bandă':'Band' %></label>
-        <select name="band">
+        <label for="f-band"><%= t('band') %></label>
+        <select id="f-band" name="band">
           <option value="">—</option>
           <% bands.forEach(b => { %><option value="<%= b.key %>" <%= query.band===b.key?'selected':'' %>><%= b.key %></option><% }) %>
         </select>
       </div>
       <div>
-        <label><%= lang==='ro'?'Ordinul 675':'Order 675' %></label>
-        <select name="compliance">
+        <label for="f-compliance"><%= t('order675') %></label>
+        <select id="f-compliance" name="compliance">
           <option value="">—</option>
           <option value="compliant" <%= query.compliance==='compliant'?'selected':'' %>><%= t('compliant') %></option>
-          <option value="gap" <%= query.compliance==='gap'?'selected':'' %>><%= lang==='ro'?'DECALAJ':'GAP' %></option>
+          <option value="gap" <%= query.compliance==='gap'?'selected':'' %>><%= t('gap') %></option>
         </select>
       </div>
       <div>
-        <label><%= lang==='ro'?'Sortare':'Sort' %></label>
-        <select name="sort">
+        <label for="f-sort"><%= t('sort') %></label>
+        <select id="f-sort" name="sort">
           <option value="">—</option>
-          <option value="name-asc" <%= query.sort==='name-asc'?'selected':'' %>><%= lang==='ro'?'Nume A-Z':'Name A-Z' %></option>
-          <option value="D-asc" <%= query.sort==='D-asc'?'selected':'' %>>D ↑ (<%= lang==='ro'?'nevoie infrastructură':'infrastructure need' %>)</option>
-          <option value="C-desc" <%= query.sort==='C-desc'?'selected':'' %>>C ↓ (<%= lang==='ro'?'capacitate mare':'high capacity' %>)</option>
+          <option value="name-asc" <%= query.sort==='name-asc'?'selected':'' %>><%= t('name_az') %></option>
+          <option value="D-asc" <%= query.sort==='D-asc'?'selected':'' %>>D ↑ (<%= t('sort_infrastructure_need') %>)</option>
+          <option value="C-desc" <%= query.sort==='C-desc'?'selected':'' %>>C ↓ (<%= t('sort_high_capacity') %>)</option>
         </select>
       </div>
     </div>
-    <div style="margin-top:0.8rem;">
-      <button class="btn btn-sm" type="submit"><%= lang==='ro'?'Aplică':'Apply' %></button>
-      <a class="btn btn-sm btn-secondary" href="/partner"><%= lang==='ro'?'Resetează':'Reset' %></a>
+    <div class="btn-row" style="margin-top:0.8rem;">
+      <button class="btn btn-sm" type="submit"><%= t('apply') %></button>
+      <a class="btn btn-sm btn-secondary" href="/partner"><%= t('reset') %></a>
     </div>
   </form>
 </div>
 
-<h2><%= lang==='ro' ? 'Școli' : 'Schools' %> (<%= filteredCount %>/<%= totalSchools %>)</h2>
-<table>
-  <tr><th><%= lang==='ro'?'Școală':'School' %></th><th><%= lang==='ro'?'Teritoriu':'Territory' %></th><th><%= lang==='ro'?'Bandă':'Band' %></th><th><%= t('th_status') %></th><th>A</th><th>B</th><th>C</th><th>D</th><th><%= lang==='ro'?'Ordinul 675':'Order 675' %></th></tr>
-  <% rows.forEach(r => { %>
-    <tr>
-      <td><%= r.school.name %></td>
-      <td><%= r.school.territory ? r.school.territory.name : '—' %></td>
-      <td><%= r.school.enrolmentBand %></td>
-      <td><% if (!r.cycle) { %><span class="badge"><%= lang==='ro'?'Fără date':'No data' %></span><% } else { %><span class="badge badge-<%= r.cycle.status.toLowerCase() %>"><%= STATUS_LABELS[r.cycle.status] %></span><% } %><% if (r.hasNewerDraft) { %><br><span class="small"><%= lang==='ro'?'(evaluare nouă în lucru)':'(newer assessment in progress)' %></span><% } %></td>
-      <% ['A','B','C','D'].forEach(d => { %><td><%= r.domainScores && r.domainScores[d] !== null ? r.domainScores[d].toFixed(1) : '—' %></td><% }) %>
-      <td><% if (r.deviceCompliance && r.networkCompliance) { %><span class="badge badge-<%= (r.deviceCompliance.compliant && r.networkCompliance.compliant) ? 'pass' : 'fail' %>"><%= (r.deviceCompliance.compliant && r.networkCompliance.compliant) ? t('ok') : (lang==='ro'?'DECALAJ':'GAP') %></span><% } else { %>—<% } %></td>
-    </tr>
-  <% }) %>
-</table>
-<p class="small" style="margin-top:1rem;"><%= lang==='ro'
-  ? 'Pentru discuții privind o școală anume sau o propunere de finanțare, contactați Ministerul Educației și Cercetării — datele detaliate pe indicatori rămân la nivelul școlii și al Ministerului.'
-  : 'To discuss a specific school or a funding proposal, contact the Ministry of Education and Research — detailed per-indicator data stays with the school and the Ministry.' %></p>
+<h2 id="partner-schools"><%= t('schools') %> (<%= filteredCount %>/<%= totalSchools %>)</h2>
+<div class="table-scroll">
+  <table aria-labelledby="partner-schools">
+    <thead>
+      <tr>
+        <th scope="col"><%= t('school') %></th>
+        <th scope="col"><%= t('territory') %></th>
+        <th scope="col"><%= t('band') %></th>
+        <th scope="col"><%= t('th_status') %></th>
+        <% domainKeys.forEach(d => { %>
+          <th scope="col"><abbr title="<%= t('domain_' + d + '_full') %>"><%= d %></abbr></th>
+        <% }) %>
+        <th scope="col"><%= t('order675') %></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% rows.forEach(r => { %>
+        <tr>
+          <th scope="row" style="background:none;font-weight:400;color:inherit;"><%= r.school.name %></th>
+          <td><%= r.school.territory ? r.school.territory.name : '—' %></td>
+          <td><%= r.school.enrolmentBand %></td>
+          <td>
+            <% if (!r.cycle) { %><span class="badge"><%= t('no_data') %></span>
+            <% } else { %><span class="badge badge-<%= r.cycle.status.toLowerCase() %>"><%= STATUS_LABELS[r.cycle.status] %></span><% } %>
+            <% if (r.hasNewerDraft) { %><br><span class="small"><%= t('newer_draft_short') %></span><% } %>
+          </td>
+          <% domainKeys.forEach(d => { %>
+            <td><%= r.domainScores && r.domainScores[d] !== null ? r.domainScores[d].toFixed(1) : '—' %></td>
+          <% }) %>
+          <td>
+            <% if (r.deviceCompliance && r.networkCompliance) { %>
+              <% const ok = r.deviceCompliance.compliant && r.networkCompliance.compliant; %>
+              <span class="badge badge-<%= ok ? 'pass' : 'fail' %>"><%= ok ? t('ok') : t('gap') %></span>
+            <% } else { %>—<% } %>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+<p class="small" style="margin-top:1rem;"><%= t('partner_footer_note') %></p>
