@@ -61,7 +61,7 @@
                   <li>
                     <span class="badge badge-draft"><%= t('role_' + p.role) %></span>
                     <% if (p.institution) { %><span class="small"><%= p.institution %></span><% } %>
-                    <% if (p.label) { %><span class="small">— <%= p.label %></span><% } %>
+                    <% if (p.label && p.label !== t('role_' + p.role)) { %><span class="small">— <%= p.label %></span><% } %>
                     <% if (!p.isActive) { %><span class="badge badge-maintained"><%= t('admin_user_inactive') %></span><% } %>
                     <% if (p.customised) { %><span class="badge badge-unvalidated"><%= t('admin_user_customised') %></span><% } %>
                   </li>

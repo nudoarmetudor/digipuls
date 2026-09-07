@@ -32,7 +32,7 @@ const current = workspace;
               <% if (w.schoolName || w.territoryName) { %><%= w.schoolName || w.territoryName %>
               <% } else { %><%= t('workspace_no_institution') %><% } %>
             </span>
-            <% if (w.label) { %><span class="workspace-label"><%= w.label %></span><% } %>
+            <% if (w.label && w.label !== t('role_' + w.role)) { %><span class="workspace-label"><%= w.label %></span><% } %>
             <% if (w.id === current.id) { %>
               <span class="visually-hidden"><%= t('workspace_current') %></span>
             <% } %>
