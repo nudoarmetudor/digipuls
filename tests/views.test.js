@@ -355,6 +355,34 @@ test('preference attributes reach <html>, and only when they differ from the def
   });
 });
 
+test('the navigation panel is grouped, labelled, and marks the current page', () => {
+  const html = render('layout.ejs', Object.assign(baseLocals('en'), { body: '', currentPath: '/ministry' }));
+  assert.match(html, /class="sidebar"/, 'the left panel must render for a signed-in account');
+  assert.match(html, /navgroup-oversight/, 'links must be grouped, not one flat row');
+  assert.match(html, /aria-current="page"/, 'the current page must be marked');
+  assert.match(html, /data-nav-toggle/, 'the fold control must be present');
+  // The fold control is a real form button, so folding works with scripting
+  // off — the same guarantee the display settings make.
+  assert.match(html, /<form method="POST" action="\/preferences" class="sidebar-toggle-form">/);
+});
+
+test('folding the navigation round-trips the other display preferences', () => {
+  // The no-JS toggle posts the whole preference form; if it only sent `nav`
+  // it would silently reset the viewer's theme and text size.
+  const chosen = { theme: 'dark', contrast: 'high', text: 'xl', motion: 'reduced', underline: 'on', nav: 'expanded' };
+  const html = render('layout.ejs', Object.assign(baseLocals('en'), { body: '', prefs: chosen }));
+  ['theme" value="dark', 'contrast" value="high', 'text" value="xl',
+    'motion" value="reduced', 'underline" value="on'].forEach((fragment) => {
+    assert.ok(html.includes(fragment), `the toggle form must carry ${fragment}`);
+  });
+  assert.match(html, /name="nav" value="collapsed"/, 'and flip only the nav value');
+});
+
+test('a signed-out page has no navigation panel to fold', () => {
+  const html = render('layout.ejs', Object.assign(baseLocals('en'), { body: '', currentUser: null }));
+  assert.ok(!html.includes('class="sidebar"'));
+});
+
 test('the language switcher offers all three languages, marking the current one', () => {
   const html = render('layout.ejs', Object.assign(baseLocals('ro'), { body: '' }));
   i18n.SUPPORTED_LANGS.forEach((code) => {

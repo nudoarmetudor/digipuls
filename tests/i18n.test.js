@@ -46,6 +46,8 @@ test('no translation is left as a copy of the English string', () => {
     // More of the same: "Meta-mentor", "Administrator" and "Element" are the
     // correct Romanian words and happen to be spelled as in English.
     'role_META_MENTOR', 'role_ADMIN', 'feedback_form_element',
+    // "Public" is also the Romanian word.
+    'navgroup_public',
   ]);
   SUPPORTED_LANGS.filter((c) => c !== 'en').forEach((code) => {
     const copied = Object.keys(STRINGS.en)

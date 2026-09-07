@@ -34,7 +34,7 @@ test('a malformed percent-escape does not throw', () => {
 
 test('a submitted form body is filtered by the same allow-list', () => {
   const chosen = prefs.prefsFromBody({ theme: 'dark', contrast: 'nope', text: 'xxl', motion: 'reduced', underline: 'on', extra: 'x' });
-  assert.deepStrictEqual(chosen, { theme: 'dark', contrast: 'normal', text: 'xxl', motion: 'reduced', underline: 'on' });
+  assert.deepStrictEqual(chosen, { theme: 'dark', contrast: 'normal', text: 'xxl', motion: 'reduced', underline: 'on', nav: 'expanded' });
   assert.deepStrictEqual(prefs.prefsFromBody({}), prefs.DEFAULTS);
   assert.deepStrictEqual(prefs.prefsFromBody(), prefs.DEFAULTS);
 });
@@ -42,13 +42,13 @@ test('a submitted form body is filtered by the same allow-list', () => {
 test('serialize omits defaults, so an all-default cookie is empty', () => {
   assert.strictEqual(prefs.serialize(prefs.DEFAULTS), '');
   assert.strictEqual(
-    prefs.serialize({ theme: 'dark', contrast: 'high', text: 'md', motion: 'full', underline: 'off' }),
+    prefs.serialize({ theme: 'dark', contrast: 'high', text: 'md', motion: 'full', underline: 'off', nav: 'expanded' }),
     'theme:dark|contrast:high'
   );
 });
 
 test('serialize and readPrefs round-trip', () => {
-  const chosen = { theme: 'light', contrast: 'high', text: 'lg', motion: 'reduced', underline: 'on' };
+  const chosen = { theme: 'light', contrast: 'high', text: 'lg', motion: 'reduced', underline: 'on', nav: 'collapsed' };
   const cookie = 'dp_prefs=' + encodeURIComponent(prefs.serialize(chosen));
   assert.deepStrictEqual(prefs.readPrefs(req(cookie)), chosen);
 });
@@ -58,8 +58,13 @@ test('htmlAttrs emits only non-default preferences', () => {
   // CSS can never fall through to prefers-color-scheme / prefers-reduced-motion.
   assert.strictEqual(prefs.htmlAttrs(prefs.DEFAULTS), '');
   assert.strictEqual(
-    prefs.htmlAttrs({ theme: 'dark', contrast: 'normal', text: 'xl', motion: 'full', underline: 'off' }),
+    prefs.htmlAttrs({ theme: 'dark', contrast: 'normal', text: 'xl', motion: 'full', underline: 'off', nav: 'expanded' }),
     'data-theme="dark" data-text="xl"'
+  );
+  // The folded navigation is a preference like any other.
+  assert.strictEqual(
+    prefs.htmlAttrs({ ...prefs.DEFAULTS, nav: 'collapsed' }),
+    'data-nav="collapsed"'
   );
 });
 

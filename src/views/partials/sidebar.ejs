@@ -1,0 +1,96 @@
+<%
+/* Primary navigation, grouped and foldable.
+   It used to be a single row of up to thirteen links across the masthead,
+   which was unreadable by the time an admin held every capability. Same rule
+   as before: built from the capability set the route guards check, so nobody
+   is offered a link that will then refuse them.
+
+   Folding is a display preference (data-nav on <html>), so it survives page
+   loads, persists per browser, and — because the control is a real form
+   button posting to /preferences — works with JavaScript switched off. */
+const groups = [];
+
+if (can('view.school') && workspace && workspace.schoolId) {
+  groups.push({ key: 'assessment', items: [
+    ['/school', t('nav_dashboard'), 'home'],
+    ['/school/history', t('nav_my_progress'), 'trend'],
+  ] });
+}
+
+const oversight = [];
+if (can('view.national')) oversight.push(['/ministry', t('nav_national_dashboard'), 'grid']);
+if (can('view.compliance')) oversight.push(['/ministry/compliance', t('nav_compliance'), 'check']);
+if (can('view.regional')) oversight.push(['/territorial', t('nav_regional_dashboard'), 'map']);
+if (can('view.partner')) oversight.push(['/partner', t('nav_my_offers'), 'grid']);
+if (can('view.training')) oversight.push(['/strategic', t('nav_training_dashboard'), 'trend']);
+if (oversight.length) groups.push({ key: 'oversight', items: oversight });
+
+const admin = [];
+if (can('admin.users')) admin.push(['/admin/users', t('nav_users'), 'people']);
+if (can('admin.schools')) admin.push(['/admin/schools/new', t('nav_add_school'), 'plus']);
+if (can('admin.audit')) admin.push(['/admin/audit-log', t('nav_audit_log'), 'list']);
+if (admin.length) groups.push({ key: 'admin', items: admin });
+
+const pilot = [];
+if (can('feedback.triage')) pilot.push(['/feedback/backlog', t('nav_backlog'), 'list']);
+if (can('feedback.submit')) pilot.push(['/feedback', t('nav_my_feedback'), 'flag']);
+if (pilot.length) groups.push({ key: 'pilot', items: pilot });
+
+groups.push({ key: 'public', items: [['/public-view/schools', t('nav_public_view'), 'globe']] });
+
+// Small line-art icons, drawn inline so they take currentColor and stay
+// legible in every theme. Purely decorative — each one sits beside its label,
+// and when the panel is folded the label survives as the accessible name.
+const ICONS = {
+  home: 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
+  trend: 'M3 17l6-6 4 4 8-8',
+  grid: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
+  check: 'M4 12l5 5L20 6',
+  map: 'M9 4L3 7v13l6-3 6 3 6-3V4l-6 3z',
+  people: 'M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 20v-2a4 4 0 0 0-3-3.9',
+  plus: 'M12 5v14M5 12h14',
+  list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
+  flag: 'M4 21V4h12l-2 4 2 4H4',
+  globe: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M3 12h18M12 3c2.5 2.5 3.5 6 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-6-3.5-9s1-6.5 3.5-9',
+};
+%>
+<nav id="sidebar" class="sidebar" aria-label="<%= t('nav_primary_label') %>">
+  <form method="POST" action="/preferences" class="sidebar-toggle-form">
+    <%
+      /* Everything except nav is round-tripped so a no-JS toggle doesn't reset
+         the viewer's other display choices. */
+      ['theme', 'contrast', 'text', 'motion', 'underline'].forEach(function (k) { %>
+      <input type="hidden" name="<%= k %>" value="<%= prefs[k] %>">
+    <% }) %>
+    <input type="hidden" name="nav" value="<%= prefs.nav === 'collapsed' ? 'expanded' : 'collapsed' %>">
+    <input type="hidden" name="back" value="<%= href(currentPath) %>">
+    <button type="submit" class="sidebar-toggle" data-nav-toggle
+            aria-expanded="<%= prefs.nav === 'collapsed' ? 'false' : 'true' %>" aria-controls="sidebar">
+      <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M4 6h16M4 12h16M4 18h16"/>
+      </svg>
+      <span class="sidebar-toggle-label"><%= t('nav_collapse') %></span>
+      <span class="visually-hidden"><%= t('nav_toggle_hint') %></span>
+    </button>
+  </form>
+
+  <% groups.forEach(function (group) { %>
+    <div class="sidebar-group">
+      <p class="sidebar-group-title" id="navgroup-<%= group.key %>"><%= t('navgroup_' + group.key) %></p>
+      <ul aria-labelledby="navgroup-<%= group.key %>">
+        <% group.items.forEach(function (item) { %>
+          <li>
+            <a href="<%= href(item[0]) %>" title="<%= item[1] %>" <%- currentPath === item[0] ? 'aria-current="page"' : '' %>>
+              <svg class="sidebar-icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"
+                   fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="<%= ICONS[item[2]] %>"/>
+              </svg>
+              <span class="sidebar-text"><%= item[1] %></span>
+            </a>
+          </li>
+        <% }) %>
+      </ul>
+    </div>
+  <% }) %>
+</nav>

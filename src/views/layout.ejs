@@ -6,11 +6,14 @@
 <body>
   <a class="skip-link" href="#main"><%= t('skip_to_content') %></a>
   <%- include('partials/topbar') %>
-  <main id="main" tabindex="-1">
-    <div class="container<%= typeof wide !== 'undefined' && wide ? ' wide' : '' %>">
-      <%- body %>
-    </div>
-  </main>
+  <div class="shell">
+    <% if (currentUser) { %><%- include('partials/sidebar') %><% } %>
+    <main id="main" tabindex="-1">
+      <div class="container<%= typeof wide !== 'undefined' && wide ? ' wide' : '' %>">
+        <%- body %>
+      </div>
+    </main>
+  </div>
   <%- include('partials/footer') %>
   <script src="/static/js/a11y.js" defer></script>
   <% if (currentUser && can('feedback.submit')) { %>

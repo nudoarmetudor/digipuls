@@ -487,7 +487,8 @@ a:hover { text-decoration: underline; }
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.25rem 0.9rem;
+  gap: 0.25rem 0.6rem;
+  margin-left: auto;
 }
 .topbar-nav a {
   font-size: 0.92rem;
@@ -614,12 +615,107 @@ a:hover { text-decoration: underline; }
 .a11y-apply { margin-top: 0.4rem; }
 
 /* ===========================================================================
+   Shell: masthead across the top, navigation down the left
+   ---------------------------------------------------------------------------
+   The navigation used to be a single row of up to thirteen links in the
+   masthead, which stopped being readable the moment one account held several
+   capabilities. It is now a grouped panel on the left that folds to icons.
+
+   Folding is a display preference (data-nav on <html>), not component state,
+   so it survives navigation, persists per browser, and works with scripting
+   off — the toggle is a real form button posting to /preferences.
+   =========================================================================== */
+.shell { display: flex; flex: 1 0 auto; min-height: 0; align-items: stretch; }
+
+.sidebar {
+  flex: 0 0 15rem;
+  background: var(--bg-alt);
+  border-right: 1px solid var(--border);
+  padding: 0.9rem 0.7rem 2rem;
+  overflow-y: auto;
+}
+:root[data-nav="collapsed"] .sidebar { flex-basis: 4rem; padding-left: 0.5rem; padding-right: 0.5rem; }
+/* Hidden from view but NOT from assistive technology. `display: none` would
+   drop these from the accessibility tree, leaving each folded item as an icon
+   link with no accessible name at all — a menu of unlabelled buttons for
+   anyone using a screen reader. Clipping keeps the name and hides the pixels. */
+:root[data-nav="collapsed"] .sidebar-text,
+:root[data-nav="collapsed"] .sidebar-group-title,
+:root[data-nav="collapsed"] .sidebar-toggle-label {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%);
+  white-space: nowrap; border: 0;
+}
+:root[data-nav="collapsed"] .sidebar a { justify-content: center; }
+/* The group headings are only a visual grouping cue, so folding them away
+   shouldn't leave stray gaps between the icon rows. */
+:root[data-nav="collapsed"] .sidebar-group { margin-bottom: 0.5rem; }
+
+.sidebar-toggle-form { margin: 0 0 0.8rem; }
+.sidebar-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0 0.6rem;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.sidebar-toggle:hover { background: var(--surface-alt); color: var(--text); }
+:root[data-nav="collapsed"] .sidebar-toggle { justify-content: center; padding: 0; }
+
+.sidebar-group { margin-bottom: 1rem; }
+.sidebar-group-title {
+  margin: 0 0 0.3rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+.sidebar ul { list-style: none; margin: 0; padding: 0; }
+.sidebar a {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: var(--tap);
+  padding: 0 0.6rem;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 0.92rem;
+  text-decoration: var(--link-decoration);
+}
+.sidebar a:hover { background: var(--surface-alt); text-decoration: underline; }
+.sidebar a[aria-current="page"] {
+  background: var(--primary-soft);
+  color: var(--primary-text);
+  font-weight: 700;
+  /* A left rule as well as the fill, so the current item is still obvious in
+     high contrast where the fill nearly matches the panel. */
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+.sidebar-icon { flex: none; opacity: 0.85; }
+.sidebar a[aria-current="page"] .sidebar-icon { opacity: 1; }
+
+/* ===========================================================================
    Layout
    =========================================================================== */
 .container { width: 100%; max-width: 70rem; margin: 0 auto; padding: 1.5rem 1.25rem; }
 .container.wide { max-width: 86rem; }
 .container.narrow { max-width: 28rem; margin-top: 3rem; }
-main { flex: 1 0 auto; }
+/* Inside the shell, main must be allowed to shrink: without min-width:0 a
+   flex item refuses to go below its content's intrinsic width, so a wide
+   table pushes the whole page sideways instead of scrolling in its own
+   .table-scroll region. */
+main { flex: 1 1 auto; min-width: 0; }
 
 h1 { color: var(--text-heading); font-size: 1.6rem; margin-top: 0; line-height: 1.25; }
 h2 {
@@ -1057,6 +1153,31 @@ footer a { color: var(--primary-text); }
 /* ===========================================================================
    Narrow viewports
    =========================================================================== */
+@media (max-width: 60rem) {
+  .shell { display: block; }
+  .sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 0.6rem 0.9rem 0.8rem;
+    /* Thirteen 44px targets stacked above the content would push the page
+       itself off the first screen. Bounded here with its own scroll, so the
+       content still starts near the top; folding it away entirely is a tap
+       on the Menu button. */
+    max-height: 40vh;
+    overflow-y: auto;
+  }
+  .sidebar-group { margin-bottom: 0.5rem; }
+  .sidebar ul { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+  .sidebar a { padding: 0 0.7rem; }
+  /* Folded on a narrow screen means "show only the toggle", not "show icons":
+     a horizontal strip of unlabelled icons is a guessing game. */
+  :root[data-nav="collapsed"] .sidebar .sidebar-group { display: none; }
+  :root[data-nav="collapsed"] .sidebar-text { display: inline; }
+  :root[data-nav="collapsed"] .sidebar-toggle-label { display: inline; }
+  :root[data-nav="collapsed"] .sidebar { flex-basis: auto; }
+  :root[data-nav="collapsed"] .sidebar-toggle { justify-content: flex-start; padding: 0 0.6rem; }
+}
+
 @media (max-width: 48rem) {
   .topbar { padding: 0.4rem 0.9rem; }
   .container { padding: 1rem 0.9rem; }
@@ -1076,7 +1197,7 @@ footer a { color: var(--primary-text); }
 @media print {
   :root { --bg: #fff; --surface: #fff; --text: #000; --shadow: none; }
   body { background: #fff; color: #000; }
-  .topbar, .skip-link, .no-print, .a11y, .step-nav, footer { display: none !important; }
+  .topbar, .skip-link, .no-print, .a11y, .step-nav, .sidebar, footer { display: none !important; }
   .card { border: 1px solid #999; break-inside: avoid; box-shadow: none; }
   a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 0.8em; }
   tr { break-inside: avoid; }

@@ -19,9 +19,13 @@ const ALLOWED = {
   text: ['md', 'lg', 'xl', 'xxl'],
   motion: ['full', 'reduced'],
   underline: ['off', 'on'],
+  // Whether the left navigation panel is expanded or folded to icons. A
+  // display preference like the others, so it persists per browser and works
+  // with JavaScript off.
+  nav: ['expanded', 'collapsed'],
 };
 
-const DEFAULTS = { theme: 'system', contrast: 'normal', text: 'md', motion: 'full', underline: 'off' };
+const DEFAULTS = { theme: 'system', contrast: 'normal', text: 'md', motion: 'full', underline: 'off', nav: 'expanded' };
 
 function parseCookieHeader(header) {
   const out = {};

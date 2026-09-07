@@ -455,6 +455,14 @@ const STRINGS = {
     err_invalid_level: 'Please choose a maturity level between 0 and 5.',
     err_invalid_number: 'Device counts must be whole numbers of zero or more.',
     err_unknown_indicator: 'Unknown indicator',
+    // --- the left navigation panel ---
+    navgroup_assessment: 'Assessment',
+    navgroup_oversight: 'Overview',
+    navgroup_admin: 'Administration',
+    navgroup_pilot: 'Pilot feedback',
+    navgroup_public: 'Public',
+    nav_collapse: 'Menu',
+    nav_toggle_hint: 'Fold or unfold the navigation panel',
     // --- posts, and the role a tab is working in ---
     workspace_choose_title: 'Choose a role',
     workspace_choose_subtitle: 'You hold more than one post. Choose the one you want to work in.',
@@ -1035,6 +1043,14 @@ const STRINGS = {
     err_invalid_level: 'Alegeți un nivel de maturitate între 0 și 5.',
     err_invalid_number: 'Numărul de echipamente trebuie să fie un număr întreg, zero sau mai mare.',
     err_unknown_indicator: 'Indicator necunoscut',
+    // --- the left navigation panel ---
+    navgroup_assessment: 'Autoevaluare',
+    navgroup_oversight: 'Prezentare generală',
+    navgroup_admin: 'Administrare',
+    navgroup_pilot: 'Feedback din pilotare',
+    navgroup_public: 'Public',
+    nav_collapse: 'Meniu',
+    nav_toggle_hint: 'Pliați sau depliați panoul de navigare',
     // --- posts, and the role a tab is working in ---
     workspace_choose_title: 'Alegeți un rol',
     workspace_choose_subtitle: 'Dețineți mai multe funcții. Alegeți-o pe cea în care doriți să lucrați.',
@@ -1615,6 +1631,14 @@ const STRINGS = {
     err_invalid_level: 'Выберите уровень зрелости от 0 до 5.',
     err_invalid_number: 'Количество оборудования должно быть целым числом не меньше нуля.',
     err_unknown_indicator: 'Неизвестный индикатор',
+    // --- the left navigation panel ---
+    navgroup_assessment: 'Самооценка',
+    navgroup_oversight: 'Обзор',
+    navgroup_admin: 'Администрирование',
+    navgroup_pilot: 'Обратная связь пилота',
+    navgroup_public: 'Публично',
+    nav_collapse: 'Меню',
+    nav_toggle_hint: 'Свернуть или развернуть панель навигации',
     // --- posts, and the role a tab is working in ---
     workspace_choose_title: 'Выберите роль',
     workspace_choose_subtitle: 'У вас несколько должностей. Выберите ту, в которой хотите работать.',

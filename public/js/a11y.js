@@ -18,7 +18,7 @@
   // Each preference's default value. A preference sitting at its default is
   // stripped from <html> entirely, so the CSS falls through to the plain
   // :root / prefers-* rules rather than pinning the viewer to an override.
-  var DEFAULTS = { theme: 'system', contrast: 'normal', text: 'md', motion: 'full', underline: 'off' };
+  var DEFAULTS = { theme: 'system', contrast: 'normal', text: 'md', motion: 'full', underline: 'off', nav: 'expanded' };
   var KEYS = Object.keys(DEFAULTS);
   var COOKIE = 'dp_prefs';
   var root = document.documentElement;
@@ -111,6 +111,22 @@
       live.textContent = live.getAttribute('data-saved-message') || 'Saved';
     }, 400);
   }
+
+  /* The left navigation folds to icons. The control is a real form button
+     posting to /preferences, so it works with scripting off; here it is
+     upgraded to toggle instantly and remember the choice the same way the
+     display settings do. */
+  document.addEventListener('DOMContentLoaded', function () {
+    var toggle = document.querySelector('[data-nav-toggle]');
+    if (!toggle) return;
+    toggle.addEventListener('click', function (ev) {
+      ev.preventDefault();
+      prefs.nav = root.getAttribute('data-nav') === 'collapsed' ? 'expanded' : 'collapsed';
+      apply(prefs);
+      persist(prefs);
+      toggle.setAttribute('aria-expanded', prefs.nav === 'expanded' ? 'true' : 'false');
+    });
+  });
 
   /* Tables can overflow horizontally on narrow screens. A scroll container is
      only reachable by keyboard if it's focusable — but making every wrapper
