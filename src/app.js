@@ -167,7 +167,7 @@ app.use('/feedback', require('./routes/feedback'));
 
 app.get('/', (req, res) => {
   if (!req.session.user) return res.redirect('/login');
-  res.redirect(homeFor(req.capabilities || new Set()));
+  res.redirect(homeFor(req.capabilities || new Set(), req.session.user));
 });
 
 // eslint-disable-next-line no-unused-vars

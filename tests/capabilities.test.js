@@ -3,7 +3,7 @@ const assert = require('node:assert');
 
 const {
   CAPABILITIES, CAPABILITY_GROUPS, ROLES, ROLE_DEFAULTS,
-  capabilitiesFor, overridesFrom, homeFor,
+  capabilitiesFor, overridesFrom, homeFor, canOpenSchoolWorkspace,
 } = require('../src/services/capabilities');
 
 test('every role has defaults, and every default is a real capability', () => {
@@ -85,16 +85,38 @@ test('overridesFrom round-trips through capabilitiesFor', () => {
 });
 
 test('homeFor sends each account somewhere it can actually reach', () => {
-  assert.strictEqual(homeFor(capabilitiesFor('SCHOOL_TEAM', [])), '/school');
-  assert.strictEqual(homeFor(capabilitiesFor('MINISTRY', [])), '/ministry');
-  assert.strictEqual(homeFor(capabilitiesFor('TERRITORIAL', [])), '/territorial');
-  assert.strictEqual(homeFor(capabilitiesFor('PARTNER', [])), '/partner');
-  assert.strictEqual(homeFor(capabilitiesFor('STRATEGIC_PARTNER', [])), '/strategic');
-  assert.strictEqual(homeFor(capabilitiesFor('META_MENTOR', [])), '/ministry');
+  const withSchool = { schoolId: 3 };
+  assert.strictEqual(homeFor(capabilitiesFor('SCHOOL_TEAM', []), withSchool), '/school');
+  assert.strictEqual(homeFor(capabilitiesFor('MINISTRY', []), {}), '/ministry');
+  assert.strictEqual(homeFor(capabilitiesFor('TERRITORIAL', []), {}), '/territorial');
+  assert.strictEqual(homeFor(capabilitiesFor('PARTNER', []), {}), '/partner');
+  assert.strictEqual(homeFor(capabilitiesFor('STRATEGIC_PARTNER', []), {}), '/strategic');
+  assert.strictEqual(homeFor(capabilitiesFor('META_MENTOR', []), {}), '/ministry');
   // An account stripped of everything still gets a page rather than a loop.
-  assert.strictEqual(homeFor(new Set()), '/public-view/schools');
+  assert.strictEqual(homeFor(new Set(), {}), '/public-view/schools');
   // Someone left with only the ability to report lands on their own panel.
-  assert.strictEqual(homeFor(new Set(['feedback.submit'])), '/feedback');
+  assert.strictEqual(homeFor(new Set(['feedback.submit']), {}), '/feedback');
+});
+
+test('an admin is never sent to a school workspace it has no school for', () => {
+  // Admins hold every capability, view.school included, but have no schoolId.
+  // Without the extra check they land on /school, which then refuses them —
+  // exactly what happened on the live instance before this guard existed.
+  const adminCaps = capabilitiesFor('ADMIN', []);
+  assert.ok(adminCaps.has('view.school'));
+  const landing = homeFor(adminCaps, { schoolId: null });
+  assert.notStrictEqual(landing, '/school', 'an admin must not be sent to a school workspace');
+  // It falls through to the next thing an admin genuinely can open.
+  assert.strictEqual(landing, '/ministry');
+  assert.ok(!canOpenSchoolWorkspace(adminCaps, { schoolId: null }));
+  assert.ok(!canOpenSchoolWorkspace(adminCaps, undefined));
+  // An admin that *is* attached to a school may still open it.
+  assert.ok(canOpenSchoolWorkspace(adminCaps, { schoolId: 1 }));
+});
+
+test('a school-team account without a school is not stranded on /school', () => {
+  const caps = capabilitiesFor('SCHOOL_TEAM', []);
+  assert.strictEqual(homeFor(caps, { schoolId: null }), '/public-view/schools');
 });
 
 test('every capability has a label in all three languages', () => {

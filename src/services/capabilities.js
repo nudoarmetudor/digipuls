@@ -107,7 +107,7 @@ function overridesFrom(role, desired) {
   return rows;
 }
 
-/** Where a role lands after login, given what it can actually reach. */
+/** Where an account lands after login, given what it can actually reach. */
 const HOME_BY_CAPABILITY = [
   ['view.school', '/school'],
   ['view.national', '/ministry'],
@@ -119,10 +119,23 @@ const HOME_BY_CAPABILITY = [
   ['feedback.submit', '/feedback'],
 ];
 
-function homeFor(capabilities) {
-  const found = HOME_BY_CAPABILITY.find(([cap]) => capabilities.has(cap));
-  // Someone with no capabilities at all still gets a page rather than a
-  // redirect loop — the public tier needs no login.
+/**
+ * The school workspace is the one destination that needs more than a
+ * capability: it needs a school. Administrators hold every capability,
+ * including view.school, but have no schoolId — so without this check an
+ * admin is sent straight to a page that refuses them.
+ */
+function canOpenSchoolWorkspace(capabilities, user) {
+  return capabilities.has('view.school') && !!(user && user.schoolId);
+}
+
+function homeFor(capabilities, user) {
+  const found = HOME_BY_CAPABILITY.find(([cap]) => {
+    if (cap === 'view.school') return canOpenSchoolWorkspace(capabilities, user);
+    return capabilities.has(cap);
+  });
+  // An account with nothing at all still gets a page rather than a redirect
+  // loop — the public tier needs no login.
   return found ? found[1] : '/public-view/schools';
 }
 
@@ -134,4 +147,5 @@ module.exports = {
   capabilitiesFor,
   overridesFrom,
   homeFor,
+  canOpenSchoolWorkspace,
 };

@@ -8,7 +8,10 @@
    another role's routes sitting in its DOM. */
 const links = [];
 if (currentUser) {
-  if (can('view.school')) {
+  // The workspace link needs a school as well as the capability: an admin
+  // holds every capability but has no school, and the promise this menu makes
+  // is that nothing in it will refuse you.
+  if (can('view.school') && currentUser.schoolId) {
     links.push(['/school', t('nav_dashboard')], ['/school/history', t('nav_my_progress')]);
   }
   if (can('view.national')) links.push(['/ministry', t('nav_national_dashboard')]);
