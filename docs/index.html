@@ -12,40 +12,43 @@
      the app's stylesheet (that lives behind the Node process). It mirrors the
      same tokens and the same light/dark behaviour — see BRAND.md. */
   :root {
-    --cyan-100: #dbe9ec;
-    --cyan-500: #307e8c;
-    --cyan-700: #1f4b53;
-    --cyan-900: #0d2125;
-    --purple-100: #ece1f2;
-    --purple-300: #c9a6db;
-    --purple-500: #622582;
-    --purple-700: #4a1c63;
+    /* Sampled from the Digital Accelerator logo — see BRAND.md. */
+    --teal-100: #dceaef;
+    --teal-500: #266a82;
+    --teal-700: #184759;
+    --teal-900: #0c232c;
+    --purple-100: #eddff1;
+    --purple-300: #bb93c8;
+    --purple-500: #5b1f6f;
+    --purple-700: #3f134e;
+    --turquoise-300: #7de8e1;
+    --turquoise-500: #01cbbe;
 
-    --bg: #f0f7f9;
+    --bg: #f1f7f9;
     --surface: #ffffff;
     --surface-alt: #fafcfd;
     --text: #1a1d20;
     --text-muted: #545a63;
-    --heading: var(--cyan-700);
+    --heading: var(--teal-700);
     --border: #dbe4ee;
-    --link: var(--cyan-700);
+    --link: var(--teal-700);
     --shadow: 0 8px 24px rgba(15, 39, 68, 0.06);
 
     --status-grey: #6b7280;
-    --status-blue: var(--cyan-500);
+    --status-blue: var(--teal-500);
     --status-red: #c0392b;
     --status-green: #2e7d32;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #0f1518;
-      --surface: #151d21;
-      --surface-alt: #1b2529;
-      --text: #e6eef0;
-      --text-muted: #a2b0b4;
-      --heading: #8dbac3;
-      --border: #2b383d;
-      --link: #a8d3dc;
+      --bg: #0a1418;
+      --surface: #101d23;
+      --surface-alt: #16262d;
+      --text: #e4eef1;
+      --text-muted: #9db0b7;
+      --heading: #87b4c4;
+      --border: #24383f;
+      --link: #b7d2dc;
       --shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
     }
   }
@@ -60,7 +63,7 @@
   @media (prefers-color-scheme: dark) { :focus-visible { outline-color: var(--purple-300); } }
 
   header.hero {
-    background: linear-gradient(120deg, var(--cyan-900) 0%, var(--cyan-500) 62%, var(--purple-500) 130%);
+    background: linear-gradient(120deg, var(--teal-900) 0%, var(--teal-500) 62%, var(--purple-500) 130%);
     color: #ffffff; padding: 3rem 1.5rem 3.6rem;
   }
   .wrap { max-width: 61rem; margin: 0 auto; padding: 0 1.5rem; }
@@ -68,6 +71,7 @@
   .hero-brand svg { width: 2.6rem; height: 2.6rem; flex: none; }
   .hero-brand .wordmark { font-weight: 700; font-size: 1.6rem; letter-spacing: -0.01em; }
   .hero-brand .wordmark span { color: var(--purple-300); }
+  .hero-brand .dp-pulse { stroke: var(--turquoise-300); }
   h1 { font-size: 2.1rem; margin: 1.2rem 0 0.6rem; line-height: 1.2; }
   .tagline { font-size: 1.1rem; opacity: 0.94; max-width: 42rem; }
   .cta-row { margin-top: 1.6rem; display: flex; gap: 0.8rem; flex-wrap: wrap; }
@@ -76,8 +80,8 @@
     padding: 0.65rem 1.3rem; border-radius: 6px; text-decoration: none;
     font-weight: 600; font-size: 0.95rem;
   }
-  .btn-primary { background: #ffffff; color: var(--cyan-700); }
-  .btn-primary:hover { background: var(--cyan-100); }
+  .btn-primary { background: #ffffff; color: var(--teal-700); }
+  .btn-primary:hover { background: var(--teal-100); }
   .btn-outline { border: 1.5px solid rgba(255, 255, 255, 0.7); color: #ffffff; }
   .btn-outline:hover { background: rgba(255, 255, 255, 0.14); }
 
@@ -106,7 +110,7 @@
     flex: 1 1 8rem; min-height: 4.4rem; border-radius: 8px; padding: 0.55rem 0.7rem;
     color: #ffffff; font-size: 0.78rem; font-weight: 600; line-height: 1.35;
   }
-  .swatch.on-light { color: var(--cyan-900); border: 1px solid var(--border); }
+  .swatch.on-light { color: var(--teal-900); border: 1px solid var(--border); }
 
   .lang-chips { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 0.6rem 0 0; padding: 0; list-style: none; }
   .lang-chips li {
@@ -145,7 +149,7 @@
           <path d="M29.08 55.82 A24 24 0 0 1 8.18 34.92"/>
           <path d="M8.18 29.08 A24 24 0 0 1 29.08 8.18"/>
         </g>
-        <path d="M6 32 L19 32 L23 21 L29 43 L34 26 L38 32 L58 32" fill="none" stroke="currentColor"
+        <path class="dp-pulse" d="M6 32 L19 32 L23 21 L29 43 L34 26 L38 32 L58 32" fill="none" stroke="currentColor"
               stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
       <span class="wordmark">Digi<span>Puls</span></span>
@@ -266,16 +270,16 @@
 
   <div class="card">
     <h2>Brand and visual identity</h2>
-    <p class="muted">DigiPuls follows the DigiProf / Clasa Viitorului palette: shades of cyan and purple only, plus the grey/blue/red/green status colours used by the step navigator above. Full guidance — logo files and rules, the ramps, typography, voice and the accessibility commitments — is in <code>BRAND.md</code>.</p>
+    <p class="muted">The palette is taken from the <a href="https://accelerator.clasaviitorului.md">Digital Accelerator</a> logo — DigiPuls is part of that programme and should look like it. Three anchors, sampled from the logo artwork itself: teal <code>#266a82</code> (&ldquo;Digital&rdquo;), purple <code>#5b1f6f</code> (&ldquo;Accelerator&rdquo;) and turquoise <code>#01cbbe</code> (the arrow). Everything else is a variation on those, plus neutrals and the grey/blue/red/green status colours used by the step navigator above. Full guidance is in <code>BRAND.md</code>.</p>
     <div class="swatches">
-      <div class="swatch" style="background:#0d2125;">Cyan 900<br>#0d2125</div>
-      <div class="swatch" style="background:#1f4b53;">Cyan 700<br>#1f4b53</div>
-      <div class="swatch" style="background:#307e8c;">Cyan 500<br>#307e8c</div>
-      <div class="swatch on-light" style="background:#dbe9ec;">Cyan 100<br>#dbe9ec</div>
-      <div class="swatch" style="background:#622582;">Purple 500<br>#622582</div>
-      <div class="swatch" style="background:#4a1c63;">Purple 700<br>#4a1c63</div>
-      <div class="swatch" style="background:#c9a6db; color:#210b2f;">Purple 300<br>#c9a6db</div>
-      <div class="swatch on-light" style="background:#ece1f2;">Purple 100<br>#ece1f2</div>
+      <div class="swatch" style="background:#0c232c;">Teal 900<br>#0c232c</div>
+      <div class="swatch" style="background:#184759;">Teal 700<br>#184759</div>
+      <div class="swatch" style="background:#266a82;">Teal 500<br>#266a82<br><small>logo</small></div>
+      <div class="swatch on-light" style="background:#dceaef;">Teal 100<br>#dceaef</div>
+      <div class="swatch" style="background:#5b1f6f;">Purple 500<br>#5b1f6f<br><small>logo</small></div>
+      <div class="swatch" style="background:#3f134e;">Purple 700<br>#3f134e</div>
+      <div class="swatch" style="background:#bb93c8; color:#1f0826;">Purple 300<br>#bb93c8</div>
+      <div class="swatch on-light" style="background:#01cbbe; color:#0c232c;">Turquoise 500<br>#01cbbe<br><small>logo arrow</small></div>
     </div>
     <p style="margin-top:1rem;">The mark is four arcs — the four MDSF domains, echoing the maturity wheel — broken by a pulse line that passes through and out both sides. The ring is deliberately left open: digital maturity is never finished.</p>
   </div>

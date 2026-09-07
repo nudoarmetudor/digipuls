@@ -1,7 +1,8 @@
 # DigiPuls — brand identity
 
-DigiPuls belongs to the DigiProf / Clasa Viitorului family, and this document
-defines how it looks and sounds within it. It is a working reference for
+DigiPuls belongs to the Digital Accelerator / Clasa Viitorului programme, and
+this document defines how it looks and sounds within it. The palette is taken
+directly from the Digital Accelerator logo (see §3). It is a working reference for
 anyone touching the interface, not a style exercise: every rule here is
 implemented in `public/css/style.css` and `public/img/`, and several of them
 exist because of an accessibility or honesty constraint rather than a
@@ -60,8 +61,10 @@ both sides.
 - **Minimum size:** 24px for the mark, 120px wide for the lockup. Below that,
   use the favicon simplification.
 - **The wordmark is `Digi` + `Puls`,** one word, two capitals, no space, no
-  hyphen. In colour contexts `Digi` is deep cyan and `Puls` is purple; in the
-  masthead `Puls` uses `--purple-300` so it holds against the dark bar.
+  hyphen — the same two-tone split the Digital Accelerator logo uses for
+  "Digital Accelerator". In colour contexts `Digi` is deep teal and `Puls` is
+  purple; in the masthead `Puls` uses `--purple-300` so it holds against the
+  dark bar, and the pulse line takes the logo's turquoise.
 - **Don't** recolour the arcs individually, close the ring, remove the pulse,
   add a container shape, stretch, rotate, or set the wordmark in another face.
 - The standalone SVGs set the wordmark in the brand type stack rather than as
@@ -72,73 +75,105 @@ both sides.
 
 ## 3. Colour
 
-Two hues. Cyan is the product; purple is the accent and the emphasis. Nothing
-else is introduced anywhere — with one deliberate exception, §3.3.
+The palette comes from the **Digital Accelerator logo** on
+[accelerator.clasaviitorului.md](https://accelerator.clasaviitorului.md).
+DigiPuls is part of that programme, so it should look like it. The three
+anchors were sampled from the logo artwork itself rather than read off the
+site's stylesheet — the artwork is the source of truth, and it differs from
+the site CSS by a few degrees of hue:
+
+| Anchor | Hex | HSL | Where it comes from |
+|---|---|---|---|
+| **Teal** | `#266a82` | `196° 55% 33%` | the word **Digital** |
+| **Purple** | `#5b1f6f` | `285° 56% 28%` | the word **Accelerator** |
+| **Turquoise** | `#01cbbe` | `176° 99% 40%` | the **arrow** |
 
 ### 3.1 The ramps
 
-| Cyan | | Purple | |
+| Teal | | Purple | |
 |---|---|---|---|
-| `--cyan-50` | `#f0f7f9` | `--purple-50` | `#f6f1f9` |
-| `--cyan-100` | `#dbe9ec` | `--purple-100` | `#ece1f2` |
-| `--cyan-200` | `#b8d4da` | `--purple-200` | `#d8c2e3` |
-| `--cyan-300` | `#8dbac3` | `--purple-300` | `#c9a6db` |
-| `--cyan-400` | `#5b9daa` | `--purple-400` | `#9457b4` |
-| **`--cyan-500`** | **`#307e8c`** — brand primary | **`--purple-500`** | **`#622582`** — brand accent |
-| `--cyan-600` | `#286872` | `--purple-600` | `#55206f` |
-| `--cyan-700` | `#1f4b53` | `--purple-700` | `#4a1c63` |
-| `--cyan-800` | `#16363c` | `--purple-800` | `#35134a` |
-| `--cyan-900` | `#0d2125` | `--purple-900` | `#210b2f` |
+| `--teal-50` | `#f1f7f9` | `--purple-50` | `#f7f0f9` |
+| `--teal-100` | `#dceaef` | `--purple-100` | `#eddff1` |
+| `--teal-200` | `#b7d2dc` | `--purple-200` | `#d7bedf` |
+| `--teal-300` | `#87b4c4` | `--purple-300` | `#bb93c8` |
+| `--teal-400` | `#4a8da5` | `--purple-400` | `#8e46a4` |
+| **`--teal-500`** | **`#266a82`** — logo | **`--purple-500`** | **`#5b1f6f`** — logo |
+| `--teal-600` | `#1e576c` | `--purple-600` | `#4c195d` |
+| `--teal-700` | `#184759` | `--purple-700` | `#3f134e` |
+| `--teal-800` | `#113340` | `--purple-800` | `#2f0e3a` |
+| `--teal-900` | `#0c232c` | `--purple-900` | `#1f0826` |
+
+Turquoise is a short ramp, because it is a short-range accent:
+`--turquoise-100` `#d6f5f3`, `--turquoise-300` `#7de8e1`,
+**`--turquoise-500` `#01cbbe`** (logo), `--turquoise-700` `#077e78`.
 
 Plus a neutral ramp (`--neutral-0` … `--neutral-900`) for surfaces, borders
 and body text.
 
-### 3.2 Never use a raw shade in a component
+### 3.2 Turquoise is for motion, not decoration
+
+In the source logo the turquoise is the arrow — the thing that says *moving*.
+DigiPuls uses it in exactly the two places that mean the same thing: the
+**pulse in the mark**, and the **progress bar**. That is the whole licence.
+It is not a general-purpose highlight, and it is not a text colour: at 4.0:1
+on white it fails AA for body copy. `--turquoise-700` exists for the rare
+case where it must carry text; `--signal` and `--signal-text` are the
+semantic tokens.
+
+Using it anywhere else turns a three-anchor identity into a soup.
+
+### 3.3 Never use a raw shade in a component
 
 Components reference **semantic tokens** — `--surface`, `--text`, `--border`,
-`--primary`, `--accent`, `--topbar-bg`, `--ok-text`, `--bad-bg`, and so on.
-The raw ramp exists only to define those tokens.
+`--primary`, `--accent`, `--signal`, `--topbar-bg`, `--ok-text`, `--bad-bg`,
+and so on. The raw ramp exists only to define those tokens, and the dark and
+high-contrast blocks reference the same ramps rather than carrying their own
+literals — so re-anchoring the palette (as this pass did) moves every theme
+at once instead of leaving three of them behind.
 
-This is what makes four viewer preferences possible at all: light/dark, normal/
-high contrast, four text sizes and reduced motion are implemented by
-re-pointing tokens in one place. A component that hardcodes `#307e8c` opts out
-of dark mode and high contrast silently — it will simply be wrong for those
-viewers and look fine to whoever wrote it.
+This is also what makes four viewer preferences possible at all. A component
+that hardcodes `#266a82` opts out of dark mode and high contrast silently: it
+will simply be wrong for those viewers and look fine to whoever wrote it.
 
-### 3.3 The status colours
+### 3.4 The status colours
 
 Grey / blue / red / green were established for the assessment step-navigator
 before this identity work and are **kept**, because they encode a check state
-with a conventional meaning that a two-hue palette cannot carry honestly:
+with a conventional meaning that a brand palette cannot carry honestly:
 
 | Token | Meaning |
 |---|---|
 | `--status-grey` | not started |
-| `--status-blue` (= brand cyan) | in progress |
+| `--status-blue` (= brand teal) | in progress |
 | `--status-red` | needs attention — evidence missing |
 | `--status-green` | complete |
 
-These are the only colours outside the two brand hues, and they are only ever
+These are the only colours outside the three logo hues, and they are only ever
 used for state. **Colour never carries state on its own** — every status dot
-is accompanied by text (visible or, for the dot itself, visually hidden), and
-every pass/fail badge spells out `OK` / `GAP` / `COMPLIANT`.
+is accompanied by text (visible or visually hidden), and every pass/fail badge
+spells out `OK` / `GAP` / `COMPLIANT`.
 
-### 3.4 Maturity levels
+### 3.5 Maturity levels
 
-Levels 1–5 read as one progression through both ramps: pale cyan → cyan →
-deep cyan → purple → deep purple. Level 0 uses the "bad" pair, because level 0
+Levels 1–5 read as one progression across both brand hues: pale teal → teal →
+deep teal → purple → deep purple. Level 0 uses the "bad" pair, because level 0
 on D1/D2 means failing Order 675's mandatory minimum — a real failure, not
 just a low score. The level number is always written out (`Level 3`), never
 conveyed by the swatch alone.
 
-### 3.5 The maturity wheel
+### 3.6 The maturity wheel
 
 The wheel's four sectors use `--wheel-a` … `--wheel-d`, which are re-pointed
 per theme. Left at their light-theme values, the wheel becomes four dark
 smudges on a dark background — the one place where a "just use the brand
 colours" instinct produces something unreadable.
 
----
+### 3.7 Contrast is checked, not assumed
+
+Every pairing the stylesheet relies on is verified: AA (4.5:1) for text in the
+light and dark themes, AAA (7:1) throughout high contrast, 3:1 for focus rings
+and other non-text indicators. When the palette was re-anchored to the logo,
+all 25 pairings were re-checked before the change shipped.
 
 ## 4. Typography
 

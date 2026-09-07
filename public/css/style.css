@@ -1,15 +1,33 @@
 /* ===========================================================================
    DigiPuls design system
    ---------------------------------------------------------------------------
-   Palette is DigiProf/Clasa Viitorului: shades of brand cyan and brand purple
-   only, plus neutrals and the four status colours (grey/blue/red/green) that
-   were already established for the step-navigator check. No other hues are
-   introduced anywhere in this file — see BRAND.md.
+   The palette is taken directly from the Digital Accelerator logo on
+   accelerator.clasaviitorului.md — DigiPuls is part of that programme and
+   should look like it. The three anchors were sampled from the logo artwork
+   itself rather than eyeballed from the site's CSS:
+
+       teal       #266a82   hsl(196 55% 33%)   the word "Digital"
+       purple     #5b1f6f   hsl(285 56% 28%)   the word "Accelerator"
+       turquoise  #01cbbe   hsl(176 99% 40%)   the arrow
+
+   Everything below is a variation on those three, plus neutrals and the four
+   status colours (grey/blue/red/green) already established for the
+   step-navigator check. No other hues appear anywhere in this file.
+
+   Turquoise is used sparingly and only where the logo uses it — for motion
+   and live signal: the pulse in the mark, and progress. It is a fill colour,
+   not a text colour: at 4.0:1 on white it fails AA for body text, and the
+   darker --turquoise-700 exists for the rare case where it must carry text.
 
    Everything a view touches is a *semantic* token (--surface, --text,
    --primary...) rather than a raw shade, so the four viewer preferences —
    colour scheme, contrast, text size, motion — are honoured by re-pointing
-   tokens in one place instead of patching component rules.
+   tokens in one place instead of patching component rules. The dark and
+   high-contrast blocks reference the same ramps rather than carrying their
+   own literals, so re-anchoring the palette moves every theme at once.
+
+   Every pairing used below is contrast-checked: AA (4.5:1) for text in the
+   normal themes, AAA (7:1) throughout the high-contrast theme.
 
    Preference attributes live on <html> and are set by three things, in order:
      1. the server, from the dp_prefs cookie (so it works with JS disabled),
@@ -19,27 +37,35 @@
 
 /* --- Raw palette ---------------------------------------------------------- */
 :root {
-  --cyan-50:  #f0f7f9;
-  --cyan-100: #dbe9ec;
-  --cyan-200: #b8d4da;
-  --cyan-300: #8dbac3;
-  --cyan-400: #5b9daa;
-  --cyan-500: #307e8c;   /* brand primary */
-  --cyan-600: #286872;
-  --cyan-700: #1f4b53;
-  --cyan-800: #16363c;
-  --cyan-900: #0d2125;
+  /* Teal — the logo's "Digital". */
+  --teal-50:  #f1f7f9;
+  --teal-100: #dceaef;
+  --teal-200: #b7d2dc;
+  --teal-300: #87b4c4;
+  --teal-400: #4a8da5;
+  --teal-500: #266a82;   /* logo anchor */
+  --teal-600: #1e576c;
+  --teal-700: #184759;
+  --teal-800: #113340;
+  --teal-900: #0c232c;
 
-  --purple-50:  #f6f1f9;
-  --purple-100: #ece1f2;
-  --purple-200: #d8c2e3;
-  --purple-300: #c9a6db;
-  --purple-400: #9457b4;
-  --purple-500: #622582;  /* brand accent */
-  --purple-600: #55206f;
-  --purple-700: #4a1c63;
-  --purple-800: #35134a;
-  --purple-900: #210b2f;
+  /* Purple — the logo's "Accelerator". */
+  --purple-50:  #f7f0f9;
+  --purple-100: #eddff1;
+  --purple-200: #d7bedf;
+  --purple-300: #bb93c8;
+  --purple-400: #8e46a4;
+  --purple-500: #5b1f6f;  /* logo anchor */
+  --purple-600: #4c195d;
+  --purple-700: #3f134e;
+  --purple-800: #2f0e3a;
+  --purple-900: #1f0826;
+
+  /* Turquoise — the logo's arrow. Motion and live signal only. */
+  --turquoise-100: #d6f5f3;
+  --turquoise-300: #7de8e1;
+  --turquoise-500: #01cbbe;  /* logo anchor */
+  --turquoise-700: #077e78;
 
   --neutral-0:   #ffffff;
   --neutral-50:  #f7f9fa;
@@ -54,14 +80,14 @@
 
   /* Status colours — established earlier for the step check, kept as-is. */
   --status-grey:  #6b7280;
-  --status-blue:  var(--cyan-500);
+  --status-blue:  var(--teal-500);
   --status-red:   #c0392b;
   --status-green: #2e7d32;
 
   --radius: 8px;
   --radius-sm: 6px;
   --radius-pill: 999px;
-  --shadow: 0 1px 2px rgba(20, 23, 26, 0.05);
+  --shadow: 0 1px 2px rgba(12, 35, 44, 0.06);
   --tap: 44px;            /* WCAG 2.5.8 minimum target size */
   --font-scale: 1;
   --motion: 150ms;
@@ -73,7 +99,7 @@
 
 /* --- Semantic tokens: light (default) ------------------------------------- */
 :root {
-  --bg: var(--cyan-50);
+  --bg: var(--teal-50);
   --bg-alt: var(--neutral-0);
   --surface: var(--neutral-0);
   --surface-alt: var(--neutral-50);
@@ -81,22 +107,26 @@
 
   --text: #16191c;
   --text-muted: var(--neutral-600);
-  --text-heading: var(--cyan-700);
+  --text-heading: var(--teal-700);
   --text-on-brand: var(--neutral-0);
 
   --border: var(--neutral-200);
   --border-strong: var(--neutral-300);
 
-  --primary: var(--cyan-500);
-  --primary-hover: var(--cyan-700);
-  --primary-soft: var(--cyan-100);
-  --primary-text: var(--cyan-700);
+  --primary: var(--teal-500);
+  --primary-hover: var(--teal-700);
+  --primary-soft: var(--teal-100);
+  --primary-text: var(--teal-700);
 
   --accent: var(--purple-500);
   --accent-soft: var(--purple-100);
   --accent-text: var(--purple-700);
 
-  --topbar-bg: var(--cyan-700);
+  /* The live-signal accent. Fills only — see the note at the top. */
+  --signal: var(--turquoise-500);
+  --signal-text: var(--turquoise-700);
+
+  --topbar-bg: var(--teal-600);
   --topbar-text: #eef7f9;
 
   --ok-bg: #dff0df;   --ok-text: #1d5620;
@@ -106,10 +136,10 @@
   --focus-offset: 2px;
 
   /* Maturity-wheel sectors, one per domain. They read as a single
-     cyan-to-purple progression rather than four unrelated colours, and are
+     teal-to-purple progression rather than four unrelated colours, and are
      re-pointed per theme so the wheel is never dark-on-dark or washed out. */
-  --wheel-a: var(--cyan-700);
-  --wheel-b: var(--cyan-500);
+  --wheel-a: var(--teal-700);
+  --wheel-b: var(--teal-500);
   --wheel-c: var(--purple-500);
   --wheel-d: var(--purple-700);
 }
@@ -117,125 +147,134 @@
 /* --- Semantic tokens: dark ------------------------------------------------ */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0f1518;
-    --bg-alt: #151d21;
-    --surface: #151d21;
-    --surface-alt: #1b2529;
-    --surface-sunken: #101619;
+    --bg: #0a1418;
+    --bg-alt: #101d23;
+    --surface: #101d23;
+    --surface-alt: #16262d;
+    --surface-sunken: #0b171c;
 
-    --text: #e6eef0;
-    --text-muted: #a2b0b4;
-    --text-heading: #8dbac3;
-    --text-on-brand: #06181c;
+    --text: #e4eef1;
+    --text-muted: #9db0b7;
+    --text-heading: var(--teal-300);
+    --text-on-brand: var(--teal-900);
 
-    --border: #2b383d;
-    --border-strong: #3d4d53;
+    --border: #24383f;
+    --border-strong: #365058;
 
-    --primary: #6fb3c0;
-    --primary-hover: #8dbac3;
-    --primary-soft: #16363c;
-    --primary-text: #a8d3dc;
+    --primary: var(--teal-300);
+    --primary-hover: var(--teal-200);
+    --primary-soft: var(--teal-800);
+    --primary-text: var(--teal-200);
 
-    --accent: #bd9cd0;
-    --accent-soft: #35134a;
-    --accent-text: #d8c2e3;
+    --accent: var(--purple-300);
+    --accent-soft: var(--purple-800);
+    --accent-text: var(--purple-200);
 
-    --topbar-bg: #0d2125;
-    --topbar-text: #dceff2;
+    --signal: var(--turquoise-500);
+    --signal-text: var(--turquoise-300);
+
+    --topbar-bg: var(--teal-900);
+    --topbar-text: #dbeef3;
 
     --ok-bg: #12331a;   --ok-text: #8fd39a;
     --bad-bg: #3a1512;  --bad-text: #f0a89f;
 
-    --focus: #c9a6db;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --focus: var(--purple-300);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
 
-    --wheel-a: #4e9aa8;
-    --wheel-b: #7fc4d1;
-    --wheel-c: #a97cc4;
-    --wheel-d: #8557a5;
+    --wheel-a: var(--teal-400);
+    --wheel-b: var(--teal-300);
+    --wheel-c: var(--purple-300);
+    --wheel-d: var(--purple-400);
   }
 }
 :root[data-theme="dark"] {
-  --bg: #0f1518;
-  --bg-alt: #151d21;
-  --surface: #151d21;
-  --surface-alt: #1b2529;
-  --surface-sunken: #101619;
+  --bg: #0a1418;
+  --bg-alt: #101d23;
+  --surface: #101d23;
+  --surface-alt: #16262d;
+  --surface-sunken: #0b171c;
 
-  --text: #e6eef0;
-  --text-muted: #a2b0b4;
-  --text-heading: #8dbac3;
-  --text-on-brand: #06181c;
+  --text: #e4eef1;
+  --text-muted: #9db0b7;
+  --text-heading: var(--teal-300);
+  --text-on-brand: var(--teal-900);
 
-  --border: #2b383d;
-  --border-strong: #3d4d53;
+  --border: #24383f;
+  --border-strong: #365058;
 
-  --primary: #6fb3c0;
-  --primary-hover: #8dbac3;
-  --primary-soft: #16363c;
-  --primary-text: #a8d3dc;
+  --primary: var(--teal-300);
+  --primary-hover: var(--teal-200);
+  --primary-soft: var(--teal-800);
+  --primary-text: var(--teal-200);
 
-  --accent: #bd9cd0;
-  --accent-soft: #35134a;
-  --accent-text: #d8c2e3;
+  --accent: var(--purple-300);
+  --accent-soft: var(--purple-800);
+  --accent-text: var(--purple-200);
 
-  --topbar-bg: #0d2125;
-  --topbar-text: #dceff2;
+  --signal: var(--turquoise-500);
+  --signal-text: var(--turquoise-300);
+
+  --topbar-bg: var(--teal-900);
+  --topbar-text: #dbeef3;
 
   --ok-bg: #12331a;   --ok-text: #8fd39a;
   --bad-bg: #3a1512;  --bad-text: #f0a89f;
 
-  --focus: #c9a6db;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --focus: var(--purple-300);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
 
-  --wheel-a: #4e9aa8;
-  --wheel-b: #7fc4d1;
-  --wheel-c: #a97cc4;
-  --wheel-d: #8557a5;
+  --wheel-a: var(--teal-400);
+  --wheel-b: var(--teal-300);
+  --wheel-c: var(--purple-300);
+  --wheel-d: var(--purple-400);
 }
 
 /* --- High contrast -------------------------------------------------------- *
    Pushes every text/background pair past WCAG AAA (7:1) using the darkest and
-   lightest ends of the same two brand ramps — no new hues — and underlines
-   every link so colour is never the only cue.                                 */
+   lightest ends of the same ramps — no new hues — and underlines every link
+   so colour is never the only cue.                                            */
 :root[data-contrast="high"]:not([data-theme="dark"]) {
   --bg: #ffffff;
   --bg-alt: #ffffff;
   --surface: #ffffff;
   --surface-alt: #ffffff;
-  --surface-sunken: #f0f7f9;
+  --surface-sunken: var(--teal-50);
 
   --text: #000000;
-  --text-muted: #16363c;
-  --text-heading: #0d2125;
+  --text-muted: var(--teal-800);
+  --text-heading: var(--teal-900);
 
-  --border: #16363c;
-  --border-strong: #0d2125;
+  --border: var(--teal-800);
+  --border-strong: var(--teal-900);
 
-  --primary: #16363c;
-  --primary-hover: #0d2125;
-  --primary-soft: #dbe9ec;
-  --primary-text: #0d2125;
+  --primary: var(--teal-800);
+  --primary-hover: var(--teal-900);
+  --primary-soft: var(--teal-100);
+  --primary-text: var(--teal-900);
 
-  --accent: #35134a;
-  --accent-soft: #ece1f2;
-  --accent-text: #210b2f;
+  --accent: var(--purple-800);
+  --accent-soft: var(--purple-100);
+  --accent-text: var(--purple-900);
 
-  --topbar-bg: #0d2125;
+  --signal: var(--turquoise-700);
+  --signal-text: var(--turquoise-700);
+
+  --topbar-bg: var(--teal-900);
   --topbar-text: #ffffff;
 
   --ok-bg: #ffffff;  --ok-text: #14501a;
   --bad-bg: #ffffff; --bad-text: #8a1a10;
 
   --status-grey: #3a3f46;
-  --focus: #210b2f;
+  --focus: var(--purple-900);
   --link-decoration: underline;
   --shadow: none;
 
-  --wheel-a: #0d2125;
-  --wheel-b: #307e8c;
-  --wheel-c: #622582;
-  --wheel-d: #210b2f;
+  --wheel-a: var(--teal-900);
+  --wheel-b: var(--teal-500);
+  --wheel-c: var(--purple-500);
+  --wheel-d: var(--purple-900);
 }
 @media (prefers-color-scheme: dark) {
   :root[data-contrast="high"]:not([data-theme="light"]) {
@@ -243,23 +282,26 @@
     --bg-alt: #000000;
     --surface: #000000;
     --surface-alt: #000000;
-    --surface-sunken: #0d2125;
+    --surface-sunken: var(--teal-900);
 
     --text: #ffffff;
-    --text-muted: #dbe9ec;
-    --text-heading: #b8d4da;
+    --text-muted: var(--teal-100);
+    --text-heading: var(--teal-200);
 
-    --border: #b8d4da;
-    --border-strong: #dbe9ec;
+    --border: var(--teal-200);
+    --border-strong: var(--teal-100);
 
-    --primary: #b8d4da;
-    --primary-hover: #dbe9ec;
-    --primary-soft: #0d2125;
-    --primary-text: #dbe9ec;
+    --primary: var(--teal-200);
+    --primary-hover: var(--teal-100);
+    --primary-soft: var(--teal-900);
+    --primary-text: var(--teal-100);
 
-    --accent: #d8c2e3;
-    --accent-soft: #210b2f;
-    --accent-text: #ece1f2;
+    --accent: var(--purple-200);
+    --accent-soft: var(--purple-900);
+    --accent-text: var(--purple-100);
+
+    --signal: var(--turquoise-300);
+    --signal-text: var(--turquoise-300);
 
     --topbar-bg: #000000;
     --topbar-text: #ffffff;
@@ -269,14 +311,14 @@
 
     --status-grey: #c2ccd6;
     --text-on-brand: #000000;
-    --focus: #ece1f2;
+    --focus: var(--purple-100);
     --link-decoration: underline;
     --shadow: none;
 
-    --wheel-a: #dbe9ec;
-    --wheel-b: #8dbac3;
-    --wheel-c: #d8c2e3;
-    --wheel-d: #bd9cd0;
+    --wheel-a: var(--teal-100);
+    --wheel-b: var(--teal-300);
+    --wheel-c: var(--purple-200);
+    --wheel-d: var(--purple-300);
   }
 }
 :root[data-contrast="high"][data-theme="dark"] {
@@ -284,23 +326,26 @@
   --bg-alt: #000000;
   --surface: #000000;
   --surface-alt: #000000;
-  --surface-sunken: #0d2125;
+  --surface-sunken: var(--teal-900);
 
   --text: #ffffff;
-  --text-muted: #dbe9ec;
-  --text-heading: #b8d4da;
+  --text-muted: var(--teal-100);
+  --text-heading: var(--teal-200);
 
-  --border: #b8d4da;
-  --border-strong: #dbe9ec;
+  --border: var(--teal-200);
+  --border-strong: var(--teal-100);
 
-  --primary: #b8d4da;
-  --primary-hover: #dbe9ec;
-  --primary-soft: #0d2125;
-  --primary-text: #dbe9ec;
+  --primary: var(--teal-200);
+  --primary-hover: var(--teal-100);
+  --primary-soft: var(--teal-900);
+  --primary-text: var(--teal-100);
 
-  --accent: #d8c2e3;
-  --accent-soft: #210b2f;
-  --accent-text: #ece1f2;
+  --accent: var(--purple-200);
+  --accent-soft: var(--purple-900);
+  --accent-text: var(--purple-100);
+
+  --signal: var(--turquoise-300);
+  --signal-text: var(--turquoise-300);
 
   --topbar-bg: #000000;
   --topbar-text: #ffffff;
@@ -310,14 +355,14 @@
 
   --status-grey: #c2ccd6;
   --text-on-brand: #000000;
-  --focus: #ece1f2;
+  --focus: var(--purple-100);
   --link-decoration: underline;
   --shadow: none;
 
-  --wheel-a: #dbe9ec;
-  --wheel-b: #8dbac3;
-  --wheel-c: #d8c2e3;
-  --wheel-d: #bd9cd0;
+  --wheel-a: var(--teal-100);
+  --wheel-b: var(--teal-300);
+  --wheel-c: var(--purple-200);
+  --wheel-d: var(--purple-300);
 }
 
 /* --- Viewer text size ----------------------------------------------------- *
@@ -430,9 +475,13 @@ a:hover { text-decoration: underline; }
   text-decoration: none !important;
 }
 .brand-mark { width: 1.75rem; height: 1.75rem; flex: none; display: block; }
-.brand-mark .dp-pulse { stroke: currentColor; }
-.brand-word span { color: var(--purple-300); }
+.brand-mark .dp-pulse { stroke: var(--turquoise-300); }
+/* "Puls" against the teal masthead. purple-200 rather than -300: at this
+   size the darker step lands at 3.08:1, which scrapes past AA for large
+   text and fails it for anything smaller. */
+.brand-word span { color: var(--purple-200); }
 :root[data-contrast="high"] .brand-word span { color: #ffffff; }
+:root[data-contrast="high"] .brand-mark .dp-pulse { stroke: #ffffff; }
 
 .topbar-nav {
   display: flex;
@@ -623,10 +672,12 @@ caption { caption-side: top; text-align: left; font-size: 0.85rem; color: var(--
 .badge-maintained  { background: var(--surface-sunken); color: var(--text-muted); border-color: var(--border-strong); }
 .badge-unvalidated { background: var(--accent-soft); color: var(--accent-text); border-color: var(--accent); }
 
-/* Maturity levels read as one ramp: pale cyan -> cyan -> purple -> deep purple. */
+/* Maturity levels read as one ramp across both brand hues: pale teal ->
+   teal -> purple -> deep purple. The level number is always written out
+   too ("Level 3"), so the ramp is a reinforcement and never the only cue. */
 .badge-level1 { background: var(--primary-soft); color: var(--primary-text); border-color: var(--primary); }
-.badge-level2 { background: var(--cyan-200); color: var(--cyan-900); border-color: var(--cyan-600); }
-.badge-level3 { background: var(--cyan-600); color: #ffffff; border-color: var(--cyan-800); }
+.badge-level2 { background: var(--teal-200); color: var(--teal-900); border-color: var(--teal-600); }
+.badge-level3 { background: var(--teal-600); color: #ffffff; border-color: var(--teal-800); }
 .badge-level4 { background: var(--purple-500); color: #ffffff; border-color: var(--purple-800); }
 .badge-level5 { background: var(--purple-800); color: #ffffff; border-color: var(--purple-900); }
 :root[data-theme="dark"] .badge-level2,
@@ -786,7 +837,12 @@ figcaption { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem; }
 .step-legend { display: flex; gap: 1rem; flex-wrap: wrap; list-style: none; padding: 0; margin: 0; }
 
 .progress-bar-track { background: var(--surface-sunken); border: 1px solid var(--border); border-radius: var(--radius-sm); height: 0.75rem; overflow: hidden; margin: 0.5rem 0; }
-.progress-bar-fill { background: var(--primary); height: 100%; }
+/* The one deliberate use of the logo's arrow colour in the interface: a
+   progress bar is the same idea the arrow stands for. */
+.progress-bar-fill {
+  background: linear-gradient(90deg, var(--primary) 0%, var(--signal) 100%);
+  height: 100%;
+}
 
 .trend-bar { display: flex; gap: 2px; align-items: flex-end; height: 2.5rem; }
 .trend-bar .seg { width: 0.9rem; background: var(--primary); border-radius: 2px 2px 0 0; }

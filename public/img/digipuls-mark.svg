@@ -2,15 +2,15 @@
   <title id="dp-mark-title">DigiPuls</title>
   <defs>
     <linearGradient id="dp-ring" x1="0" y1="8" x2="64" y2="56" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#307e8c"/>
-      <stop offset="0.55" stop-color="#4a5b8c"/>
-      <stop offset="1" stop-color="#622582"/>
+      <stop offset="0" stop-color="#266a82"/>
+      <stop offset="0.55" stop-color="#43447a"/>
+      <stop offset="1" stop-color="#5b1f6f"/>
     </linearGradient>
     <style>
       /* The pulse sits inside the ring, so it needs to hold contrast against
          whatever the mark is placed on. Deep cyan on light, pale cyan on dark. */
-      .dp-pulse { stroke: #1f4b53; }
-      @media (prefers-color-scheme: dark) { .dp-pulse { stroke: #7fc4d1; } }
+      .dp-pulse { stroke: #077e78; }
+      @media (prefers-color-scheme: dark) { .dp-pulse { stroke: #7de8e1; } }
     </style>
   </defs>
   <!-- Four arcs = the four MDSF domains, echoing the maturity wheel. -->

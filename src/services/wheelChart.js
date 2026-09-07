@@ -16,7 +16,7 @@
 // --wheel-a..--wheel-d, which style.css re-points for dark and high-contrast
 // themes so the wheel stays readable instead of turning into four dark
 // smudges on a dark background.
-const DOMAIN_COLORS = { A: '#1f4b53', B: '#307e8c', C: '#622582', D: '#4a1c63' };
+const DOMAIN_COLORS = { A: '#184759', B: '#266a82', C: '#5b1f6f', D: '#3f134e' };
 const DOMAIN_VARS = { A: 'var(--wheel-a)', B: 'var(--wheel-b)', C: 'var(--wheel-c)', D: 'var(--wheel-d)' };
 const DOMAIN_ORDER = ['A', 'B', 'C', 'D'];
 
