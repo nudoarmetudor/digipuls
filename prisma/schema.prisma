@@ -35,7 +35,14 @@ model Territory {
 
 model User {
   id           Int      @id @default(autoincrement())
-  email        String   @unique
+  // The login identifier, not an address. The pilot's meta-mentors have no
+  // institutional mailbox — there is no @digipuls.md mail domain — so an
+  // email field would have been a form that asks for something nobody has.
+  // Accounts are identified by a handle like "gurita.elena"; the seeded demo
+  // accounts happen to look like addresses, which is fine because nothing
+  // here treats the value as one. Renamed from `email` by migration, so the
+  // existing values were preserved.
+  login        String   @unique
   passwordHash String
   name         String
   // SCHOOL_TEAM | MINISTRY | TERRITORIAL | PARTNER | STRATEGIC_PARTNER | ADMIN

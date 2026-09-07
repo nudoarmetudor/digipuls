@@ -4,14 +4,14 @@
   <p><%= t('admin_created_body', { name: school.name, band: school.enrolmentBand }) %></p>
 </div>
 
-<% if (teamAccountEmail) { %>
+<% if (teamAccountLogin) { %>
   <div class="card">
     <h2 class="plain-heading"><%= t('admin_temp_pw_title') %></h2>
     <p class="small text-bad" role="alert"><%= t('admin_temp_pw_warning') %></p>
     <div class="table-scroll">
       <table>
         <tbody>
-          <tr><th scope="row"><%= t('th_email') %></th><td class="mono"><%= teamAccountEmail %></td></tr>
+          <tr><th scope="row"><%= t('login_username') %></th><td class="mono"><%= teamAccountLogin %></td></tr>
           <tr><th scope="row"><%= t('th_temp_password') %></th><td class="mono"><b><%= tempPassword %></b></td></tr>
         </tbody>
       </table>

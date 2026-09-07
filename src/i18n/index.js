@@ -455,6 +455,12 @@ const STRINGS = {
     err_invalid_level: 'Please choose a maturity level between 0 and 5.',
     err_invalid_number: 'Device counts must be whole numbers of zero or more.',
     err_unknown_indicator: 'Unknown indicator',
+    // --- logins (handles, not addresses) ---
+    login_username: 'Login',
+    admin_user_login_help: 'Letters, digits, dot, dash and underscore — for example gurita.elena. This is what the person types to sign in; it is not an email address and nothing is sent to it.',
+    admin_user_err_login: 'Enter a login: at least 3 characters, using letters, digits, dot, dash or underscore.',
+    f_team_login: 'Team login',
+    login_credentials_note: 'Logins are handed out by an administrator together with a one-time password. There is no email involved and no self-service reset — if you cannot get in, ask the person who set up your account.',
     // --- the left navigation panel ---
     navgroup_assessment: 'Assessment',
     navgroup_oversight: 'Overview',
@@ -1043,6 +1049,12 @@ const STRINGS = {
     err_invalid_level: 'Alegeți un nivel de maturitate între 0 și 5.',
     err_invalid_number: 'Numărul de echipamente trebuie să fie un număr întreg, zero sau mai mare.',
     err_unknown_indicator: 'Indicator necunoscut',
+    // --- logins (handles, not addresses) ---
+    login_username: 'Utilizator',
+    admin_user_login_help: 'Litere, cifre, punct, liniuță și underscore — de exemplu gurita.elena. Acesta este ceea ce tastează persoana la autentificare; nu este o adresă de email și nu se trimite nimic către ea.',
+    admin_user_err_login: 'Introduceți un utilizator: cel puțin 3 caractere, cu litere, cifre, punct, liniuță sau underscore.',
+    f_team_login: 'Utilizator pentru echipă',
+    login_credentials_note: 'Datele de autentificare sunt oferite de un administrator împreună cu o parolă unică. Nu este implicat niciun email și nu există resetare automată — dacă nu vă puteți autentifica, contactați persoana care v-a creat contul.',
     // --- the left navigation panel ---
     navgroup_assessment: 'Autoevaluare',
     navgroup_oversight: 'Prezentare generală',
@@ -1631,6 +1643,12 @@ const STRINGS = {
     err_invalid_level: 'Выберите уровень зрелости от 0 до 5.',
     err_invalid_number: 'Количество оборудования должно быть целым числом не меньше нуля.',
     err_unknown_indicator: 'Неизвестный индикатор',
+    // --- logins (handles, not addresses) ---
+    login_username: 'Логин',
+    admin_user_login_help: 'Буквы, цифры, точка, дефис и подчёркивание — например gurita.elena. Это то, что человек вводит при входе; это не адрес электронной почты, и на него ничего не отправляется.',
+    admin_user_err_login: 'Введите логин: не менее 3 символов из букв, цифр, точки, дефиса или подчёркивания.',
+    f_team_login: 'Логин команды',
+    login_credentials_note: 'Логин выдаёт администратор вместе с одноразовым паролем. Электронная почта не используется, самостоятельного сброса нет — если не удаётся войти, обратитесь к тому, кто создавал вашу учётную запись.',
     // --- the left navigation panel ---
     navgroup_assessment: 'Самооценка',
     navgroup_oversight: 'Обзор',

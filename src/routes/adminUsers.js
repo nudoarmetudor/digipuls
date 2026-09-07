@@ -27,6 +27,21 @@ function asArray(value) {
   return Array.isArray(value) ? value : [value];
 }
 
+// A login is a handle, not an address. The pilot's meta-mentors have no
+// institutional mailbox, so requiring an email meant requiring something
+// nobody has. The seeded demo accounts happen to look like addresses and
+// remain valid: "@" is simply an allowed character, not a promise that
+// anything will ever be delivered there.
+const LOGIN_PATTERN = /^[a-z0-9][a-z0-9._@-]{2,63}$/;
+
+function normaliseLogin(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function isValidLogin(value) {
+  return LOGIN_PATTERN.test(normaliseLogin(value));
+}
+
 function parseIntOrNull(value) {
   if (value === undefined || value === null || value === '' || value === 'none') return null;
   const n = Number(value);
@@ -67,7 +82,7 @@ router.get('/', async (req, res) => {
   if (ROLES.includes(role)) where.assignments = { some: { role } };
   if (q && q.trim()) {
     const term = q.trim();
-    where.OR = [{ name: { contains: term } }, { email: { contains: term } }];
+    where.OR = [{ name: { contains: term } }, { login: { contains: term } }];
   }
 
   const users = await prisma.user.findMany({
@@ -114,13 +129,13 @@ router.get('/new', async (req, res) => {
 
 router.post('/', async (req, res) => {
   const options = await formOptions();
-  const { email, name, role } = req.body;
+  const { login, name, role } = req.body;
   const desired = asArray(req.body.capabilities);
 
   const fail = (messageKey) => res.status(400).render('admin/user-form', {
     title: res.locals.t('admin_user_new_title'),
     mode: 'new',
-    user: { email, name },
+    user: { login, name },
     posts: [],
     firstRole: role,
     firstSelected: new Set(desired),
@@ -128,11 +143,11 @@ router.post('/', async (req, res) => {
     ...options,
   });
 
-  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) return fail('admin_user_err_email');
+  if (!isValidLogin(login)) return fail('admin_user_err_login');
   if (!name || !name.trim()) return fail('admin_user_err_name');
   if (!ROLES.includes(role)) return fail('admin_user_err_role');
 
-  const existing = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
+  const existing = await prisma.user.findUnique({ where: { login: normaliseLogin(login) } });
   if (existing) return fail('admin_user_err_duplicate');
 
   const scope = scopeFor(role, req.body);
@@ -145,7 +160,7 @@ router.post('/', async (req, res) => {
   const tempPassword = generateTempPassword();
   const user = await prisma.user.create({
     data: {
-      email: email.trim().toLowerCase(),
+      login: normaliseLogin(login),
       name: name.trim(),
       // Legacy mirror of the first post — no longer read by anything, kept
       // until the follow-up migration drops these columns.
@@ -165,7 +180,7 @@ router.post('/', async (req, res) => {
     },
   });
 
-  await logAction(req.session.user.id, 'CREATE_USER', 'User', user.id, `${user.email} (${role})`);
+  await logAction(req.session.user.id, 'CREATE_USER', 'User', user.id, `${user.login} (${role})`);
   res.render('admin/user-created', {
     title: res.locals.t('admin_user_created_title'),
     user,
@@ -198,18 +213,18 @@ router.post('/:id', async (req, res) => {
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) return res.status(404).render('error', { title: res.locals.t('err_not_found'), message: res.locals.t('admin_user_err_not_found') });
 
-  const { email, name } = req.body;
-  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) {
-    return res.redirect(res.locals.href(`/admin/users/${id}/edit?error=admin_user_err_email`));
+  const { login, name } = req.body;
+  if (!isValidLogin(login)) {
+    return res.redirect(res.locals.href(`/admin/users/${id}/edit?error=admin_user_err_login`));
   }
   if (!name || !name.trim()) return res.redirect(res.locals.href(`/admin/users/${id}/edit?error=admin_user_err_name`));
 
-  const normalisedEmail = email.trim().toLowerCase();
-  const clash = await prisma.user.findUnique({ where: { email: normalisedEmail } });
+  const normalised = normaliseLogin(login);
+  const clash = await prisma.user.findUnique({ where: { login: normalised } });
   if (clash && clash.id !== id) return res.redirect(res.locals.href(`/admin/users/${id}/edit?error=admin_user_err_duplicate`));
 
-  await prisma.user.update({ where: { id }, data: { email: normalisedEmail, name: name.trim() } });
-  await logAction(req.session.user.id, 'UPDATE_USER', 'User', id, normalisedEmail);
+  await prisma.user.update({ where: { id }, data: { login: normalised, name: name.trim() } });
+  await logAction(req.session.user.id, 'UPDATE_USER', 'User', id, normalised);
   res.redirect(res.locals.href(`/admin/users/${id}/edit`));
 });
 
@@ -322,7 +337,7 @@ router.post('/:id/reset-password', async (req, res) => {
     where: { id },
     data: { passwordHash: await bcrypt.hash(tempPassword, 10), mustChangePassword: true },
   });
-  await logAction(req.session.user.id, 'RESET_USER_PASSWORD', 'User', id, user.email);
+  await logAction(req.session.user.id, 'RESET_USER_PASSWORD', 'User', id, user.login);
   res.render('admin/user-created', {
     title: res.locals.t('admin_user_reset_title'),
     user,
@@ -358,7 +373,7 @@ router.post('/:id/delete', async (req, res) => {
   }
 
   await prisma.user.delete({ where: { id } });
-  await logAction(req.session.user.id, 'DELETE_USER', 'User', id, user.email);
+  await logAction(req.session.user.id, 'DELETE_USER', 'User', id, user.login);
   res.redirect(res.locals.href('/admin/users'));
 });
 

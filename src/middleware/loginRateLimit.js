@@ -9,7 +9,7 @@ const MAX_ATTEMPTS = 8;
 const attempts = new Map(); // key -> { count, windowStart }
 
 function key(req) {
-  const email = (req.body && req.body.email || '').toLowerCase().trim();
+  const email = (req.body && req.body.login || '').toLowerCase().trim();
   return `${req.ip}:${email}`;
 }
 

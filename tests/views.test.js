@@ -194,22 +194,22 @@ function templatesFor(lang) {
     ['public/school-summary.ejs', { school, hasData: false }],
 
     ['admin/school-new.ejs', { territories: [{ id: 1, name: 'Chișinău' }] }],
-    ['admin/school-created.ejs', { school, teamAccountEmail: 'team@example.md', tempPassword: 'abc123XYZ!' }],
-    ['admin/school-created.ejs', { school, teamAccountEmail: null, tempPassword: null }],
+    ['admin/school-created.ejs', { school, teamAccountLogin: 'eminescu.echipa', tempPassword: 'abc123XYZ!' }],
+    ['admin/school-created.ejs', { school, teamAccountLogin: null, tempPassword: null }],
     ['admin/audit-log.ejs', {
       entries: [{ id: 1, createdAt: new Date(), user: { name: 'Admin' }, action: 'SET_RATING', entityType: 'IndicatorRating', entityId: '1', details: 'A1 -> level 3' }],
     }],
 
     ['admin/users.ejs', {
       users: [
-        { id: 1, name: 'Ana Popescu', email: 'ana@digipuls.md', isActive: true, mustChangePassword: false,
+        { id: 1, name: 'Ana Popescu', login: 'popescu.ana', isActive: true, mustChangePassword: false,
           posts: [{ id: 1, role: 'ADMIN', label: null, institution: null, capabilityCount: 11, customised: false, isActive: true }] },
-        { id: 2, name: 'Elena Guriță', email: 'elena@digipuls.md', isActive: true, mustChangePassword: true,
+        { id: 2, name: 'Elena Guriță', login: 'gurita.elena', isActive: true, mustChangePassword: true,
           posts: [
             { id: 7, role: 'META_MENTOR', label: null, institution: 'LT Boris Dînga', capabilityCount: 4, customised: false, isActive: true },
             { id: 8, role: 'SCHOOL_TEAM', label: 'Coordonator DigiPuls', institution: 'LT Gaudeamus', capabilityCount: 1, customised: true, isActive: false },
           ] },
-        { id: 3, name: 'Fără funcție', email: 'none@digipuls.md', isActive: false, mustChangePassword: false, posts: [] },
+        { id: 3, name: 'Fără funcție', login: 'fara.functie', isActive: false, mustChangePassword: false, posts: [] },
       ],
       roles: ROLES, filteredCount: 3, total: 15, query: { role: 'META_MENTOR' },
     }],
@@ -220,7 +220,7 @@ function templatesFor(lang) {
     }],
     ['admin/user-form.ejs', {
       mode: 'edit',
-      user: { id: 2, name: 'Elena Guriță', email: 'elena@digipuls.md', isActive: true },
+      user: { id: 2, name: 'Elena Guriță', login: 'gurita.elena', isActive: true },
       // The worked example: two posts, two institutions, one account.
       posts: [
         { id: 7, role: 'META_MENTOR', label: null, isActive: true, institution: 'LT Boris Dînga',
@@ -233,11 +233,11 @@ function templatesFor(lang) {
       roles: ROLES, capabilityGroups: CAPABILITY_GROUPS, roleDefaults: ROLE_DEFAULTS,
     }],
     ['admin/user-created.ejs', {
-      user: { id: 2, name: 'Ion Rusu', email: 'ion@digipuls.md', role: 'META_MENTOR' },
+      user: { id: 2, name: 'Ion Rusu', login: 'rusu.ion', role: 'META_MENTOR' },
       tempPassword: 'Xq7tR2p9Lmz4',
     }],
     ['admin/user-created.ejs', {
-      user: { id: 2, name: 'Ion Rusu', email: 'ion@digipuls.md', role: 'META_MENTOR' },
+      user: { id: 2, name: 'Ion Rusu', login: 'rusu.ion', role: 'META_MENTOR' },
       tempPassword: 'Xq7tR2p9Lmz4', wasReset: true,
     }],
 

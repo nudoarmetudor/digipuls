@@ -19,8 +19,11 @@ const val = (k) => (user && user[k] !== undefined && user[k] !== null ? user[k] 
     <label for="f-name"><%= t('admin_user_name') %></label>
     <input type="text" id="f-name" name="name" value="<%= val('name') %>" required autocomplete="off">
 
-    <label for="f-email"><%= t('login_email') %></label>
-    <input type="email" id="f-email" name="email" value="<%= val('email') %>" required autocomplete="off">
+    <label for="f-login"><%= t('login_username') %></label>
+    <input type="text" id="f-login" name="login" value="<%= val('login') %>" required
+           autocomplete="off" autocapitalize="none" spellcheck="false"
+           pattern="[A-Za-z0-9._@-]{3,64}">
+    <p class="help"><%= t('admin_user_login_help') %></p>
 
     <% if (!isEdit) { %>
       <h3 style="margin-top:1.2rem;"><%= t('admin_user_first_post') %></h3>

@@ -29,12 +29,14 @@ const demoAccounts = [
         <p class="subtitle"><%= t('login_subtitle') %></p>
         <% if (error) { %><div class="flash flash-error" role="alert"><%= error %></div><% } %>
         <form method="POST" action="<%= href('/login') %>">
-          <label for="login-email"><%= t('login_email') %></label>
-          <input type="email" id="login-email" name="email" autocomplete="username" required autofocus>
+          <label for="login-name"><%= t('login_username') %></label>
+          <input type="text" id="login-name" name="login" autocomplete="username" required autofocus
+                 autocapitalize="none" spellcheck="false">
           <label for="login-password"><%= t('login_password') %></label>
           <input type="password" id="login-password" name="password" autocomplete="current-password" required>
           <div style="margin-top:1.2rem;"><button class="btn" type="submit"><%= t('login_button') %></button></div>
         </form>
+        <p class="help" style="margin-top:1rem;"><%= t('login_credentials_note') %></p>
 
         <% if (demoMode) { %>
         <div class="card card-flat" style="margin-top:1.5rem;">
@@ -43,7 +45,7 @@ const demoAccounts = [
           <div class="table-scroll">
             <table>
               <thead>
-                <tr><th scope="col"><%= t('login_role_column') %></th><th scope="col"><%= t('login_email') %></th></tr>
+                <tr><th scope="col"><%= t('login_role_column') %></th><th scope="col"><%= t('login_username') %></th></tr>
               </thead>
               <tbody>
                 <% demoAccounts.forEach(function (a) { %>

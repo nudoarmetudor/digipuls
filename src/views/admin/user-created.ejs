@@ -1,7 +1,7 @@
 <h1><%= typeof wasReset !== 'undefined' && wasReset ? t('admin_user_reset_title') : t('admin_user_created_title') %></h1>
 
 <div class="card card-ok">
-  <p><b><%= user.name %></b> — <span class="mono"><%= user.email %></span> · <%= t('role_' + user.role) %></p>
+  <p><b><%= user.name %></b> — <span class="mono"><%= user.login %></span></p>
 </div>
 
 <div class="card">
@@ -10,7 +10,7 @@
   <div class="table-scroll">
     <table>
       <tbody>
-        <tr><th scope="row"><%= t('th_email') %></th><td class="mono"><%= user.email %></td></tr>
+        <tr><th scope="row"><%= t('login_username') %></th><td class="mono"><%= user.login %></td></tr>
         <tr><th scope="row"><%= t('th_temp_password') %></th><td class="mono"><b><%= tempPassword %></b></td></tr>
       </tbody>
     </table>

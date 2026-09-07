@@ -41,7 +41,7 @@
     <thead>
       <tr>
         <th scope="col"><%= t('admin_user_name') %></th>
-        <th scope="col"><%= t('login_email') %></th>
+        <th scope="col"><%= t('login_username') %></th>
         <th scope="col"><%= t('admin_user_posts') %></th>
         <th scope="col"><%= t('th_status') %></th>
         <th scope="col"><span class="visually-hidden"><%= t('admin_user_actions') %></span></th>
@@ -51,7 +51,7 @@
       <% users.forEach(function (u) { %>
         <tr>
           <th scope="row" style="background:none;font-weight:400;color:inherit;"><%= u.name %></th>
-          <td class="mono"><%= u.email %></td>
+          <td class="mono"><%= u.login %></td>
           <td>
             <% if (u.posts.length === 0) { %>
               <span class="small"><%= t('admin_user_no_posts') %></span>

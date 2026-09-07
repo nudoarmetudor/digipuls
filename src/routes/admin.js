@@ -30,7 +30,7 @@ router.get('/schools/new', requireCapability('admin.schools'), async (req, res) 
 });
 
 router.post('/schools', requireCapability('admin.schools'), async (req, res) => {
-  const { simeId, name, address, territoryId, enrolmentTotal, studentsGrades7to12, classroomsTotal, teamEmail, teamName } = req.body;
+  const { simeId, name, address, territoryId, enrolmentTotal, studentsGrades7to12, classroomsTotal, teamLogin, teamName } = req.body;
 
   let territory = await prisma.territory.findFirst({ where: { name: req.body.territoryName || undefined } });
   const territoryIdFinal = territoryId && territoryId !== 'new'
@@ -54,17 +54,17 @@ router.post('/schools', requireCapability('admin.schools'), async (req, res) => 
   });
 
   let tempPassword = null;
-  let teamAccountEmail = null;
-  if (teamEmail) {
+  let teamAccountLogin = null;
+  if (teamLogin) {
     // A real school account never gets a fixed/shared password — a random
     // one-time password is generated and shown to the admin exactly once
     // here; the account is forced to set its own password on first login
     // (see mustChangePassword, enforced in app.js).
     tempPassword = generateTempPassword();
-    teamAccountEmail = teamEmail;
+    teamAccountLogin = teamLogin.trim().toLowerCase();
     await prisma.user.create({
       data: {
-        email: teamEmail,
+        login: teamAccountLogin,
         passwordHash: await bcrypt.hash(tempPassword, 10),
         name: teamName || `Echipa digitală — ${name}`,
         role: 'SCHOOL_TEAM',
@@ -76,7 +76,7 @@ router.post('/schools', requireCapability('admin.schools'), async (req, res) => 
 
   await logAction(req.session.user.id, 'PROVISION_SCHOOL', 'School', school.id, simeId ? `from SIME ${simeId}` : 'manual entry');
   res.render('admin/school-created', {
-    title: res.locals.t('admin_created_title'), wide: true, school, teamAccountEmail, tempPassword,
+    title: res.locals.t('admin_created_title'), wide: true, school, teamAccountLogin, tempPassword,
   });
 });
 

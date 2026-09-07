@@ -15,8 +15,11 @@ router.get('/login', (req, res) => {
 });
 
 router.post('/login', loginRateLimit, async (req, res) => {
-  const { email, password } = req.body;
-  const user = await prisma.user.findUnique({ where: { email }, include: { school: true, territory: true } });
+  const { login, password } = req.body;
+  const user = await prisma.user.findUnique({
+    where: { login: (login || '').trim().toLowerCase() },
+    include: { school: true, territory: true },
+  });
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     recordFailedAttempt(req);
     return res.render('auth/login', { title: res.locals.t('login_title'), error: res.locals.t('login_error'), layout: false });

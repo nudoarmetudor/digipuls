@@ -54,8 +54,9 @@
     <h3 style="margin-top:1rem;"><%= t('admin_team_login_title') %></h3>
     <div class="inline-fields">
       <div>
-        <label for="f-teamEmail"><%= t('f_team_email') %></label>
-        <input type="email" name="teamEmail" id="f-teamEmail">
+        <label for="f-teamLogin"><%= t('f_team_login') %></label>
+        <input type="text" name="teamLogin" id="f-teamLogin"
+               autocapitalize="none" spellcheck="false" pattern="[A-Za-z0-9._@-]{3,64}">
       </div>
       <div>
         <label for="f-teamName"><%= t('f_team_name') %></label>
