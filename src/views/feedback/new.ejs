@@ -1,0 +1,35 @@
+<h1><%= t('feedback_new_title') %></h1>
+<p class="subtitle"><%= t('feedback_new_subtitle') %></p>
+
+<% if (errorMessage) { %><div class="flash flash-error" role="alert"><%= errorMessage %></div><% } %>
+
+<div class="card">
+  <form method="POST" action="/feedback/tickets">
+    <label for="f-route"><%= t('feedback_field_route') %></label>
+    <input type="text" id="f-route" name="route" value="<%= body.route || '' %>" placeholder="/school/cycles/1/step/infra">
+    <p class="help"><%= t('feedback_field_route_help') %></p>
+
+    <label for="f-element"><%= t('feedback_field_element') %></label>
+    <input type="text" id="f-element" name="elementText" value="<%= body.elementText || '' %>">
+    <p class="help"><%= t('feedback_field_element_help') %></p>
+
+    <label for="f-severity"><%= t('feedback_form_severity') %></label>
+    <select id="f-severity" name="severity">
+      <% severities.forEach(function (s) { %>
+        <option value="<%= s %>" <%= (body.severity || 'NORMAL') === s ? 'selected' : '' %>><%= t('feedback_sev_' + s.toLowerCase()) %></option>
+      <% }) %>
+    </select>
+
+    <label for="f-comment"><%= t('feedback_form_comment') %></label>
+    <textarea id="f-comment" name="comment" required placeholder="<%= t('feedback_form_comment_hint') %>"><%= body.comment || '' %></textarea>
+
+    <div class="btn-row" style="margin-top:0.8rem;">
+      <button class="btn" type="submit"><%= t('feedback_form_submit') %></button>
+      <a class="btn btn-secondary" href="/feedback"><%= t('cancel') %></a>
+    </div>
+  </form>
+</div>
+
+<div class="card card-flat">
+  <p class="small" style="margin:0;"><%= t('feedback_manual_note') %></p>
+</div>

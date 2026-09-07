@@ -1,0 +1,53 @@
+<%
+/* The report-an-issue control. It is a link to the manual form, upgraded by
+   public/js/feedback.js into a toggle for the click-to-report overlay — so
+   with JavaScript off it still leads somewhere useful rather than being a
+   dead button.
+
+   The data- attributes carry everything the overlay needs to label itself and
+   to fill in the parts of a ticket the browser can't know (which template
+   rendered this page, which language it is in, which display settings are
+   active), all translated here rather than hardcoded in the script. */
+%>
+<a class="feedback-toggle" href="/feedback/new?route=<%= encodeURIComponent(currentPath) %>"
+   data-feedback-toggle
+   data-endpoint="/feedback/tickets"
+   data-route="<%= currentPath %>"
+   data-view="<%= typeof viewName !== 'undefined' ? viewName : '' %>"
+   data-lang="<%= lang %>"
+   data-prefs="<%= prefsAttrs ? prefsAttrs.replace(/data-|"/g, '') : '' %>"
+   data-mine-url="/feedback"
+   aria-pressed="false"
+   data-i18n='<%- JSON.stringify({
+     start: t("feedback_overlay_start"),
+     stop: t("feedback_overlay_stop"),
+     hint: t("feedback_overlay_hint"),
+     title: t("feedback_form_title"),
+     detected: t("feedback_form_detected"),
+     template: t("feedback_form_template"),
+     element: t("feedback_form_element"),
+     keys: t("feedback_form_keys"),
+     comment: t("feedback_form_comment"),
+     commentHint: t("feedback_form_comment_hint"),
+     severity: t("feedback_form_severity"),
+     submit: t("feedback_form_submit"),
+     cancel: t("feedback_form_cancel"),
+     sending: t("feedback_form_sending"),
+     sent: t("feedback_form_sent"),
+     failed: t("feedback_form_failed"),
+     required: t("feedback_err_comment"),
+     mine: t("feedback_form_view_mine"),
+     severities: {
+       BLOCKER: t("feedback_sev_blocker"),
+       MAJOR: t("feedback_sev_major"),
+       NORMAL: t("feedback_sev_normal"),
+       MINOR: t("feedback_sev_minor"),
+       IDEA: t("feedback_sev_idea")
+     }
+   }) %>'>
+  <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none"
+       stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 5h16v11H8l-4 4V5z"/><path d="M12 8v3"/><path d="M12 13.5v.01"/>
+  </svg>
+  <span data-feedback-label><%= t('feedback_overlay_start') %></span>
+</a>

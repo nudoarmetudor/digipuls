@@ -1,0 +1,96 @@
+<h1><%= t('admin_users_title') %></h1>
+<p class="subtitle"><%= t('admin_users_subtitle') %></p>
+
+<div class="card">
+  <h2 class="plain-heading"><%= t('filters') %></h2>
+  <form method="GET" action="/admin/users">
+    <div class="inline-fields">
+      <div>
+        <label for="f-q"><%= t('admin_users_search') %></label>
+        <input type="search" id="f-q" name="q" value="<%= query.q || '' %>" placeholder="<%= t('admin_users_search_placeholder') %>">
+      </div>
+      <div>
+        <label for="f-role"><%= t('admin_user_role') %></label>
+        <select id="f-role" name="role">
+          <option value="">—</option>
+          <% roles.forEach(function (r) { %>
+            <option value="<%= r %>" <%= query.role === r ? 'selected' : '' %>><%= t('role_' + r) %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div>
+        <label for="f-status"><%= t('th_status') %></label>
+        <select id="f-status" name="status">
+          <option value="">—</option>
+          <option value="active" <%= query.status === 'active' ? 'selected' : '' %>><%= t('admin_user_active') %></option>
+          <option value="inactive" <%= query.status === 'inactive' ? 'selected' : '' %>><%= t('admin_user_inactive') %></option>
+        </select>
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:0.8rem;">
+      <button class="btn btn-sm" type="submit"><%= t('apply') %></button>
+      <a class="btn btn-sm btn-secondary" href="/admin/users"><%= t('reset') %></a>
+      <a class="btn btn-sm" href="/admin/users/new"><%= t('admin_user_new_title') %></a>
+    </div>
+  </form>
+</div>
+
+<h2 id="users-h"><%= t('admin_users_title') %> (<%= filteredCount %>/<%= total %>)</h2>
+<div class="table-scroll">
+  <table aria-labelledby="users-h">
+    <thead>
+      <tr>
+        <th scope="col"><%= t('admin_user_name') %></th>
+        <th scope="col"><%= t('login_email') %></th>
+        <th scope="col"><%= t('admin_user_role') %></th>
+        <th scope="col"><%= t('admin_user_scope') %></th>
+        <th scope="col"><%= t('admin_user_capabilities') %></th>
+        <th scope="col"><%= t('th_status') %></th>
+        <th scope="col"><span class="visually-hidden"><%= t('admin_user_actions') %></span></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% users.forEach(function (u) { %>
+        <tr>
+          <th scope="row" style="background:none;font-weight:400;color:inherit;"><%= u.name %></th>
+          <td class="mono"><%= u.email %></td>
+          <td><%= t('role_' + u.role) %></td>
+          <td class="small">
+            <% if (u.school) { %><%= u.school.name %>
+            <% } else if (u.territory) { %><%= u.territory.name %>
+            <% } else { %>—<% } %>
+          </td>
+          <td class="small">
+            <%= u.effective.length %>
+            <% if (u.customised) { %>
+              <span class="badge badge-unvalidated"><%= t('admin_user_customised') %></span>
+            <% } %>
+          </td>
+          <td>
+            <span class="badge badge-<%= u.isActive ? 'confirmed' : 'maintained' %>">
+              <%= u.isActive ? t('admin_user_active') : t('admin_user_inactive') %>
+            </span>
+            <% if (u.mustChangePassword) { %>
+              <br><span class="small"><%= t('admin_user_pending_password') %></span>
+            <% } %>
+          </td>
+          <td>
+            <div class="btn-row">
+              <a class="btn btn-sm btn-secondary" href="/admin/users/<%= u.id %>/edit">
+                <%= t('edit') %><span class="visually-hidden"> — <%= u.name %></span>
+              </a>
+              <form method="POST" action="/admin/users/<%= u.id %>/active">
+                <input type="hidden" name="active" value="<%= u.isActive ? 'false' : 'true' %>">
+                <button class="btn btn-sm btn-secondary" type="submit">
+                  <%= u.isActive ? t('admin_user_deactivate') : t('admin_user_activate') %><span class="visually-hidden"> — <%= u.name %></span>
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<p class="small" style="margin-top:1rem;"><%= t('admin_users_deactivate_note') %></p>

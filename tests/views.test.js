@@ -10,6 +10,8 @@ const { getIndicatorData } = require('../src/data/indicatorsI18n');
 const { ENROLMENT_BANDS, checkDeviceCompliance, checkNetworkCompliance } = require('../src/data/order675');
 const { renderWheel, itemsFromRatings, itemsFromDomainScores } = require('../src/services/wheelChart');
 const { computeStepStatuses, finalizeReviewStatus } = require('../src/services/stepStatus');
+const { CAPABILITIES, CAPABILITY_GROUPS, ROLES, ROLE_DEFAULTS, capabilitiesFor } = require('../src/services/capabilities');
+const { developerBlock, SEVERITIES, STATUSES } = require('../src/services/feedbackContext');
 
 const VIEWS = path.join(__dirname, '..', 'src', 'views');
 
@@ -101,6 +103,16 @@ function templatesFor(lang) {
   const wheelSvg = renderWheel(itemsFromRatings(draftCycle.ratings, indicators), { mode: 'indicators', t: translate });
   const domainScores = { A: 2.4, B: 3.1, C: 1.8, D: 0.5 };
   const row = overviewRow(school, confirmedCycle);
+  const ticket = {
+    id: 7, status: 'OPEN', severity: 'MAJOR',
+    comment: 'The wording here is unclear to a school director.',
+    route: '/school/cycles/1/step/infra', viewName: 'school/step-infra',
+    selector: 'main > div.card > form > button.btn', elementSummary: 'button.btn.btn-sm',
+    elementText: 'Save inventory', i18nKeys: 'save_inventory',
+    lang: 'ro', displayPrefs: 'theme:dark', viewport: '1280x800', userAgent: 'Mozilla/5.0',
+    createdAt: new Date('2026-09-01T10:00:00Z'), updatedAt: new Date('2026-09-01T10:00:00Z'),
+    resolvedAt: null, developerNote: null, triagedBy: null,
+  };
   const withIndicators = (extra) => Object.assign({ INDICATORS: indicators }, extra);
 
   return [
@@ -187,6 +199,53 @@ function templatesFor(lang) {
     ['admin/audit-log.ejs', {
       entries: [{ id: 1, createdAt: new Date(), user: { name: 'Admin' }, action: 'SET_RATING', entityType: 'IndicatorRating', entityId: '1', details: 'A1 -> level 3' }],
     }],
+
+    ['admin/users.ejs', {
+      users: [
+        { id: 1, name: 'Ana Popescu', email: 'ana@digipuls.md', role: 'ADMIN', isActive: true,
+          mustChangePassword: false, school: null, territory: null,
+          effective: [...capabilitiesFor('ADMIN', [])], customised: false },
+        { id: 2, name: 'Ion Rusu', email: 'ion@digipuls.md', role: 'META_MENTOR', isActive: false,
+          mustChangePassword: true, school: null, territory: { name: 'Chișinău' },
+          effective: [...capabilitiesFor('META_MENTOR', [])], customised: true },
+      ],
+      roles: ROLES, filteredCount: 2, total: 12, query: { role: 'META_MENTOR' },
+    }],
+    ['admin/user-form.ejs', {
+      mode: 'new', user: null, selected: new Set(ROLE_DEFAULTS.META_MENTOR), errorMessage: null,
+      schools: [{ id: 1, name: 'LT Mihai Eminescu' }], territories: [{ id: 1, name: 'Chișinău' }],
+      roles: ROLES, capabilityGroups: CAPABILITY_GROUPS, roleDefaults: ROLE_DEFAULTS,
+    }],
+    ['admin/user-form.ejs', {
+      mode: 'edit',
+      user: { id: 2, name: 'Ion Rusu', email: 'ion@digipuls.md', role: 'META_MENTOR', isActive: true, schoolId: null, territoryId: 1 },
+      selected: capabilitiesFor('META_MENTOR', []), errorMessage: 'Something is wrong',
+      schools: [{ id: 1, name: 'LT Mihai Eminescu' }], territories: [{ id: 1, name: 'Chișinău' }],
+      roles: ROLES, capabilityGroups: CAPABILITY_GROUPS, roleDefaults: ROLE_DEFAULTS,
+    }],
+    ['admin/user-created.ejs', {
+      user: { id: 2, name: 'Ion Rusu', email: 'ion@digipuls.md', role: 'META_MENTOR' },
+      tempPassword: 'Xq7tR2p9Lmz4',
+    }],
+    ['admin/user-created.ejs', {
+      user: { id: 2, name: 'Ion Rusu', email: 'ion@digipuls.md', role: 'META_MENTOR' },
+      tempPassword: 'Xq7tR2p9Lmz4', wasReset: true,
+    }],
+
+    ['feedback/mine.ejs', { tickets: [ticket], openCount: 1, closedCount: 0, submittedId: 7 }],
+    ['feedback/mine.ejs', { tickets: [], openCount: 0, closedCount: 0, submittedId: null }],
+    ['feedback/backlog.ejs', {
+      tickets: [{ ...ticket, author: { id: 2, name: 'Ion Rusu', role: 'META_MENTOR' }, block: developerBlock(ticket) }],
+      authors: [{ id: 2, name: 'Ion Rusu' }],
+      byStatus: { OPEN: 3, FIXED: 1 }, totalCount: 4,
+      statuses: STATUSES, severities: SEVERITIES, query: { status: 'open' },
+    }],
+    ['feedback/backlog.ejs', {
+      tickets: [], authors: [], byStatus: {}, totalCount: 0,
+      statuses: STATUSES, severities: SEVERITIES, query: {},
+    }],
+    ['feedback/new.ejs', { severities: SEVERITIES, errorMessage: null, body: { route: '/school' } }],
+    ['feedback/new.ejs', { severities: SEVERITIES, errorMessage: 'Please describe it', body: {} }],
   ];
 }
 
@@ -203,6 +262,10 @@ function baseLocals(lang) {
     prefs,
     prefsAttrs: prefsUtil.htmlAttrs(prefs),
     currentUser: { id: 1, name: 'Test User', role: 'ADMIN', schoolId: 1 },
+    // Rendered as an admin, so every navigation branch is exercised.
+    capabilities: new Set(CAPABILITIES),
+    can: (capability) => CAPABILITIES.includes(capability),
+    viewName: 'test/fixture',
     currentPath: '/ministry',
     demoMode: true,
     title: 'Page',

@@ -1,9 +1,9 @@
 const express = require('express');
-const { requireRole } = require('../middleware/auth');
+const { requireCapability } = require('../middleware/auth');
 const { schoolsWithLatestCycle } = require('../services/schoolOverview');
 
 const router = express.Router();
-router.use(requireRole('STRATEGIC_PARTNER'));
+router.use(requireCapability('view.training'));
 
 // A pre-built lens on the same dashboard data, filtered to Domain C
 // (C1 teacher competence, C3 PD/mentoring capacity, C4 AI literacy) — see

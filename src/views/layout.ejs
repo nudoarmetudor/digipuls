@@ -13,5 +13,8 @@
   </main>
   <%- include('partials/footer') %>
   <script src="/static/js/a11y.js" defer></script>
+  <% if (currentUser && can('feedback.submit')) { %>
+    <script src="/static/js/feedback.js" defer></script>
+  <% } %>
 </body>
 </html>

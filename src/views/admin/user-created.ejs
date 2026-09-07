@@ -1,0 +1,25 @@
+<h1><%= typeof wasReset !== 'undefined' && wasReset ? t('admin_user_reset_title') : t('admin_user_created_title') %></h1>
+
+<div class="card card-ok">
+  <p><b><%= user.name %></b> — <span class="mono"><%= user.email %></span> · <%= t('role_' + user.role) %></p>
+</div>
+
+<div class="card">
+  <h2 class="plain-heading"><%= t('admin_user_password_title') %></h2>
+  <p class="small text-bad" role="alert"><%= t('admin_temp_pw_warning') %></p>
+  <div class="table-scroll">
+    <table>
+      <tbody>
+        <tr><th scope="row"><%= t('th_email') %></th><td class="mono"><%= user.email %></td></tr>
+        <tr><th scope="row"><%= t('th_temp_password') %></th><td class="mono"><b><%= tempPassword %></b></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card card-centre">
+  <div class="btn-row" style="justify-content:center;">
+    <a class="btn" href="/admin/users"><%= t('admin_user_back_to_list') %></a>
+    <a class="btn btn-secondary" href="/admin/users/new"><%= t('admin_user_new_title') %></a>
+  </div>
+</div>

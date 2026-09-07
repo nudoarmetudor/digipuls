@@ -1,0 +1,102 @@
+<h1><%= t('feedback_backlog_title') %></h1>
+<p class="subtitle"><%= t('feedback_backlog_subtitle') %></p>
+
+<div class="grid-4">
+  <div class="card stat"><div class="num"><%= totalCount %></div><div class="label"><%= t('feedback_stat_total') %></div></div>
+  <% ['OPEN', 'IN_PROGRESS', 'FIXED'].forEach(function (s) { %>
+    <div class="card stat">
+      <div class="num"><%= byStatus[s] || 0 %></div>
+      <div class="label"><%= t('feedback_status_' + s.toLowerCase()) %></div>
+    </div>
+  <% }) %>
+</div>
+
+<div class="card">
+  <h2 class="plain-heading"><%= t('filters') %></h2>
+  <form method="GET" action="/feedback/backlog">
+    <div class="inline-fields">
+      <div>
+        <label for="f-status"><%= t('th_status') %></label>
+        <select id="f-status" name="status">
+          <option value="">—</option>
+          <option value="open" <%= query.status === 'open' ? 'selected' : '' %>><%= t('feedback_filter_unresolved') %></option>
+          <% statuses.forEach(function (s) { %>
+            <option value="<%= s %>" <%= query.status === s ? 'selected' : '' %>><%= t('feedback_status_' + s.toLowerCase()) %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div>
+        <label for="f-severity"><%= t('feedback_th_severity') %></label>
+        <select id="f-severity" name="severity">
+          <option value="">—</option>
+          <% severities.forEach(function (s) { %>
+            <option value="<%= s %>" <%= query.severity === s ? 'selected' : '' %>><%= t('feedback_sev_' + s.toLowerCase()) %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div>
+        <label for="f-author"><%= t('feedback_th_author') %></label>
+        <select id="f-author" name="author">
+          <option value="">—</option>
+          <% authors.forEach(function (a) { %>
+            <option value="<%= a.id %>" <%= String(query.author) === String(a.id) ? 'selected' : '' %>><%= a.name %></option>
+          <% }) %>
+        </select>
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:0.8rem;">
+      <button class="btn btn-sm" type="submit"><%= t('apply') %></button>
+      <a class="btn btn-sm btn-secondary" href="/feedback/backlog"><%= t('reset') %></a>
+    </div>
+  </form>
+</div>
+
+<% if (tickets.length === 0) { %>
+  <div class="card"><p><%= t('feedback_backlog_empty') %></p></div>
+<% } %>
+
+<% tickets.forEach(function (ticket) { %>
+  <section class="card" aria-labelledby="ticket-<%= ticket.id %>">
+    <h2 class="plain-heading" id="ticket-<%= ticket.id %>">
+      #<%= ticket.id %>
+      <span class="badge badge-<%= ticket.status.toLowerCase() %>"><%= t('feedback_status_' + ticket.status.toLowerCase()) %></span>
+      <span class="badge badge-<%= ticket.severity.toLowerCase() %>"><%= t('feedback_sev_' + ticket.severity.toLowerCase()) %></span>
+    </h2>
+
+    <p class="ticket-meta">
+      <span><%= t('feedback_th_author') %>: <%= ticket.author.name %> (<%= t('role_' + ticket.author.role) %>)</span>
+      <span><%= new Date(ticket.createdAt).toLocaleString(lang) %></span>
+      <% if (ticket.resolvedAt) { %><span><%= t('feedback_resolved_at') %>: <%= new Date(ticket.resolvedAt).toLocaleString(lang) %></span><% } %>
+    </p>
+
+    <p><%= ticket.comment %></p>
+
+    <details>
+      <summary><%= t('feedback_context_title') %></summary>
+      <pre class="ticket-context"><%= ticket.block %></pre>
+    </details>
+
+    <form method="POST" action="/feedback/backlog/<%= ticket.id %><%= query.status ? '?status=' + query.status : '' %>">
+      <div class="inline-fields">
+        <div>
+          <label for="s-<%= ticket.id %>"><%= t('feedback_set_status') %></label>
+          <select id="s-<%= ticket.id %>" name="status">
+            <% statuses.forEach(function (s) { %>
+              <option value="<%= s %>" <%= ticket.status === s ? 'selected' : '' %>><%= t('feedback_status_' + s.toLowerCase()) %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div>
+          <label for="n-<%= ticket.id %>"><%= t('feedback_dev_note') %></label>
+          <input type="text" id="n-<%= ticket.id %>" name="developerNote" value="<%= ticket.developerNote || '' %>"
+                 placeholder="<%= t('feedback_dev_note_placeholder') %>">
+        </div>
+      </div>
+      <div style="margin-top:0.6rem;">
+        <button class="btn btn-sm" type="submit">
+          <%= t('feedback_update') %><span class="visually-hidden"> — #<%= ticket.id %></span>
+        </button>
+      </div>
+    </form>
+  </section>
+<% }) %>

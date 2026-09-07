@@ -1,31 +1,35 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const prisma = require('../config/db');
-const { requireRole } = require('../middleware/auth');
+const { requireCapability } = require('../middleware/auth');
 const simeService = require('../services/sime/simeService');
 const { bandFor } = require('../data/order675');
 const { logAction } = require('../services/audit');
 const { generateTempPassword } = require('../utils/password');
 
 const router = express.Router();
-router.use(requireRole('ADMIN'));
+router.use(requireCapability('admin.schools', 'admin.users', 'admin.audit'));
 
-router.get('/', (req, res) => res.redirect('/admin/schools/new'));
+router.get('/', (req, res) => {
+  if (res.locals.can('admin.users')) return res.redirect('/admin/users');
+  if (res.locals.can('admin.schools')) return res.redirect('/admin/schools/new');
+  return res.redirect('/admin/audit-log');
+});
 
 // JSON endpoint backing the SIME autocomplete field on the "add school"
 // form — see services/sime/simeService.js for the pluggable provider seam
 // this calls into (mock today, a real SIME API integration later).
-router.get('/sime/search', async (req, res) => {
+router.get('/sime/search', requireCapability('admin.schools'), async (req, res) => {
   const results = await simeService.searchSchools(req.query.q || '');
   res.json(results);
 });
 
-router.get('/schools/new', async (req, res) => {
+router.get('/schools/new', requireCapability('admin.schools'), async (req, res) => {
   const territories = await prisma.territory.findMany({ orderBy: { name: 'asc' } });
   res.render('admin/school-new', { title: res.locals.t('admin_add_title'), wide: true, territories });
 });
 
-router.post('/schools', async (req, res) => {
+router.post('/schools', requireCapability('admin.schools'), async (req, res) => {
   const { simeId, name, address, territoryId, enrolmentTotal, studentsGrades7to12, classroomsTotal, teamEmail, teamName } = req.body;
 
   let territory = await prisma.territory.findFirst({ where: { name: req.body.territoryName || undefined } });
@@ -76,9 +80,9 @@ router.post('/schools', async (req, res) => {
   });
 });
 
-router.get('/audit-log', async (req, res) => {
+router.get('/audit-log', requireCapability('admin.audit'), async (req, res) => {
   const entries = await prisma.auditLogEntry.findMany({ orderBy: { createdAt: 'desc' }, take: 200, include: { user: true } });
-  res.render('admin/audit-log', { title: 'Audit log', wide: true, entries });
+  res.render('admin/audit-log', { title: res.locals.t('audit_title'), wide: true, entries });
 });
 
 module.exports = router;

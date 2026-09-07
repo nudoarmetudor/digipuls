@@ -1,12 +1,12 @@
 const express = require('express');
 const prisma = require('../config/db');
-const { requireRole } = require('../middleware/auth');
+const { requireCapability } = require('../middleware/auth');
 const { INDICATORS, DOMAINS } = require('../data/indicators');
 const { schoolsWithLatestCycle, selectOfficialAndCurrentCycle } = require('../services/schoolOverview');
 const { renderWheel, itemsFromRatings } = require('../services/wheelChart');
 
 const router = express.Router();
-router.use(requireRole('TERRITORIAL'));
+router.use(requireCapability('view.regional'));
 
 router.get('/', async (req, res) => {
   const territoryId = req.session.user.territoryId;

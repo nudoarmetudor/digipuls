@@ -803,6 +803,149 @@ footer {
 footer a { color: var(--primary-text); }
 
 /* ===========================================================================
+   Pilot feedback overlay (public/js/feedback.js)
+   Uses the same tokens as everything else, so it inherits dark mode, high
+   contrast and the text-size preference rather than needing its own theming.
+   =========================================================================== */
+.feedback-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: var(--tap);
+  padding: 0 0.7rem;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-pill);
+  font-size: 0.85rem;
+  text-decoration: none !important;
+}
+.feedback-toggle[aria-pressed="true"] {
+  background: var(--status-red);
+  border-color: var(--status-red);
+  color: #ffffff;
+  font-weight: 700;
+}
+
+/* While the overlay is armed, the pointer says "pick something" everywhere,
+   and the page's own hover affordances are suppressed so nothing looks
+   clickable in its normal sense. */
+.dp-fb-active, .dp-fb-active * { cursor: crosshair !important; }
+.dp-fb-active .dp-fb-panel, .dp-fb-active .dp-fb-panel * { cursor: auto !important; }
+.dp-fb-active a:hover, .dp-fb-active .btn:hover { text-decoration: none; }
+
+.dp-fb-box {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 9998;
+  pointer-events: none;
+  border: 2px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-radius: 3px;
+}
+/* color-mix is recent; without it the outline alone still marks the target. */
+@supports not (background: color-mix(in srgb, red 10%, transparent)) {
+  .dp-fb-box { background: transparent; }
+}
+
+.dp-fb-hint {
+  position: fixed;
+  left: 50%;
+  bottom: 1rem;
+  transform: translateX(-50%);
+  z-index: 9998;
+  max-width: min(38rem, 92vw);
+  background: var(--topbar-bg);
+  color: var(--topbar-text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  padding: 0.5rem 1.1rem;
+  font-size: 0.85rem;
+  text-align: center;
+  pointer-events: none;
+}
+
+.dp-fb-panel {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 9999;
+  width: min(30rem, calc(100vw - 2rem));
+  max-height: min(85vh, 46rem);
+  overflow-y: auto;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgba(13, 33, 37, 0.32);
+  padding: 1.1rem 1.2rem;
+}
+.dp-fb-panel h2 { margin: 0 0 0.6rem; font-size: 1.05rem; border: none; padding: 0; }
+.dp-fb-detected {
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 0.6rem;
+}
+.dp-fb-detected-head {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.dp-fb-row { display: flex; gap: 0.5rem; align-items: baseline; margin-bottom: 0.2rem; }
+.dp-fb-key { flex: 0 0 5.5rem; font-size: 0.78rem; color: var(--text-muted); }
+.dp-fb-val {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text);
+  word-break: break-all;
+  min-width: 0;
+}
+.dp-fb-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.8rem; }
+.dp-fb-status { margin: 0.6rem 0 0; font-size: 0.88rem; min-height: 1.2rem; }
+.dp-fb-status.is-error { color: var(--bad-text); font-weight: 600; }
+.dp-fb-status.is-ok { color: var(--ok-text); font-weight: 600; }
+
+/* The captured developer context on the backlog page: pre-formatted, and
+   selectable in one go for pasting into an issue tracker. */
+.ticket-context {
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 0.85rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+  margin: 0;
+}
+.ticket-meta { display: flex; flex-wrap: wrap; gap: 0.4rem 0.9rem; font-size: 0.82rem; color: var(--text-muted); }
+
+.badge-open        { background: var(--primary-soft); color: var(--primary-text); border-color: var(--primary); }
+.badge-acknowledged{ background: var(--surface-sunken); color: var(--text-muted); border-color: var(--border-strong); }
+.badge-in_progress { background: var(--accent-soft); color: var(--accent-text); border-color: var(--accent); }
+.badge-fixed       { background: var(--ok-bg); color: var(--ok-text); border-color: var(--ok-text); }
+.badge-wont_fix    { background: var(--surface-sunken); color: var(--text-muted); border-color: var(--border-strong); }
+.badge-duplicate   { background: var(--surface-sunken); color: var(--text-muted); border-color: var(--border-strong); }
+.badge-blocker     { background: var(--bad-bg); color: var(--bad-text); border-color: var(--bad-text); }
+.badge-major       { background: var(--bad-bg); color: var(--bad-text); border-color: var(--bad-text); }
+.badge-normal      { background: var(--surface-sunken); color: var(--text-muted); border-color: var(--border-strong); }
+.badge-minor       { background: var(--surface-sunken); color: var(--text-muted); border-color: var(--border-strong); }
+.badge-idea        { background: var(--accent-soft); color: var(--accent-text); border-color: var(--accent); }
+
+/* Capability picker on the user form. */
+.cap-group { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.8rem 1rem; margin-bottom: 0.8rem; }
+.cap-group legend { font-weight: 700; font-size: 0.85rem; color: var(--text-heading); padding: 0 0.35rem; }
+.cap-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr)); gap: 0.35rem 1rem; }
+.cap-item { margin: 0; }
+.cap-item .cap-code { font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-muted); }
+.cap-default { font-size: 0.72rem; color: var(--text-muted); }
+
+/* ===========================================================================
    Narrow viewports
    =========================================================================== */
 @media (max-width: 48rem) {

@@ -49,8 +49,34 @@ model User {
   // one-time password (see admin.js), never true for the demo seed logins.
   mustChangePassword Boolean @default(false)
 
+  // Deactivation rather than deletion is the default way to remove someone's
+  // access: a user is referenced by audit entries and by the cycles they
+  // confirmed, and those references are the record of who did what. Blanking
+  // them to delete a row would damage the audit trail this system exists to
+  // keep. Checked on every request, not just at login, so revoking access
+  // takes effect immediately instead of at the person's next sign-in.
+  isActive     Boolean  @default(true)
+
   auditEntries AuditLogEntry[]
   confirmedCycles AssessmentCycle[] @relation("CycleConfirmedBy")
+  capabilities UserCapability[]
+  feedbackTickets FeedbackTicket[] @relation("TicketAuthor")
+  triagedTickets  FeedbackTicket[] @relation("TicketTriager")
+}
+
+// Per-user override of what the account's role grants by default.
+// `granted = true` adds a capability the role doesn't include; `false`
+// removes one it does. Only differences from the role default are stored, so
+// a role's defaults can be changed later without having to rewrite every
+// user's row — see src/services/capabilities.js.
+model UserCapability {
+  id         Int     @id @default(autoincrement())
+  userId     Int
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  capability String
+  granted    Boolean
+
+  @@unique([userId, capability])
 }
 
 // A school is provisioned either from the SIME registry (see services/sime)
@@ -257,6 +283,58 @@ model PlanPriority {
 // ---------------------------------------------------------------------------
 // Cross-cutting
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Pilot feedback ("developer backlog")
+//
+// Meta-mentors test the platform against real school data, and the useful
+// half of their feedback is *where* something is wrong, not just that it is.
+// The click-to-report overlay (public/js/feedback.js) captures that context
+// automatically — the template that rendered the element, a CSS path to it,
+// and any i18n keys whose text matches it, which is what actually lets a
+// developer find the code. The columns below are that captured context; the
+// person only has to write the comment.
+// ---------------------------------------------------------------------------
+
+model FeedbackTicket {
+  id       Int    @id @default(autoincrement())
+  authorId Int
+  author   User   @relation("TicketAuthor", fields: [authorId], references: [id])
+
+  // OPEN | ACKNOWLEDGED | IN_PROGRESS | FIXED | WONT_FIX | DUPLICATE
+  status   String @default("OPEN")
+  // BLOCKER | MAJOR | NORMAL | MINOR | IDEA
+  severity String @default("NORMAL")
+  comment  String @db.Text
+
+  // --- captured automatically by the overlay ---
+  route          String
+  // The EJS template that rendered the page, captured by wrapping res.render
+  // in app.js so no route has to remember to pass it.
+  viewName       String?
+  selector       String? @db.Text
+  elementSummary String? @db.Text
+  elementText    String? @db.Text
+  // Comma-separated i18n keys whose text matches what was clicked. These are
+  // directly greppable, and are usually the fastest route from "this label is
+  // wrong" to the line that produces it.
+  i18nKeys       String? @db.Text
+  lang           String?
+  displayPrefs   String?
+  viewport       String?
+  userAgent      String? @db.Text
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  resolvedAt DateTime?
+
+  triagedById   Int?
+  triagedBy     User?   @relation("TicketTriager", fields: [triagedById], references: [id])
+  developerNote String? @db.Text
+
+  @@index([status])
+  @@index([authorId])
+}
 
 model AuditLogEntry {
   id         Int      @id @default(autoincrement())

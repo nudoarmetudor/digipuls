@@ -1,24 +1,26 @@
 <%
-/* Primary navigation. `links` is built per role rather than rendered and then
-   hidden, so a role never has another role's routes sitting in its DOM.
-   aria-current="page" marks the active item — the underline alone wouldn't
-   reach a screen-reader user. */
+/* Primary navigation, built from the signed-in account's capability set — the
+   same set the route guards check. That equivalence is the point: nobody is
+   ever shown a link that will then refuse them, and an admin who adjusts what
+   a meta-mentor may see changes this menu at the same moment.
+
+   `links` is built rather than rendered-and-hidden, so a role never has
+   another role's routes sitting in its DOM. */
 const links = [];
 if (currentUser) {
-  if (currentUser.role === 'SCHOOL_TEAM') {
+  if (can('view.school')) {
     links.push(['/school', t('nav_dashboard')], ['/school/history', t('nav_my_progress')]);
-  } else if (currentUser.role === 'MINISTRY' || currentUser.role === 'ADMIN') {
-    links.push(['/ministry', t('nav_national_dashboard')], ['/ministry/compliance', t('nav_compliance')]);
-    if (currentUser.role === 'ADMIN') {
-      links.push(['/admin/schools/new', t('nav_add_school')], ['/admin/audit-log', t('nav_audit_log')]);
-    }
-  } else if (currentUser.role === 'TERRITORIAL') {
-    links.push(['/territorial', t('nav_regional_dashboard')]);
-  } else if (currentUser.role === 'PARTNER') {
-    links.push(['/partner', t('nav_my_offers')]);
-  } else if (currentUser.role === 'STRATEGIC_PARTNER') {
-    links.push(['/strategic', t('nav_training_dashboard')]);
   }
+  if (can('view.national')) links.push(['/ministry', t('nav_national_dashboard')]);
+  if (can('view.compliance')) links.push(['/ministry/compliance', t('nav_compliance')]);
+  if (can('view.regional')) links.push(['/territorial', t('nav_regional_dashboard')]);
+  if (can('view.partner')) links.push(['/partner', t('nav_my_offers')]);
+  if (can('view.training')) links.push(['/strategic', t('nav_training_dashboard')]);
+  if (can('admin.users')) links.push(['/admin/users', t('nav_users')]);
+  if (can('admin.schools')) links.push(['/admin/schools/new', t('nav_add_school')]);
+  if (can('admin.audit')) links.push(['/admin/audit-log', t('nav_audit_log')]);
+  if (can('feedback.triage')) links.push(['/feedback/backlog', t('nav_backlog')]);
+  if (can('feedback.submit')) links.push(['/feedback', t('nav_my_feedback')]);
 }
 links.push(['/public-view/schools', t('nav_public_view')]);
 %>
@@ -28,6 +30,9 @@ links.push(['/public-view/schools', t('nav_public_view')]);
     <% links.forEach(function (l) { %>
       <a href="<%= l[0] %>" <%- currentPath === l[0] ? 'aria-current="page"' : '' %>><%= l[1] %></a>
     <% }) %>
+    <% if (currentUser && can('feedback.submit')) { %>
+      <%- include('feedback-toggle') %>
+    <% } %>
     <%- include('lang-switch') %>
     <%- include('display-settings') %>
     <% if (currentUser) { %>

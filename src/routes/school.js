@@ -1,6 +1,6 @@
 const express = require('express');
 const prisma = require('../config/db');
-const { requireRole } = require('../middleware/auth');
+const { requireRole, requireCapability } = require('../middleware/auth');
 const { INDICATORS, DOMAINS } = require('../data/indicators'); // structural use only (codes, counts) — locale-invariant
 const { getIndicatorData } = require('../data/indicatorsI18n');
 const { checkDeviceCompliance, checkNetworkCompliance } = require('../data/order675');
@@ -11,7 +11,10 @@ const { computeStepStatuses, finalizeReviewStatus, overallProgress } = require('
 const { ValidationError, toLevel, toNonNegativeInt } = require('../utils/validate');
 
 const router = express.Router();
-router.use(requireRole('SCHOOL_TEAM'));
+// Both must hold: the role because every route below reads the session's
+// schoolId, the capability so an admin can suspend a school's access
+// without changing what kind of account it is.
+router.use(requireRole('SCHOOL_TEAM'), requireCapability('view.school'));
 
 async function getSchool(req) {
   return prisma.school.findUnique({ where: { id: req.session.user.schoolId } });

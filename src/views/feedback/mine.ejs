@@ -1,0 +1,62 @@
+<h1><%= t('feedback_mine_title') %></h1>
+<p class="subtitle"><%= t('feedback_mine_subtitle') %></p>
+
+<% if (submittedId) { %>
+  <div class="flash flash-success" role="status"><%= t('feedback_submitted', { id: submittedId }) %></div>
+<% } %>
+
+<div class="grid-3">
+  <div class="card stat"><div class="num"><%= tickets.length %></div><div class="label"><%= t('feedback_stat_total') %></div></div>
+  <div class="card stat"><div class="num"><%= openCount %></div><div class="label"><%= t('feedback_stat_open') %></div></div>
+  <div class="card stat"><div class="num"><%= closedCount %></div><div class="label"><%= t('feedback_stat_closed') %></div></div>
+</div>
+
+<div class="card card-flat">
+  <p class="small" style="margin:0;"><%= t('feedback_how_to') %></p>
+  <div class="btn-row" style="margin-top:0.6rem;">
+    <a class="btn btn-sm btn-secondary" href="/feedback/new"><%= t('feedback_new_title') %></a>
+  </div>
+</div>
+
+<% if (tickets.length === 0) { %>
+  <div class="card"><p><%= t('feedback_none_yet') %></p></div>
+<% } else { %>
+  <h2 id="my-tickets"><%= t('feedback_mine_title') %></h2>
+  <div class="table-scroll">
+    <table aria-labelledby="my-tickets">
+      <thead>
+        <tr>
+          <th scope="col">#</th>
+          <th scope="col"><%= t('feedback_th_comment') %></th>
+          <th scope="col"><%= t('feedback_th_where') %></th>
+          <th scope="col"><%= t('feedback_th_severity') %></th>
+          <th scope="col"><%= t('th_status') %></th>
+          <th scope="col"><%= t('feedback_th_response') %></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% tickets.forEach(function (ticket) { %>
+          <tr>
+            <th scope="row" style="background:none;font-weight:400;color:inherit;"><%= ticket.id %></th>
+            <td>
+              <%= ticket.comment %>
+              <br><span class="small"><%= new Date(ticket.createdAt).toLocaleString(lang) %></span>
+            </td>
+            <td class="small">
+              <span class="mono"><%= ticket.route %></span>
+              <% if (ticket.elementText) { %><br><span class="small">“<%= ticket.elementText %>”</span><% } %>
+            </td>
+            <td><span class="badge badge-<%= ticket.severity.toLowerCase() %>"><%= t('feedback_sev_' + ticket.severity.toLowerCase()) %></span></td>
+            <td><span class="badge badge-<%= ticket.status.toLowerCase() %>"><%= t('feedback_status_' + ticket.status.toLowerCase()) %></span></td>
+            <td class="small">
+              <% if (ticket.developerNote) { %>
+                <%= ticket.developerNote %>
+                <% if (ticket.triagedBy) { %><br><span class="small">— <%= ticket.triagedBy.name %></span><% } %>
+              <% } else { %>—<% } %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+<% } %>

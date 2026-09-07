@@ -1,6 +1,6 @@
 const express = require('express');
 const prisma = require('../config/db');
-const { requireRole } = require('../middleware/auth');
+const { requireCapability } = require('../middleware/auth');
 const { INDICATORS, DOMAINS } = require('../data/indicators');
 const { checkDeviceCompliance, checkNetworkCompliance } = require('../data/order675');
 const { logAction } = require('../services/audit');
@@ -8,7 +8,7 @@ const { schoolsWithLatestCycle, filterRows, toCsv, ENROLMENT_BANDS, selectOffici
 const { renderWheel, itemsFromRatings } = require('../services/wheelChart');
 
 const router = express.Router();
-router.use(requireRole('MINISTRY', 'ADMIN'));
+router.use(requireCapability('view.national', 'view.compliance'));
 
 router.get('/', async (req, res) => {
   const allRows = await schoolsWithLatestCycle();

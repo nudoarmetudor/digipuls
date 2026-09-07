@@ -1,9 +1,9 @@
 const express = require('express');
-const { requireRole } = require('../middleware/auth');
+const { requireCapability } = require('../middleware/auth');
 const { schoolsWithLatestCycle, filterRows, ENROLMENT_BANDS } = require('../services/schoolOverview');
 
 const router = express.Router();
-router.use(requireRole('PARTNER'));
+router.use(requireCapability('view.partner'));
 
 // Deliberately information/visualization only — no matching engine, no
 // "submit an offer and get a ranked shortlist" workflow. Partners get the

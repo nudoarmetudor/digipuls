@@ -266,7 +266,21 @@ async function seedSchoolsAndUsers(territories) {
   await prisma.user.create({
     data: { email: 'clasaviitorului@digipuls.md', passwordHash: await hash(DEMO_PASSWORD), name: 'Clasa Viitorului — Training Coordination', role: 'STRATEGIC_PARTNER' },
   });
-  console.log('Seeded 5 non-school demo accounts (admin, ministry, territorial, partner, strategic partner).');
+  // Two meta-mentors for the pilot. The second one is deliberately given a
+  // narrowed set of views, so the per-account permission editing is visible in
+  // the seeded data rather than only in theory.
+  await prisma.user.upsert({
+    where: { email: 'mentor1@digipuls.md' }, update: {},
+    data: { email: 'mentor1@digipuls.md', passwordHash: await hash(DEMO_PASSWORD), name: 'Meta-mentor — Nord', role: 'META_MENTOR' },
+  });
+  await prisma.user.upsert({
+    where: { email: 'mentor2@digipuls.md' }, update: {},
+    data: {
+      email: 'mentor2@digipuls.md', passwordHash: await hash(DEMO_PASSWORD), name: 'Meta-mentor — Sud', role: 'META_MENTOR',
+      capabilities: { create: [{ capability: 'view.regional', granted: false }] },
+    },
+  });
+  console.log('Seeded 7 non-school demo accounts (admin, ministry, territorial, partner, strategic partner, 2 meta-mentors).');
 }
 
 async function main() {

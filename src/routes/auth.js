@@ -7,7 +7,11 @@ const { loginRateLimit, recordFailedAttempt, clearAttempts } = require('../middl
 const router = express.Router();
 
 router.get('/login', (req, res) => {
-  res.render('auth/login', { title: res.locals.t('login_title'), error: null, layout: false });
+  // loadAccount redirects here with ?deactivated=1 when a live session's
+  // account has been switched off underneath it — otherwise the person is
+  // bounced to the login screen with no explanation at all.
+  const error = req.query.deactivated ? res.locals.t('login_deactivated') : null;
+  res.render('auth/login', { title: res.locals.t('login_title'), error, layout: false });
 });
 
 router.post('/login', loginRateLimit, async (req, res) => {

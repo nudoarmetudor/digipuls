@@ -48,6 +48,68 @@ Then open **http://localhost:3000** — see "Quick start" below for demo account
 
 Try it: log in as any school account, switch to **RU** or **RO** in the top navigation, and the entire assessment — all 19 indicator names, descriptions and level text, the wheel, the confirm/evidence workflow — renders in that language immediately. Then open **Display** and set dark mode at 150% text.
 
+## Accounts, permissions, and pilot feedback
+
+Meta-mentors are the first people to test DigiPuls against real school data, and
+they are not any of the existing roles. Two things follow from that.
+
+**Permissions are per account, not only per role.** `src/services/capabilities.js`
+defines eleven capabilities — which pages an account may open, which
+administrative powers it holds, whether it may report issues or triage them.
+Each role carries a sensible default set, and an admin can grant or revoke any
+individual capability for any individual person from **Accounts**
+(`/admin/users`). Only the *differences* from the role default are stored, so
+revising a role's defaults later still reaches everyone rather than being
+shadowed by frozen per-user copies.
+
+- The navigation menu is built from the same capability set the route guards
+  check, so nobody is ever shown a link that then refuses them.
+- Capabilities gate *access*, never data scope: granting `view.regional` does
+  not widen a territorial user beyond their own territory — that is still the
+  object-level check in `routes/territorial.js`.
+- Permissions and the active/inactive flag are re-read on **every request**
+  rather than cached in the session. Revoking access has to take effect now,
+  not whenever that person next happens to sign in.
+- Accounts are **deactivated**, not deleted, once they have acted in the
+  system: they are referenced by audit entries and by the cycles they
+  confirmed, and those references are the record of who did what. Deletion is
+  only offered for an account that has left no trace.
+- An admin cannot remove their own `admin.users` capability, deactivate
+  themselves, or delete themselves — that would lock the last door from the
+  inside.
+
+**Reporting an issue captures where, not just what.** With `feedback.submit`, a
+control appears in the top bar. Turn it on, click anything on the page, and a
+report form opens with the location already filled in:
+
+| Captured | How |
+|---|---|
+| The template that rendered the page | `res.render` is wrapped in `app.js`, so no route has to remember to pass it |
+| A CSS path to the element | walked client-side, stopping at the nearest id |
+| The element's tag, classes and telling attributes | `name`, `href`, `type`, `aria-label` |
+| **The translation keys whose text matches it** | resolved **server-side** against all three dictionaries |
+| Language, display settings, viewport, user agent | so a bug that only happens at 150% text in dark mode is reproducible |
+
+That fourth row is the one that earns its keep. A mentor reading the Russian
+interface clicks a button and writes "this is unclear"; the ticket says
+`i18n keys: save_inventory` and `Template: src/views/school/step-infra.ejs`,
+which is the difference between an hour of hunting and a minute. The key list
+is resolved on the server and any client-supplied one is ignored — otherwise a
+submitter could write arbitrary text into a field developers read as
+authoritative.
+
+Reporters see their own tickets and each one's status at `/feedback`; anyone
+with `feedback.triage` gets the whole backlog at `/feedback/backlog`, with a
+plain-text context block to paste into an issue tracker, a status, and a note
+back to the reporter.
+
+The overlay is progressive enhancement: the control is a plain link to a manual
+form at `/feedback/new`, upgraded by `public/js/feedback.js` into the
+click-to-report toggle. With JavaScript off, reports can still be filed — they
+just carry less context. It is keyboard-operable (focus an element, press
+Enter), and reads nothing beyond what is already on screen: no form values, no
+keystrokes.
+
 ## What this implements
 
 Every piece below traces directly to a specific design document in the MDSF vault (`../` from this folder) — nothing here was invented fresh:
@@ -78,6 +140,8 @@ Precise, so nothing here means something weaker than it sounds:
 | Continuation-cycle mechanism (maintain/grow/decay) | Implemented; no enforced 2-year schedule/reminders yet |
 | Step-by-step wizard with real-data-driven status | Implemented |
 | Multi-actor assessment | Partial — shared per-school login today, not per-person attribution (P1) |
+| Account management | Implemented — create, edit, deactivate, reset password, and per-account permissions |
+| Pilot feedback capture | Implemented — click-to-report overlay, reporter panel, developer backlog |
 | External validation workflow | Data model exists (`ValidationRecord`); no enforced workflow yet (P1) |
 | Transparent (non-automated) Ministry/partner overview | Implemented, including the one disclosed strategic-partner sort |
 | SIME integration | Mock provider + full seam; no live API connection |

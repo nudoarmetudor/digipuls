@@ -5,6 +5,8 @@ const expressLayouts = require('express-ejs-layouts');
 const morgan = require('morgan');
 const path = require('path');
 const prefs = require('./utils/prefs');
+const { loadAccount } = require('./middleware/auth');
+const { homeFor } = require('./services/capabilities');
 
 // No silent fallback in production — sessions signed with the checked-in
 // dev secret are not secure once real accounts/data exist on this instance.
@@ -43,6 +45,18 @@ app.use(
   })
 );
 
+// Records which template is being rendered, so a feedback ticket can name
+// the file a developer needs to open. Wrapping res.render here means no route
+// has to remember to pass it, and it cannot drift out of date.
+app.use((req, res, next) => {
+  const render = res.render.bind(res);
+  res.render = (view, options, callback) => {
+    res.locals.viewName = view;
+    return render(view, options, callback);
+  };
+  next();
+});
+
 // Make the logged-in user available to every view without passing it
 // explicitly from every route.
 app.use((req, res, next) => {
@@ -54,6 +68,11 @@ app.use((req, res, next) => {
   res.locals.demoMode = process.env.DEMO_MODE !== 'false';
   next();
 });
+
+// Re-reads the signed-in account on every request: whether it is still
+// active, and what it may currently do. See middleware/auth.js for why this
+// is a query rather than a value cached in the session.
+app.use(loadAccount);
 
 // --- Language ---------------------------------------------------------------
 // English, Romanian and Russian. The choice is remembered in the session for
@@ -142,20 +161,13 @@ app.use('/territorial', require('./routes/territorial'));
 app.use('/partner', require('./routes/partner'));
 app.use('/strategic', require('./routes/strategic'));
 app.use('/public-view', require('./routes/public'));
+app.use('/admin/users', require('./routes/adminUsers'));
 app.use('/admin', require('./routes/admin'));
+app.use('/feedback', require('./routes/feedback'));
 
 app.get('/', (req, res) => {
-  const user = req.session.user;
-  if (!user) return res.redirect('/login');
-  const home = {
-    SCHOOL_TEAM: '/school',
-    MINISTRY: '/ministry',
-    TERRITORIAL: '/territorial',
-    PARTNER: '/partner',
-    STRATEGIC_PARTNER: '/strategic',
-    ADMIN: '/admin',
-  };
-  res.redirect(home[user.role] || '/login');
+  if (!req.session.user) return res.redirect('/login');
+  res.redirect(homeFor(req.capabilities || new Set()));
 });
 
 // eslint-disable-next-line no-unused-vars
