@@ -53,6 +53,19 @@ review's own priority tiers, kept here so none of it gets silently dropped.
   sanity checks on every PR, so the test suite this session started
   actually gates merges.
 
+## P1.5 — the contract half of an expand/contract already in flight
+
+- **Drop `User.role`, `User.schoolId`, `User.territoryId`.** The
+  `Assignment` model replaced them: a person holds a list of posts, each a
+  role at an institution. The migration backfilled every account into one
+  assignment and application code no longer reads the old columns, but they
+  were deliberately left in place rather than dropped in the same step —
+  dropping them alongside the copy would have left no way back if the copy
+  were wrong. Once this model has run in production for a cycle, drop them,
+  and remove the legacy mirror-write in `routes/adminUsers.js`.
+- **Migrate `UserCapability` rows and drop that table too.** Superseded by
+  `AssignmentCapability` for the same reason and on the same schedule.
+
 ## P2 — meaningfully improves the product once P1 is solid
 
 - **Evidence-quality rules.** Right now "at least one evidence item" (any

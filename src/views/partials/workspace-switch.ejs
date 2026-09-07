@@ -1,0 +1,44 @@
+<%
+/* The workspace control: which post this tab is acting under.
+   Only shown when the person actually holds more than one — a single-post
+   account has nothing to switch between, and the control would be noise.
+
+   Each option is a plain link to /w/<id>/…, so switching is an ordinary
+   navigation. Opening two of them in two tabs gives two genuinely independent
+   contexts, which is the whole reason the active post lives in the URL rather
+   than in the session. Built on <details> so it opens without JavaScript. */
+const current = workspace;
+%>
+<details class="a11y workspace-switch">
+  <summary aria-label="<%= t('workspace_switch_label') %>">
+    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none"
+         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 7h11l-3-3"/><path d="M20 17H9l3 3"/>
+    </svg>
+    <span class="workspace-summary">
+      <%= t('role_' + current.role) %><% if (current.schoolName || current.territoryName) { %> ·
+        <%= current.schoolName || current.territoryName %><% } %>
+    </span>
+  </summary>
+  <div class="a11y-panel">
+    <h2 class="plain-heading" style="font-size:1rem;"><%= t('workspace_switch_title') %></h2>
+    <p class="small"><%= t('workspace_tab_note') %></p>
+    <ul class="workspace-list workspace-list-compact">
+      <% workspaces.forEach(function (w) { %>
+        <li>
+          <a class="workspace-card<%= w.id === current.id ? ' is-current' : '' %>" href="/w/<%= w.id %>/">
+            <span class="workspace-role"><%= t('role_' + w.role) %></span>
+            <span class="workspace-institution">
+              <% if (w.schoolName || w.territoryName) { %><%= w.schoolName || w.territoryName %>
+              <% } else { %><%= t('workspace_no_institution') %><% } %>
+            </span>
+            <% if (w.label) { %><span class="workspace-label"><%= w.label %></span><% } %>
+            <% if (w.id === current.id) { %>
+              <span class="visually-hidden"><%= t('workspace_current') %></span>
+            <% } %>
+          </a>
+        </li>
+      <% }) %>
+    </ul>
+  </div>
+</details>

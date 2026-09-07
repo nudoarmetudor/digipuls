@@ -1,6 +1,11 @@
 <%
+/* Account details plus the list of posts the person holds.
+
+   A person is not a role: Elena is a meta-mentor at one lyceum and the
+   DigiPuls coordinator at another, from one login. So the role, the
+   institution and the permissions all belong to the post, and this screen
+   edits a list of them rather than a single role field. */
 const isEdit = mode === 'edit';
-const action = isEdit ? '/admin/users/' + user.id : '/admin/users';
 const val = (k) => (user && user[k] !== undefined && user[k] !== null ? user[k] : '');
 %>
 <h1><%= isEdit ? t('admin_user_edit_title') : t('admin_user_new_title') %></h1>
@@ -8,106 +13,113 @@ const val = (k) => (user && user[k] !== undefined && user[k] !== null ? user[k] 
 
 <% if (errorMessage) { %><div class="flash flash-error" role="alert"><%= errorMessage %></div><% } %>
 
-<form method="POST" action="<%= action %>">
-  <div class="card">
-    <h2 class="plain-heading"><%= t('admin_user_section_account') %></h2>
-
+<div class="card">
+  <h2 class="plain-heading"><%= t('admin_user_section_account') %></h2>
+  <form method="POST" action="<%= isEdit ? href('/admin/users/' + user.id) : href('/admin/users') %>">
     <label for="f-name"><%= t('admin_user_name') %></label>
     <input type="text" id="f-name" name="name" value="<%= val('name') %>" required autocomplete="off">
 
     <label for="f-email"><%= t('login_email') %></label>
     <input type="email" id="f-email" name="email" value="<%= val('email') %>" required autocomplete="off">
 
-    <label for="f-role"><%= t('admin_user_role') %></label>
-    <select id="f-role" name="role" required>
-      <% roles.forEach(function (r) { %>
-        <option value="<%= r %>" <%= val('role') === r ? 'selected' : '' %>><%= t('role_' + r) %></option>
-      <% }) %>
-    </select>
-    <p class="help"><%= t('admin_user_role_help') %></p>
+    <% if (!isEdit) { %>
+      <h3 style="margin-top:1.2rem;"><%= t('admin_user_first_post') %></h3>
+      <p class="help"><%= t('admin_user_first_post_help') %></p>
+      <%- include('_post-fields', {
+            idPrefix: 'new',
+            role: typeof firstRole !== 'undefined' && firstRole ? firstRole : 'META_MENTOR',
+            schoolId: null, territoryId: null, label: '',
+            selected: typeof firstSelected !== 'undefined' ? firstSelected : null,
+            schools, territories, roles, capabilityGroups, roleDefaults, t
+          }) %>
+      <p class="help"><%= t('admin_user_create_password_note') %></p>
+    <% } %>
 
-    <div class="inline-fields">
-      <div>
-        <label for="f-schoolId"><%= t('admin_user_school') %></label>
-        <select id="f-schoolId" name="schoolId">
-          <option value="none">—</option>
-          <% schools.forEach(function (s) { %>
-            <option value="<%= s.id %>" <%= String(val('schoolId')) === String(s.id) ? 'selected' : '' %>><%= s.name %></option>
-          <% }) %>
-        </select>
-        <p class="help"><%= t('admin_user_school_help') %></p>
-      </div>
-      <div>
-        <label for="f-territoryId"><%= t('admin_user_territory') %></label>
-        <select id="f-territoryId" name="territoryId">
-          <option value="none">—</option>
-          <% territories.forEach(function (tr) { %>
-            <option value="<%= tr.id %>" <%= String(val('territoryId')) === String(tr.id) ? 'selected' : '' %>><%= tr.name %></option>
-          <% }) %>
-        </select>
-        <p class="help"><%= t('admin_user_territory_help') %></p>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2 class="plain-heading"><%= t('admin_user_capabilities') %></h2>
-    <p class="small"><%= t('admin_user_capabilities_help') %></p>
-
-    <% capabilityGroups.forEach(function (group) { %>
-      <fieldset class="cap-group">
-        <legend><%= t('cap_group_' + group.key) %></legend>
-        <div class="cap-list">
-          <% group.capabilities.forEach(function (cap) { %>
-            <%
-              const id = 'cap-' + cap.replace(/\W/g, '-');
-              // Which roles hand this out by default, so an admin can see at a
-              // glance whether a tick is a deliberate exception or just the
-              // role behaving normally.
-              const defaultForRoles = roles.filter(function (r) { return (roleDefaults[r] || []).indexOf(cap) !== -1; });
-            %>
-            <div class="cap-item">
-              <label class="checkbox" for="<%= id %>">
-                <input type="checkbox" id="<%= id %>" name="capabilities" value="<%= cap %>"
-                       <%= selected.has(cap) ? 'checked' : '' %>>
-                <span>
-                  <%= t('cap_' + cap) %>
-                  <span class="cap-code"><%= cap %></span>
-                  <% if (defaultForRoles.length) { %>
-                    <span class="cap-default"><%= t('admin_user_cap_default', { roles: defaultForRoles.map(function (r) { return t('role_' + r); }).join(', ') }) %></span>
-                  <% } %>
-                </span>
-              </label>
-            </div>
-          <% }) %>
-        </div>
-      </fieldset>
-    <% }) %>
-  </div>
-
-  <div class="card">
-    <div class="btn-row">
+    <div class="btn-row" style="margin-top:1rem;">
       <button class="btn" type="submit"><%= isEdit ? t('admin_user_save') : t('admin_user_create') %></button>
-      <a class="btn btn-secondary" href="/admin/users"><%= t('cancel') %></a>
+      <a class="btn btn-secondary" href="<%= href('/admin/users') %>"><%= t('cancel') %></a>
     </div>
-    <% if (!isEdit) { %><p class="help"><%= t('admin_user_create_password_note') %></p><% } %>
-  </div>
-</form>
+  </form>
+</div>
 
 <% if (isEdit) { %>
+  <h2 id="posts-h"><%= t('admin_user_posts') %></h2>
+  <p class="small"><%= t('admin_user_posts_help') %></p>
+
+  <% if (posts.length === 0) { %>
+    <div class="card"><p><%= t('admin_user_no_posts') %></p></div>
+  <% } %>
+
+  <% posts.forEach(function (post) { %>
+    <section class="card" aria-labelledby="post-<%= post.id %>">
+      <h3 id="post-<%= post.id %>">
+        <%= t('role_' + post.role) %><% if (post.institution) { %> · <%= post.institution %><% } %>
+        <% if (!post.isActive) { %> <span class="badge badge-maintained"><%= t('admin_user_inactive') %></span><% } %>
+      </h3>
+
+      <form method="POST" action="<%= href('/admin/users/' + (user.id) + '/assignments/' + (post.id)) %>">
+        <div class="inline-fields">
+          <div>
+            <label for="label-<%= post.id %>"><%= t('admin_user_post_label') %></label>
+            <input type="text" id="label-<%= post.id %>" name="label" value="<%= post.label || '' %>"
+                   placeholder="<%= t('admin_user_post_label_placeholder') %>">
+          </div>
+          <div>
+            <label class="checkbox" for="active-<%= post.id %>" style="margin-top:1.7rem;">
+              <input type="checkbox" id="active-<%= post.id %>" name="isActive" value="true" <%= post.isActive ? 'checked' : '' %>>
+              <span><%= t('admin_user_post_active') %></span>
+            </label>
+          </div>
+        </div>
+
+        <%- include('_capability-picker', {
+              idPrefix: 'p' + post.id, role: post.role, selected: post.selected,
+              capabilityGroups, roleDefaults, roles, t
+            }) %>
+
+        <div class="btn-row" style="margin-top:0.8rem;">
+          <button class="btn btn-sm" type="submit">
+            <%= t('admin_user_save') %><span class="visually-hidden"> — <%= t('role_' + post.role) %></span>
+          </button>
+        </div>
+      </form>
+
+      <form method="POST" action="<%= href('/admin/users/' + (user.id) + '/assignments/' + (post.id) + '/delete') %>"
+            onsubmit="return confirm('<%= t('admin_user_post_remove_confirm') %>');" style="margin-top:0.6rem;">
+        <button class="btn btn-sm btn-danger" type="submit">
+          <%= t('admin_user_post_remove') %><span class="visually-hidden"> — <%= t('role_' + post.role) %></span>
+        </button>
+      </form>
+    </section>
+  <% }) %>
+
+  <section class="card" aria-labelledby="add-post-h">
+    <h2 class="plain-heading" id="add-post-h"><%= t('admin_user_post_add') %></h2>
+    <form method="POST" action="<%= href('/admin/users/' + (user.id) + '/assignments') %>">
+      <%- include('_post-fields', {
+            idPrefix: 'add', role: 'META_MENTOR', schoolId: null, territoryId: null, label: '',
+            selected: null, schools, territories, roles, capabilityGroups, roleDefaults, t
+          }) %>
+      <div class="btn-row" style="margin-top:0.8rem;">
+        <button class="btn" type="submit"><%= t('admin_user_post_add') %></button>
+      </div>
+      <p class="help"><%= t('admin_user_post_add_help') %></p>
+    </form>
+  </section>
+
   <div class="card">
     <h2 class="plain-heading"><%= t('admin_user_danger_title') %></h2>
     <div class="btn-row">
-      <form method="POST" action="/admin/users/<%= user.id %>/reset-password">
+      <form method="POST" action="<%= href('/admin/users/' + (user.id) + '/reset-password') %>">
         <button class="btn btn-sm btn-secondary" type="submit"><%= t('admin_user_reset_password') %></button>
       </form>
-      <form method="POST" action="/admin/users/<%= user.id %>/active">
+      <form method="POST" action="<%= href('/admin/users/' + (user.id) + '/active') %>">
         <input type="hidden" name="active" value="<%= user.isActive ? 'false' : 'true' %>">
         <button class="btn btn-sm btn-secondary" type="submit">
           <%= user.isActive ? t('admin_user_deactivate') : t('admin_user_activate') %>
         </button>
       </form>
-      <form method="POST" action="/admin/users/<%= user.id %>/delete"
+      <form method="POST" action="<%= href('/admin/users/' + (user.id) + '/delete') %>"
             onsubmit="return confirm('<%= t('admin_user_delete_confirm') %>');">
         <button class="btn btn-sm btn-danger" type="submit"><%= t('admin_user_delete') %></button>
       </form>

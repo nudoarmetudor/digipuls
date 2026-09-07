@@ -19,7 +19,7 @@ const nc = cycle.networkChecklist || {};
   <div class="grid-2">
     <section aria-labelledby="inv-h">
       <h3 id="inv-h" style="font-size:0.95rem;"><%= t('device_inventory') %></h3>
-      <form method="POST" action="/school/cycles/<%= cycle.id %>/device">
+      <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/device') %>">
         <div class="grid-2">
           <% deviceFields.forEach(f => { %>
             <div>
@@ -34,7 +34,7 @@ const nc = cycle.networkChecklist || {};
 
     <section aria-labelledby="net-h">
       <h3 id="net-h" style="font-size:0.95rem;"><%= t('network_checklist') %></h3>
-      <form method="POST" action="/school/cycles/<%= cycle.id %>/network">
+      <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/network') %>">
         <% networkFields.forEach(f => { %>
           <label class="checkbox" for="net-<%= f %>">
             <input type="checkbox" id="net-<%= f %>" name="<%= f %>" <%= nc[f] ? 'checked' : '' %>>
@@ -100,5 +100,5 @@ const nc = cycle.networkChecklist || {};
 </div>
 
 <div class="card card-centre">
-  <a class="btn btn-secondary" href="/school/cycles/<%= cycle.id %>"><span aria-hidden="true">←</span> <%= t('back_to_overview') %></a>
+  <a class="btn btn-secondary" href="<%= href('/school/cycles/' + (cycle.id)) %>"><span aria-hidden="true">←</span> <%= t('back_to_overview') %></a>
 </div>

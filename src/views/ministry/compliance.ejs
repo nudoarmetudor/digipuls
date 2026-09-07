@@ -25,7 +25,7 @@
             <td><span class="badge badge-<%= r.networkCompliance.compliant ? 'pass' : 'fail' %>"><%= r.networkCompliance.compliant ? t('ok') : t('gap') %></span></td>
             <td><span class="badge badge-<%= r.deviceCompliance.compliant ? 'pass' : 'fail' %>"><%= r.deviceCompliance.compliant ? t('ok') : t('gap') %></span></td>
             <td>
-              <a class="plain" href="/ministry/schools/<%= r.school.id %>">
+              <a class="plain" href="<%= href('/ministry/schools/' + (r.school.id)) %>">
                 <%= t('details') %><span class="visually-hidden"> — <%= r.school.name %></span> <span aria-hidden="true">→</span>
               </a>
             </td>

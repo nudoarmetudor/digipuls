@@ -9,9 +9,9 @@
 const links = [];
 if (currentUser) {
   // The workspace link needs a school as well as the capability: an admin
-  // holds every capability but has no school, and the promise this menu makes
-  // is that nothing in it will refuse you.
-  if (can('view.school') && currentUser.schoolId) {
+  // holds every capability but is not attached to a school, and the promise
+  // this menu makes is that nothing in it will refuse you.
+  if (can('view.school') && workspace && workspace.schoolId) {
     links.push(['/school', t('nav_dashboard')], ['/school/history', t('nav_my_progress')]);
   }
   if (can('view.national')) links.push(['/ministry', t('nav_national_dashboard')]);
@@ -33,6 +33,9 @@ links.push(['/public-view/schools', t('nav_public_view')]);
     <% links.forEach(function (l) { %>
       <a href="<%= l[0] %>" <%- currentPath === l[0] ? 'aria-current="page"' : '' %>><%= l[1] %></a>
     <% }) %>
+    <% if (currentUser && workspaces.length > 1) { %>
+      <%- include('workspace-switch') %>
+    <% } %>
     <% if (currentUser && can('feedback.submit')) { %>
       <%- include('feedback-toggle') %>
     <% } %>
@@ -41,13 +44,15 @@ links.push(['/public-view/schools', t('nav_public_view')]);
     <% if (currentUser) { %>
       <span class="userbox">
         <span><%= currentUser.name %></span>
-        <span class="role-chip"><%= currentUser.role %></span>
+        <% if (workspace) { %>
+          <span class="role-chip"><%= t('role_' + workspace.role) %></span>
+        <% } %>
       </span>
-      <form action="/logout" method="POST">
+      <form action="<%= href('/logout') %>" method="POST">
         <button class="btn btn-sm btn-secondary" type="submit"><%= t('nav_logout') %></button>
       </form>
     <% } else { %>
-      <a href="/login"><%= t('nav_login') %></a>
+      <a href="<%= href('/login') %>"><%= t('nav_login') %></a>
     <% } %>
   </nav>
 </header>

@@ -31,7 +31,7 @@ const evidenceTypes = [
     </p>
   <% } %>
 
-  <form method="POST" action="/school/cycles/<%= cycle.id %>/ratings/<%= ind.code %>">
+  <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/ratings/' + (ind.code)) %>">
     <input type="hidden" name="returnStep" value="<%= ind.domain %>">
     <fieldset style="border:none;padding:0;margin:0;">
       <legend class="visually-hidden"><%= t('level_options_label') %> — <%= ind.code %></legend>
@@ -73,7 +73,7 @@ const evidenceTypes = [
       <% } else { %>
         <p class="small text-bad"><%= t('assessment_no_evidence') %></p>
       <% } %>
-      <form method="POST" action="/school/cycles/<%= cycle.id %>/ratings/<%= ind.code %>/evidence">
+      <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/ratings/' + (ind.code) + '/evidence') %>">
         <input type="hidden" name="returnStep" value="<%= ind.domain %>">
         <div class="inline-fields">
           <div>

@@ -42,7 +42,7 @@
             <% } else { %>—<% } %>
           </td>
           <td>
-            <a class="plain" href="/territorial/schools/<%= r.school.id %>">
+            <a class="plain" href="<%= href('/territorial/schools/' + (r.school.id)) %>">
               <%= t('details') %><span class="visually-hidden"> — <%= r.school.name %></span> <span aria-hidden="true">→</span>
             </a>
           </td>

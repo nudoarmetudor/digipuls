@@ -1,6 +1,7 @@
 const express = require('express');
 const prisma = require('../config/db');
 const { requireRole, requireCapability } = require('../middleware/auth');
+const { activeSchoolId } = require('../middleware/workspace');
 const { INDICATORS, DOMAINS } = require('../data/indicators'); // structural use only (codes, counts) — locale-invariant
 const { getIndicatorData } = require('../data/indicatorsI18n');
 const { checkDeviceCompliance, checkNetworkCompliance } = require('../data/order675');
@@ -17,7 +18,7 @@ const router = express.Router();
 router.use(requireRole('SCHOOL_TEAM'), requireCapability('view.school'));
 
 async function getSchool(req) {
-  return prisma.school.findUnique({ where: { id: req.session.user.schoolId } });
+  return prisma.school.findUnique({ where: { id: activeSchoolId(req) } });
 }
 
 router.get('/', async (req, res) => {
@@ -37,14 +38,14 @@ router.get('/', async (req, res) => {
 router.post('/cycles/start', async (req, res) => {
   const school = await getSchool(req);
   const existingDraft = await prisma.assessmentCycle.findFirst({ where: { schoolId: school.id, status: 'DRAFT' } });
-  if (existingDraft) return res.redirect(`/school/cycles/${existingDraft.id}`);
+  if (existingDraft) return res.redirect(res.locals.href(`/school/cycles/${existingDraft.id}`));
 
   const hasConfirmed = await prisma.assessmentCycle.findFirst({ where: { schoolId: school.id, status: 'CONFIRMED' } });
   const cycle = hasConfirmed
     ? await cycleService.startContinuationCycle(school.id)
     : await cycleService.startFirstCycle(school.id);
   await logAction(req.session.user.id, hasConfirmed ? 'START_CONTINUATION_CYCLE' : 'START_FIRST_CYCLE', 'AssessmentCycle', cycle.id, null);
-  res.redirect(`/school/cycles/${cycle.id}`);
+  res.redirect(res.locals.href(`/school/cycles/${cycle.id}`));
 });
 
 async function loadCycleForSchool(req, res, next) {
@@ -58,7 +59,7 @@ async function loadCycleForSchool(req, res, next) {
       previousCycle: { include: { ratings: true } },
     },
   });
-  if (!cycle || cycle.schoolId !== req.session.user.schoolId) {
+  if (!cycle || cycle.schoolId !== activeSchoolId(req)) {
     return res.status(404).render('error', { title: res.locals.t('err_not_found'), message: res.locals.t('err_cycle_not_found') });
   }
   req.cycle = cycle;
@@ -76,7 +77,7 @@ function requireDraftCycle(req, res, next) {
     const msg = encodeURIComponent(
       res.locals.t('err_cycle_locked')
     );
-    return res.redirect(`/school/cycles/${req.cycle.id}/step/review?error=${msg}`);
+    return res.redirect(res.locals.href(`/school/cycles/${req.cycle.id}/step/review?error=${msg}`));
   }
   next();
 }
@@ -181,7 +182,7 @@ router.post('/cycles/:id/ratings/:code', loadCycleForSchool, requireDraftCycle, 
   } catch (e) {
     if (!(e instanceof ValidationError)) throw e;
     const msg = encodeURIComponent(res.locals.t('err_invalid_level'));
-    return res.redirect(`/school/cycles/${cycle.id}/step/${returnStep}?error=${msg}#ind-${code}`);
+    return res.redirect(res.locals.href(`/school/cycles/${cycle.id}/step/${returnStep}?error=${msg}#ind-${code}`));
   }
 
   // Hard enforcement of the compliance floor described in Annex A v2: D1/D2
@@ -208,7 +209,7 @@ router.post('/cycles/:id/ratings/:code', loadCycleForSchool, requireDraftCycle, 
     await prisma.indicatorRating.update({ where: { id: rating.id }, data: { level, comment } });
   }
   await logAction(req.session.user.id, 'SET_RATING', 'IndicatorRating', rating.id, `${code} -> level ${level}`);
-  res.redirect(`/school/cycles/${cycle.id}/step/${returnStep}#ind-${code}`);
+  res.redirect(res.locals.href(`/school/cycles/${cycle.id}/step/${returnStep}#ind-${code}`));
 });
 
 router.post('/cycles/:id/ratings/:code/evidence', loadCycleForSchool, requireDraftCycle, async (req, res) => {
@@ -223,7 +224,7 @@ router.post('/cycles/:id/ratings/:code/evidence', loadCycleForSchool, requireDra
   });
   await logAction(req.session.user.id, 'ADD_EVIDENCE', 'IndicatorRating', rating.id, `${type}: ${description}`);
   const returnStep = req.body.returnStep || code[0];
-  res.redirect(`/school/cycles/${cycle.id}/step/${returnStep}#ind-${code}`);
+  res.redirect(res.locals.href(`/school/cycles/${cycle.id}/step/${returnStep}#ind-${code}`));
 });
 
 router.post('/cycles/:id/device', loadCycleForSchool, requireDraftCycle, async (req, res) => {
@@ -235,7 +236,7 @@ router.post('/cycles/:id/device', loadCycleForSchool, requireDraftCycle, async (
   } catch (e) {
     if (!(e instanceof ValidationError)) throw e;
     const msg = encodeURIComponent(res.locals.t('err_invalid_number'));
-    return res.redirect(`/school/cycles/${cycle.id}/step/infra?error=${msg}`);
+    return res.redirect(res.locals.href(`/school/cycles/${cycle.id}/step/infra?error=${msg}`));
   }
   await prisma.deviceInventory.upsert({
     where: { cycleId: cycle.id },
@@ -243,7 +244,7 @@ router.post('/cycles/:id/device', loadCycleForSchool, requireDraftCycle, async (
     create: { cycleId: cycle.id, ...data },
   });
   await logAction(req.session.user.id, 'UPDATE_DEVICE_INVENTORY', 'AssessmentCycle', cycle.id, null);
-  res.redirect(`/school/cycles/${cycle.id}/step/infra`);
+  res.redirect(res.locals.href(`/school/cycles/${cycle.id}/step/infra`));
 });
 
 router.post('/cycles/:id/network', loadCycleForSchool, requireDraftCycle, async (req, res) => {
@@ -257,17 +258,17 @@ router.post('/cycles/:id/network', loadCycleForSchool, requireDraftCycle, async 
     create: { cycleId: cycle.id, ...data },
   });
   await logAction(req.session.user.id, 'UPDATE_NETWORK_CHECKLIST', 'AssessmentCycle', cycle.id, null);
-  res.redirect(`/school/cycles/${cycle.id}/step/infra`);
+  res.redirect(res.locals.href(`/school/cycles/${cycle.id}/step/infra`));
 });
 
 router.post('/cycles/:id/confirm', loadCycleForSchool, async (req, res) => {
   const cycle = req.cycle;
-  if (cycle.status === 'CONFIRMED') return res.redirect(`/school/cycles/${cycle.id}/plan`);
+  if (cycle.status === 'CONFIRMED') return res.redirect(res.locals.href(`/school/cycles/${cycle.id}/plan`));
   const school = await getSchool(req);
   const unrated = cycle.ratings.filter((r) => r.level === null || r.level === undefined);
   if (unrated.length > 0) {
     const msg = encodeURIComponent(`${unrated.length} indicator(s) still need a rating before this cycle can be confirmed: ${unrated.map((r) => r.indicatorCode).join(', ')}.`);
-    return res.redirect(`/school/cycles/${cycle.id}/step/review?error=${msg}`);
+    return res.redirect(res.locals.href(`/school/cycles/${cycle.id}/step/review?error=${msg}`));
   }
   // Enforce the evidence threshold: Level 2+ requires at least one evidence item.
   const missingEvidence = cycle.ratings.filter((r) => r.level >= 2 && r.evidences.length === 0);
@@ -276,7 +277,7 @@ router.post('/cycles/:id/confirm', loadCycleForSchool, async (req, res) => {
       `${missingEvidence.length} indicator(s) are rated Level 2 or above without any evidence attached: ` +
       `${missingEvidence.map((r) => r.indicatorCode).join(', ')}. Evidence is required from Level 2 upward.`
     );
-    return res.redirect(`/school/cycles/${cycle.id}/step/review?error=${msg}`);
+    return res.redirect(res.locals.href(`/school/cycles/${cycle.id}/step/review?error=${msg}`));
   }
   await prisma.assessmentCycle.update({
     where: { id: cycle.id },
@@ -284,7 +285,7 @@ router.post('/cycles/:id/confirm', loadCycleForSchool, async (req, res) => {
   });
   await prisma.school.update({ where: { id: school.id }, data: { enrolmentBand: require('../data/order675').bandFor(school.enrolmentTotal) } });
   await logAction(req.session.user.id, 'CONFIRM_CYCLE', 'AssessmentCycle', cycle.id, null);
-  res.redirect(`/school/cycles/${cycle.id}/plan`);
+  res.redirect(res.locals.href(`/school/cycles/${cycle.id}/plan`));
 });
 
 // -------------------- Development plan (Annex C) --------------------
@@ -321,7 +322,7 @@ router.post('/cycles/:id/plan/priorities', loadCycleForSchool, async (req, res) 
     },
   });
   await logAction(req.session.user.id, 'ADD_PLAN_PRIORITY', 'DevelopmentPlan', plan.id, indicatorCode);
-  res.redirect(`/school/cycles/${cycle.id}/plan`);
+  res.redirect(res.locals.href(`/school/cycles/${cycle.id}/plan`));
 });
 
 router.post('/cycles/:id/plan/details', loadCycleForSchool, async (req, res) => {
@@ -333,7 +334,7 @@ router.post('/cycles/:id/plan/details', loadCycleForSchool, async (req, res) => 
     where: { id: plan.id },
     data: { fundingSource, approvingAuthority, stakeholderConsultationNotes },
   });
-  res.redirect(`/school/cycles/${cycle.id}/plan`);
+  res.redirect(res.locals.href(`/school/cycles/${cycle.id}/plan`));
 });
 
 router.post('/cycles/:id/plan/publish', loadCycleForSchool, async (req, res) => {
@@ -341,7 +342,7 @@ router.post('/cycles/:id/plan/publish', loadCycleForSchool, async (req, res) => 
   if (!cycle.plan) return res.status(400).render('error', { title: res.locals.t('err_no_plan'), message: res.locals.t('err_no_plan_body') });
   await prisma.developmentPlan.update({ where: { id: cycle.plan.id }, data: { publishedAt: new Date() } });
   await logAction(req.session.user.id, 'PUBLISH_PLAN', 'DevelopmentPlan', cycle.plan.id, null);
-  res.redirect(`/school/cycles/${cycle.id}/plan/document`);
+  res.redirect(res.locals.href(`/school/cycles/${cycle.id}/plan/document`));
 });
 
 router.get('/cycles/:id/plan/document', loadCycleForSchool, async (req, res) => {

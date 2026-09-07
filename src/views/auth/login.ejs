@@ -28,7 +28,7 @@ const demoAccounts = [
         <h1><%= t('login_title') %></h1>
         <p class="subtitle"><%= t('login_subtitle') %></p>
         <% if (error) { %><div class="flash flash-error" role="alert"><%= error %></div><% } %>
-        <form method="POST" action="/login">
+        <form method="POST" action="<%= href('/login') %>">
           <label for="login-email"><%= t('login_email') %></label>
           <input type="email" id="login-email" name="email" autocomplete="username" required autofocus>
           <label for="login-password"><%= t('login_password') %></label>

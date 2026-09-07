@@ -7,7 +7,7 @@
 <nav class="lang-switch" aria-label="<%= t('lang_switch_label') %>">
   <% SUPPORTED_LANGS.forEach(function (code, i) { %>
     <% if (i > 0) { %><span aria-hidden="true">/</span><% } %>
-    <a href="/lang/<%= code %>?back=<%= encodeURIComponent(currentPath) %>"
+    <a href="/lang/<%= code %>?back=<%= encodeURIComponent(href(currentPath)) %>"
        hreflang="<%= code %>" lang="<%= code %>"
        <%- lang === code ? 'aria-current="true"' : '' %>>
       <span aria-hidden="true"><%= LANG_SHORT[code] %></span>

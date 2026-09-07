@@ -281,6 +281,48 @@ async function seedSchoolsAndUsers(territories) {
     },
   });
   console.log('Seeded 7 non-school demo accounts (admin, ministry, territorial, partner, strategic partner, 2 meta-mentors).');
+
+  // --- posts -----------------------------------------------------------------
+  // Every account gets one assignment mirroring the role and institution it was
+  // seeded with — the same thing the migration does for existing data.
+  const allUsers = await prisma.user.findMany();
+  for (const u of allUsers) {
+    const existing = await prisma.assignment.findFirst({
+      where: { userId: u.id, role: u.role, schoolId: u.schoolId, territoryId: u.territoryId },
+    });
+    if (!existing) {
+      await prisma.assignment.create({
+        data: { userId: u.id, role: u.role, schoolId: u.schoolId, territoryId: u.territoryId },
+      });
+    }
+  }
+
+  // The worked example for holding two posts at once: Elena is a meta-mentor
+  // for one lyceum and the DigiPuls coordinator at another, from one login.
+  // Seeded because the multi-post paths are easy to get wrong and hard to
+  // notice when every demo account has exactly one role.
+  const elena = await prisma.user.upsert({
+    where: { email: 'elena.gurita@digipuls.md' },
+    update: {},
+    data: {
+      email: 'elena.gurita@digipuls.md',
+      passwordHash: await hash(DEMO_PASSWORD),
+      name: 'Elena Guriță',
+      role: 'META_MENTOR',
+    },
+  });
+  const mentoredSchool = ghibu;      // stands in for LT „Boris Dînga", Criuleni
+  const coordinatedSchool = drochia; // stands in for LT „Gaudeamus", Chișinău
+  for (const post of [
+    { role: 'META_MENTOR', schoolId: mentoredSchool.id, territoryId: null, label: 'Meta-mentor' },
+    { role: 'SCHOOL_TEAM', schoolId: coordinatedSchool.id, territoryId: null, label: 'Coordonator DigiPuls' },
+  ]) {
+    const existing = await prisma.assignment.findFirst({
+      where: { userId: elena.id, role: post.role, schoolId: post.schoolId, territoryId: post.territoryId },
+    });
+    if (!existing) await prisma.assignment.create({ data: { userId: elena.id, ...post } });
+  }
+  console.log('Seeded posts for every account, plus a two-post example (elena.gurita@digipuls.md).');
 }
 
 async function main() {

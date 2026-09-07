@@ -1,0 +1,43 @@
+<%
+/* Role + institution + label for a post being created.
+   The school and territory selects are both rendered: which one applies
+   depends on the role chosen in the same form, and the server drops whichever
+   the role can't take (see scopeFor in routes/adminUsers.js). Doing it
+   server-side rather than hiding fields with JavaScript keeps the form
+   correct with scripting off. */
+%>
+<div class="inline-fields">
+  <div>
+    <label for="<%= idPrefix %>-role"><%= t('admin_user_role') %></label>
+    <select id="<%= idPrefix %>-role" name="role" required>
+      <% roles.forEach(function (r) { %>
+        <option value="<%= r %>" <%= role === r ? 'selected' : '' %>><%= t('role_' + r) %></option>
+      <% }) %>
+    </select>
+  </div>
+  <div>
+    <label for="<%= idPrefix %>-school"><%= t('admin_user_school') %></label>
+    <select id="<%= idPrefix %>-school" name="schoolId">
+      <option value="none">—</option>
+      <% schools.forEach(function (s) { %>
+        <option value="<%= s.id %>" <%= String(schoolId) === String(s.id) ? 'selected' : '' %>><%= s.name %></option>
+      <% }) %>
+    </select>
+  </div>
+  <div>
+    <label for="<%= idPrefix %>-territory"><%= t('admin_user_territory') %></label>
+    <select id="<%= idPrefix %>-territory" name="territoryId">
+      <option value="none">—</option>
+      <% territories.forEach(function (tr) { %>
+        <option value="<%= tr.id %>" <%= String(territoryId) === String(tr.id) ? 'selected' : '' %>><%= tr.name %></option>
+      <% }) %>
+    </select>
+  </div>
+  <div>
+    <label for="<%= idPrefix %>-label"><%= t('admin_user_post_label') %></label>
+    <input type="text" id="<%= idPrefix %>-label" name="label" value="<%= label || '' %>"
+           placeholder="<%= t('admin_user_post_label_placeholder') %>">
+  </div>
+</div>
+<p class="help"><%= t('admin_user_scope_help') %></p>
+<%- include('_capability-picker', { idPrefix, role, selected, capabilityGroups, roleDefaults, roles, t }) %>

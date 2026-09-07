@@ -4,7 +4,7 @@
 <% if (errorMessage) { %><div class="flash flash-error" role="alert"><%= errorMessage %></div><% } %>
 
 <div class="card">
-  <form method="POST" action="/feedback/tickets">
+  <form method="POST" action="<%= href('/feedback/tickets') %>">
     <label for="f-route"><%= t('feedback_field_route') %></label>
     <input type="text" id="f-route" name="route" value="<%= body.route || '' %>" placeholder="/school/cycles/1/step/infra">
     <p class="help"><%= t('feedback_field_route_help') %></p>
@@ -25,7 +25,7 @@
 
     <div class="btn-row" style="margin-top:0.8rem;">
       <button class="btn" type="submit"><%= t('feedback_form_submit') %></button>
-      <a class="btn btn-secondary" href="/feedback"><%= t('cancel') %></a>
+      <a class="btn btn-secondary" href="<%= href('/feedback') %>"><%= t('cancel') %></a>
     </div>
   </form>
 </div>

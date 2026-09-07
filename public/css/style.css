@@ -568,6 +568,17 @@ a:hover { text-decoration: underline; }
   padding: 1rem;
   text-align: left;
 }
+/* The panel is a light surface hanging inside the dark masthead, so the
+   masthead's own link colour must not leak into it — `.topbar a` would
+   otherwise paint this content in --topbar-text on a pale background, which
+   measured 1.13:1. Anything dropped into a panel gets the surface palette. */
+.topbar .a11y-panel,
+.topbar .a11y-panel a { color: var(--text); }
+.topbar .a11y-panel a.workspace-card { color: var(--text); }
+.topbar .a11y-panel .workspace-role { color: var(--text-heading); }
+.topbar .a11y-panel .small,
+.topbar .a11y-panel .workspace-label { color: var(--text-muted); }
+
 .a11y-panel fieldset { border: none; margin: 0 0 0.9rem; padding: 0; }
 .a11y-panel legend {
   font-weight: 700;
@@ -1000,6 +1011,48 @@ footer a { color: var(--primary-text); }
 .cap-item { margin: 0; }
 .cap-item .cap-code { font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-muted); }
 .cap-default { font-size: 0.72rem; color: var(--text-muted); }
+
+/* ===========================================================================
+   Posts and the role-switcher
+   =========================================================================== */
+.workspace-switch > summary { max-width: 18rem; }
+.workspace-summary { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.workspace-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.6rem; }
+.workspace-list-compact { gap: 0.35rem; }
+
+.workspace-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.8rem 1rem;
+  min-height: var(--tap);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none !important;
+}
+.workspace-card:hover { border-color: var(--primary); background: var(--surface-alt); }
+.workspace-card.is-current { border-color: var(--primary); border-width: 2px; background: var(--primary-soft); }
+.workspace-role { font-weight: 700; color: var(--text-heading); }
+.workspace-institution { font-size: 0.92rem; }
+.workspace-label { font-size: 0.85rem; color: var(--text-muted); font-style: italic; }
+/* The card is a flex column, so a badge would otherwise stretch the full width. */
+.workspace-card .badge { align-self: flex-start; margin-top: 0.2rem; }
+
+/* One person's posts, in the account list. */
+.post-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.3rem; }
+.post-list li { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: baseline; }
+
+.cap-group-title {
+  margin: 0.6rem 0 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
 
 /* ===========================================================================
    Narrow viewports

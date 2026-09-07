@@ -139,8 +139,37 @@ function homeFor(capabilities, user) {
   return found ? found[1] : '/public-view/schools';
 }
 
+// How a role relates to an institution.
+//
+// Two different questions, and conflating them was a bug waiting to happen:
+//   * "needs"  — the post is meaningless without one. A school-team post has
+//     to name a school; a territorial post has to name a territory.
+//   * "allows" — the post may name one. A meta-mentor mentors a *particular*
+//     school ("Elena is meta-mentor for LT Boris Dînga"), but may also work
+//     across a territory or nationally, so the institution is optional.
+// Ministry and Admin posts are national and take neither.
+function roleNeedsSchool(role) {
+  return role === 'SCHOOL_TEAM';
+}
+
+function roleNeedsTerritory(role) {
+  return role === 'TERRITORIAL';
+}
+
+function roleAllowsSchool(role) {
+  return role === 'SCHOOL_TEAM' || role === 'META_MENTOR';
+}
+
+function roleAllowsTerritory(role) {
+  return role === 'TERRITORIAL' || role === 'META_MENTOR';
+}
+
 module.exports = {
   CAPABILITIES,
+  roleNeedsSchool,
+  roleNeedsTerritory,
+  roleAllowsSchool,
+  roleAllowsTerritory,
   CAPABILITY_GROUPS,
   ROLES,
   ROLE_DEFAULTS,

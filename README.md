@@ -53,11 +53,11 @@ Try it: log in as any school account, switch to **RU** or **RO** in the top navi
 Meta-mentors are the first people to test DigiPuls against real school data, and
 they are not any of the existing roles. Two things follow from that.
 
-**Permissions are per account, not only per role.** `src/services/capabilities.js`
+**Permissions are per post, not per person.** `src/services/capabilities.js`
 defines eleven capabilities — which pages an account may open, which
 administrative powers it holds, whether it may report issues or triage them.
 Each role carries a sensible default set, and an admin can grant or revoke any
-individual capability for any individual person from **Accounts**
+individual capability on any individual post from **Accounts**
 (`/admin/users`). Only the *differences* from the role default are stored, so
 revising a role's defaults later still reaches everyone rather than being
 shadowed by frozen per-user copies.
@@ -77,6 +77,35 @@ shadowed by frozen per-user copies.
 - An admin cannot remove their own `admin.users` capability, deactivate
   themselves, or delete themselves — that would lock the last door from the
   inside.
+
+**A person can hold several posts, and each browser tab works in one of them.**
+Elena Guriță is a meta-mentor for one lyceum and the DigiPuls coordinator at
+another. That is one account with two *assignments* — a role plus an
+institution each, with their own permissions. The `Assignment` model carries
+role, school/territory and label; `User.role`/`schoolId`/`territoryId` were
+backfilled into a first assignment by the migration and are no longer read
+(they are dropped in a later release — expand/contract, see ROADMAP.md).
+
+The active post lives in **the URL**, not the session:
+
+```
+/w/47/ministry           Elena as meta-mentor
+/w/12/school/cycles/3    Elena as coordinator at Gaudeamus
+```
+
+That is the only thing that satisfies the requirement. Session state is shared
+across tabs and a cookie is shared across the whole browser, so neither can
+keep two tabs in two different roles — and the URL is also the option that
+keeps working with JavaScript disabled and makes each workspace bookmarkable.
+`src/middleware/workspace.js` strips the prefix before any router sees it, so
+every route path in the app is unchanged; `res.locals.href()` puts it back on
+links and redirects, and **only when the person actually holds more than one
+post**, so single-post accounts see exactly the URLs they always did.
+
+Two roles are never visible at once in one window: the capability set comes
+from exactly one assignment, so they cannot merge. To work in both, open the
+second in a new tab — the switcher in the top bar is a plain link, so
+middle-clicking it does the right thing.
 
 **Reporting an issue captures where, not just what.** With `feedback.submit`, a
 control appears in the top bar. Turn it on, click anything on the page, and a
@@ -140,7 +169,8 @@ Precise, so nothing here means something weaker than it sounds:
 | Continuation-cycle mechanism (maintain/grow/decay) | Implemented; no enforced 2-year schedule/reminders yet |
 | Step-by-step wizard with real-data-driven status | Implemented |
 | Multi-actor assessment | Partial — shared per-school login today, not per-person attribution (P1) |
-| Account management | Implemented — create, edit, deactivate, reset password, and per-account permissions |
+| Account management | Implemented — create, edit, deactivate, reset password |
+| Several roles per person | Implemented — one account, many posts (role + institution), each with its own permissions; the active post is per browser tab |
 | Pilot feedback capture | Implemented — click-to-report overlay, reporter panel, developer backlog |
 | External validation workflow | Data model exists (`ValidationRecord`); no enforced workflow yet (P1) |
 | Transparent (non-automated) Ministry/partner overview | Implemented, including the one disclosed strategic-partner sort |

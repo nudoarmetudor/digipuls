@@ -5,7 +5,8 @@ const { requireCapability } = require('../middleware/auth');
 const { logAction } = require('../services/audit');
 const { generateTempPassword } = require('../utils/password');
 const {
-  CAPABILITIES, CAPABILITY_GROUPS, ROLES, ROLE_DEFAULTS, capabilitiesFor, overridesFrom,
+  CAPABILITY_GROUPS, ROLES, ROLE_DEFAULTS, capabilitiesFor, overridesFrom,
+  roleNeedsSchool, roleNeedsTerritory, roleAllowsSchool, roleAllowsTerritory,
 } = require('../services/capabilities');
 
 const router = express.Router();
@@ -14,6 +15,12 @@ router.use(requireCapability('admin.users'));
 // Everything here is an administrative write against other people's accounts,
 // so every route logs to the audit trail — including the reads that reveal a
 // one-time password.
+//
+// A person is an account plus a list of *assignments*: one role at one
+// institution each. Elena is a meta-mentor for one lyceum and the DigiPuls
+// coordinator for another from the same login, so the role and the
+// institution live on the assignment, and permissions hang off the
+// assignment rather than the person.
 
 function asArray(value) {
   if (value === undefined || value === null) return [];
@@ -34,13 +41,30 @@ async function formOptions() {
   return { schools, territories, roles: ROLES, capabilityGroups: CAPABILITY_GROUPS, roleDefaults: ROLE_DEFAULTS };
 }
 
+const USER_INCLUDE = {
+  assignments: {
+    include: { school: true, territory: true, capabilities: true },
+    orderBy: [{ role: 'asc' }, { id: 'asc' }],
+  },
+};
+
+/** The institution a post is scoped to, dropping anything the form sent for a
+ *  kind this role can't take — a Ministry post has neither, and storing a
+ *  stray school on one would make the duplicate check meaningless. */
+function scopeFor(role, body) {
+  return {
+    schoolId: roleAllowsSchool(role) ? parseIntOrNull(body.schoolId) : null,
+    territoryId: roleAllowsTerritory(role) ? parseIntOrNull(body.territoryId) : null,
+  };
+}
+
 // --- list ------------------------------------------------------------------
 router.get('/', async (req, res) => {
   const { role, q, status } = req.query;
   const where = {};
-  if (ROLES.includes(role)) where.role = role;
   if (status === 'active') where.isActive = true;
   if (status === 'inactive') where.isActive = false;
+  if (ROLES.includes(role)) where.assignments = { some: { role } };
   if (q && q.trim()) {
     const term = q.trim();
     where.OR = [{ name: { contains: term } }, { email: { contains: term } }];
@@ -48,8 +72,8 @@ router.get('/', async (req, res) => {
 
   const users = await prisma.user.findMany({
     where,
-    orderBy: [{ isActive: 'desc' }, { role: 'asc' }, { name: 'asc' }],
-    include: { school: true, territory: true, capabilities: true },
+    orderBy: [{ isActive: 'desc' }, { name: 'asc' }],
+    include: USER_INCLUDE,
   });
   const total = await prisma.user.count();
 
@@ -58,8 +82,15 @@ router.get('/', async (req, res) => {
     wide: true,
     users: users.map((u) => ({
       ...u,
-      effective: [...capabilitiesFor(u.role, u.capabilities)],
-      customised: u.capabilities.length > 0,
+      posts: u.assignments.map((a) => ({
+        id: a.id,
+        role: a.role,
+        label: a.label,
+        institution: a.school ? a.school.name : (a.territory ? a.territory.name : null),
+        capabilityCount: capabilitiesFor(a.role, a.capabilities).size,
+        customised: a.capabilities.length > 0,
+        isActive: a.isActive,
+      })),
     })),
     roles: ROLES,
     filteredCount: users.length,
@@ -68,14 +99,14 @@ router.get('/', async (req, res) => {
   });
 });
 
-// --- new -------------------------------------------------------------------
+// --- new account -----------------------------------------------------------
 router.get('/new', async (req, res) => {
   const options = await formOptions();
   res.render('admin/user-form', {
     title: res.locals.t('admin_user_new_title'),
     mode: 'new',
     user: null,
-    selected: new Set(ROLE_DEFAULTS.META_MENTOR),
+    posts: [],
     errorMessage: null,
     ...options,
   });
@@ -89,8 +120,10 @@ router.post('/', async (req, res) => {
   const fail = (messageKey) => res.status(400).render('admin/user-form', {
     title: res.locals.t('admin_user_new_title'),
     mode: 'new',
-    user: { email, name, role, schoolId: parseIntOrNull(req.body.schoolId), territoryId: parseIntOrNull(req.body.territoryId) },
-    selected: new Set(desired),
+    user: { email, name },
+    posts: [],
+    firstRole: role,
+    firstSelected: new Set(desired),
     errorMessage: res.locals.t(messageKey),
     ...options,
   });
@@ -102,6 +135,10 @@ router.post('/', async (req, res) => {
   const existing = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
   if (existing) return fail('admin_user_err_duplicate');
 
+  const scope = scopeFor(role, req.body);
+  if (roleNeedsSchool(role) && !scope.schoolId) return fail('admin_user_err_school_required');
+  if (roleNeedsTerritory(role) && !scope.territoryId) return fail('admin_user_err_territory_required');
+
   // Same rule as school provisioning: never a fixed or shared password. A
   // random one-time password is generated, shown to the admin exactly once,
   // and the account must replace it before it can reach anything else.
@@ -110,16 +147,25 @@ router.post('/', async (req, res) => {
     data: {
       email: email.trim().toLowerCase(),
       name: name.trim(),
+      // Legacy mirror of the first post — no longer read by anything, kept
+      // until the follow-up migration drops these columns.
       role,
+      schoolId: scope.schoolId,
+      territoryId: scope.territoryId,
       passwordHash: await bcrypt.hash(tempPassword, 10),
       mustChangePassword: true,
-      schoolId: role === 'SCHOOL_TEAM' ? parseIntOrNull(req.body.schoolId) : null,
-      territoryId: role === 'TERRITORIAL' ? parseIntOrNull(req.body.territoryId) : null,
-      capabilities: { create: overridesFrom(role, desired) },
+      assignments: {
+        create: [{
+          role,
+          ...scope,
+          label: (req.body.label || '').trim() || null,
+          capabilities: { create: overridesFrom(role, desired) },
+        }],
+      },
     },
   });
 
-  await logAction(req.session.user.id, 'CREATE_USER', 'User', user.id, `${user.email} (${user.role})`);
+  await logAction(req.session.user.id, 'CREATE_USER', 'User', user.id, `${user.email} (${role})`);
   res.render('admin/user-created', {
     title: res.locals.t('admin_user_created_title'),
     user,
@@ -127,12 +173,9 @@ router.post('/', async (req, res) => {
   });
 });
 
-// --- edit ------------------------------------------------------------------
+// --- edit account ----------------------------------------------------------
 router.get('/:id/edit', async (req, res) => {
-  const user = await prisma.user.findUnique({
-    where: { id: Number(req.params.id) },
-    include: { capabilities: true, school: true, territory: true },
-  });
+  const user = await prisma.user.findUnique({ where: { id: Number(req.params.id) }, include: USER_INCLUDE });
   if (!user) return res.status(404).render('error', { title: res.locals.t('err_not_found'), message: res.locals.t('admin_user_err_not_found') });
 
   const options = await formOptions();
@@ -140,67 +183,120 @@ router.get('/:id/edit', async (req, res) => {
     title: res.locals.t('admin_user_edit_title'),
     mode: 'edit',
     user,
-    selected: capabilitiesFor(user.role, user.capabilities),
-    errorMessage: null,
+    posts: user.assignments.map((a) => ({
+      ...a,
+      selected: capabilitiesFor(a.role, a.capabilities),
+      institution: a.school ? a.school.name : (a.territory ? a.territory.name : null),
+    })),
+    errorMessage: req.query.error ? res.locals.t(req.query.error) : null,
     ...options,
   });
 });
 
 router.post('/:id', async (req, res) => {
   const id = Number(req.params.id);
-  const user = await prisma.user.findUnique({ where: { id }, include: { capabilities: true } });
+  const user = await prisma.user.findUnique({ where: { id } });
   if (!user) return res.status(404).render('error', { title: res.locals.t('err_not_found'), message: res.locals.t('admin_user_err_not_found') });
 
-  const options = await formOptions();
-  const { email, name, role } = req.body;
-  const desired = asArray(req.body.capabilities);
-
-  const fail = (messageKey) => res.status(400).render('admin/user-form', {
-    title: res.locals.t('admin_user_edit_title'),
-    mode: 'edit',
-    user: { ...user, email, name, role },
-    selected: new Set(desired),
-    errorMessage: res.locals.t(messageKey),
-    ...options,
-  });
-
-  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) return fail('admin_user_err_email');
-  if (!name || !name.trim()) return fail('admin_user_err_name');
-  if (!ROLES.includes(role)) return fail('admin_user_err_role');
+  const { email, name } = req.body;
+  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) {
+    return res.redirect(res.locals.href(`/admin/users/${id}/edit?error=admin_user_err_email`));
+  }
+  if (!name || !name.trim()) return res.redirect(res.locals.href(`/admin/users/${id}/edit?error=admin_user_err_name`));
 
   const normalisedEmail = email.trim().toLowerCase();
   const clash = await prisma.user.findUnique({ where: { email: normalisedEmail } });
-  if (clash && clash.id !== id) return fail('admin_user_err_duplicate');
+  if (clash && clash.id !== id) return res.redirect(res.locals.href(`/admin/users/${id}/edit?error=admin_user_err_duplicate`));
 
-  // An admin removing their own admin.users capability — or their own admin
-  // role — would lock the last door behind them. Refuse rather than let the
-  // instance end up with no way back in.
-  const editingSelf = id === req.session.user.id;
-  if (editingSelf) {
-    const wouldKeepAdmin = capabilitiesFor(role, overridesFrom(role, desired)).has('admin.users');
-    if (!wouldKeepAdmin) return fail('admin_user_err_self_lockout');
+  await prisma.user.update({ where: { id }, data: { email: normalisedEmail, name: name.trim() } });
+  await logAction(req.session.user.id, 'UPDATE_USER', 'User', id, normalisedEmail);
+  res.redirect(res.locals.href(`/admin/users/${id}/edit`));
+});
+
+// --- assignments -----------------------------------------------------------
+router.post('/:id/assignments', async (req, res) => {
+  const userId = Number(req.params.id);
+  const { role } = req.body;
+  const back = `/admin/users/${userId}/edit`;
+  if (!ROLES.includes(role)) return res.redirect(res.locals.href(`${back}?error=admin_user_err_role`));
+
+  const scope = scopeFor(role, req.body);
+  if (roleNeedsSchool(role) && !scope.schoolId) return res.redirect(res.locals.href(`${back}?error=admin_user_err_school_required`));
+  if (roleNeedsTerritory(role) && !scope.territoryId) return res.redirect(res.locals.href(`${back}?error=admin_user_err_territory_required`));
+
+  // MySQL treats NULLs as distinct in a unique index, so the unscoped posts
+  // (Ministry, Admin) need the duplicate check here rather than in the schema.
+  const duplicate = await prisma.assignment.findFirst({
+    where: { userId, role, schoolId: scope.schoolId, territoryId: scope.territoryId },
+  });
+  if (duplicate) return res.redirect(res.locals.href(`${back}?error=admin_user_err_duplicate_post`));
+
+  const assignment = await prisma.assignment.create({
+    data: {
+      userId,
+      role,
+      ...scope,
+      label: (req.body.label || '').trim() || null,
+      capabilities: { create: overridesFrom(role, ROLE_DEFAULTS[role] || []) },
+    },
+  });
+  await logAction(req.session.user.id, 'ADD_ASSIGNMENT', 'Assignment', assignment.id, `user ${userId}: ${role}`);
+  res.redirect(back);
+});
+
+router.post('/:id/assignments/:assignmentId', async (req, res) => {
+  const userId = Number(req.params.id);
+  const assignmentId = Number(req.params.assignmentId);
+  const back = `/admin/users/${userId}/edit`;
+
+  const assignment = await prisma.assignment.findUnique({ where: { id: assignmentId } });
+  if (!assignment || assignment.userId !== userId) {
+    return res.status(404).render('error', { title: res.locals.t('err_not_found'), message: res.locals.t('admin_user_err_not_found') });
+  }
+
+  const desired = asArray(req.body.capabilities);
+
+  // An admin removing their own last route back into account management would
+  // lock the door from the inside.
+  if (userId === req.session.user.id && assignment.role === 'ADMIN') {
+    const keeps = capabilitiesFor(assignment.role, overridesFrom(assignment.role, desired)).has('admin.users');
+    if (!keeps) return res.redirect(res.locals.href(`${back}?error=admin_user_err_self_lockout`));
   }
 
   await prisma.$transaction([
-    prisma.userCapability.deleteMany({ where: { userId: id } }),
-    prisma.user.update({
-      where: { id },
+    prisma.assignmentCapability.deleteMany({ where: { assignmentId } }),
+    prisma.assignment.update({
+      where: { id: assignmentId },
       data: {
-        email: normalisedEmail,
-        name: name.trim(),
-        role,
-        schoolId: role === 'SCHOOL_TEAM' ? parseIntOrNull(req.body.schoolId) : null,
-        territoryId: role === 'TERRITORIAL' ? parseIntOrNull(req.body.territoryId) : null,
-        capabilities: { create: overridesFrom(role, desired) },
+        label: (req.body.label || '').trim() || null,
+        isActive: req.body.isActive !== 'false',
+        capabilities: { create: overridesFrom(assignment.role, desired) },
       },
     }),
   ]);
-
-  await logAction(req.session.user.id, 'UPDATE_USER', 'User', id, `${normalisedEmail} (${role})`);
-  res.redirect('/admin/users?updated=' + id);
+  await logAction(req.session.user.id, 'UPDATE_ASSIGNMENT', 'Assignment', assignmentId, assignment.role);
+  res.redirect(back);
 });
 
-// --- activate / deactivate -------------------------------------------------
+router.post('/:id/assignments/:assignmentId/delete', async (req, res) => {
+  const userId = Number(req.params.id);
+  const assignmentId = Number(req.params.assignmentId);
+  const back = `/admin/users/${userId}/edit`;
+
+  const assignment = await prisma.assignment.findUnique({ where: { id: assignmentId } });
+  if (!assignment || assignment.userId !== userId) {
+    return res.status(404).render('error', { title: res.locals.t('err_not_found'), message: res.locals.t('admin_user_err_not_found') });
+  }
+  if (userId === req.session.user.id && assignment.role === 'ADMIN') {
+    return res.redirect(res.locals.href(`${back}?error=admin_user_err_self_lockout`));
+  }
+
+  await prisma.assignment.delete({ where: { id: assignmentId } });
+  await logAction(req.session.user.id, 'REMOVE_ASSIGNMENT', 'Assignment', assignmentId, `user ${userId}: ${assignment.role}`);
+  res.redirect(back);
+});
+
+// --- activate / deactivate the whole account -------------------------------
 router.post('/:id/active', async (req, res) => {
   const id = Number(req.params.id);
   const makeActive = req.body.active === 'true';
@@ -212,7 +308,7 @@ router.post('/:id/active', async (req, res) => {
   }
   await prisma.user.update({ where: { id }, data: { isActive: makeActive } });
   await logAction(req.session.user.id, makeActive ? 'ACTIVATE_USER' : 'DEACTIVATE_USER', 'User', id, null);
-  res.redirect('/admin/users');
+  res.redirect(res.locals.href('/admin/users'));
 });
 
 // --- reset password --------------------------------------------------------
@@ -263,8 +359,7 @@ router.post('/:id/delete', async (req, res) => {
 
   await prisma.user.delete({ where: { id } });
   await logAction(req.session.user.id, 'DELETE_USER', 'User', id, user.email);
-  res.redirect('/admin/users');
+  res.redirect(res.locals.href('/admin/users'));
 });
 
 module.exports = router;
-module.exports.CAPABILITIES = CAPABILITIES;

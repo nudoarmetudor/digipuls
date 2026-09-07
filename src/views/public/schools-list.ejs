@@ -1,7 +1,7 @@
 <h1><%= t('public_list_title') %></h1>
 <p class="subtitle"><%= t('public_list_subtitle') %></p>
 
-<form method="GET" action="/public-view/schools" role="search">
+<form method="GET" action="<%= href('/public-view/schools') %>" role="search">
   <label for="school-search"><%= t('public_search_label') %></label>
   <div class="inline-fields">
     <div>
@@ -27,7 +27,7 @@
         <tr>
           <th scope="row" style="background:none;font-weight:400;color:inherit;"><%= s.name %></th>
           <td>
-            <a class="plain" href="/public-view/schools/<%= s.id %>">
+            <a class="plain" href="<%= href('/public-view/schools/' + (s.id)) %>">
               <%= t('public_view_summary') %><span class="visually-hidden"> — <%= s.name %></span> <span aria-hidden="true">→</span>
             </a>
           </td>

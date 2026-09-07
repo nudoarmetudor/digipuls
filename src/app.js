@@ -6,6 +6,7 @@ const morgan = require('morgan');
 const path = require('path');
 const prefs = require('./utils/prefs');
 const { loadAccount } = require('./middleware/auth');
+const { extractWorkspace, loadWorkspace } = require('./middleware/workspace');
 const { homeFor } = require('./services/capabilities');
 
 // No silent fallback in production — sessions signed with the checked-in
@@ -26,6 +27,11 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(expressLayouts);
 app.set('layout', 'layout');
+
+// Strips a /w/<id> workspace prefix off the URL before any route sees it,
+// so every route path in the app stays prefix-unaware. See
+// middleware/workspace.js for why the active role lives in the URL.
+app.use(extractWorkspace);
 
 app.use(morgan('dev'));
 app.use(express.urlencoded({ extended: true }));
@@ -61,6 +67,7 @@ app.use((req, res, next) => {
 // explicitly from every route.
 app.use((req, res, next) => {
   res.locals.currentUser = req.session.user || null;
+  // Unprefixed: used for aria-current comparisons against route paths.
   res.locals.currentPath = req.path;
   // Gates the login page's demo-accounts panel — off by default once real
   // schools are being onboarded (see DEPLOYMENT.md). Defaults to on so
@@ -73,6 +80,10 @@ app.use((req, res, next) => {
 // active, and what it may currently do. See middleware/auth.js for why this
 // is a query rather than a value cached in the session.
 app.use(loadAccount);
+
+// Which of the person's assignments this request is acting under, and
+// therefore what it may do.
+app.use(loadWorkspace);
 
 // --- Language ---------------------------------------------------------------
 // English, Romanian and Russian. The choice is remembered in the session for
@@ -161,13 +172,19 @@ app.use('/territorial', require('./routes/territorial'));
 app.use('/partner', require('./routes/partner'));
 app.use('/strategic', require('./routes/strategic'));
 app.use('/public-view', require('./routes/public'));
+app.use('/workspace', require('./routes/workspace'));
 app.use('/admin/users', require('./routes/adminUsers'));
 app.use('/admin', require('./routes/admin'));
 app.use('/feedback', require('./routes/feedback'));
 
 app.get('/', (req, res) => {
   if (!req.session.user) return res.redirect('/login');
-  res.redirect(homeFor(req.capabilities || new Set(), req.session.user));
+  // Several posts and none chosen yet: ask, rather than guess and show the
+  // wrong institution's data.
+  if (req.needsWorkspaceChoice) return res.redirect('/workspace');
+  if (!req.workspace) return res.redirect('/workspace');
+  const home = homeFor(req.capabilities || new Set(), { schoolId: req.workspace.schoolId });
+  res.redirect(res.locals.href(home));
 });
 
 // eslint-disable-next-line no-unused-vars

@@ -4,7 +4,7 @@
 
 <div class="card">
   <h2 class="plain-heading"><%= t('filters') %></h2>
-  <form method="GET" action="/partner">
+  <form method="GET" action="<%= href('/partner') %>">
     <div class="inline-fields">
       <div>
         <label for="f-band"><%= t('band') %></label>
@@ -33,7 +33,7 @@
     </div>
     <div class="btn-row" style="margin-top:0.8rem;">
       <button class="btn btn-sm" type="submit"><%= t('apply') %></button>
-      <a class="btn btn-sm btn-secondary" href="/partner"><%= t('reset') %></a>
+      <a class="btn btn-sm btn-secondary" href="<%= href('/partner') %>"><%= t('reset') %></a>
     </div>
   </form>
 </div>

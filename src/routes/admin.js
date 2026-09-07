@@ -11,9 +11,9 @@ const router = express.Router();
 router.use(requireCapability('admin.schools', 'admin.users', 'admin.audit'));
 
 router.get('/', (req, res) => {
-  if (res.locals.can('admin.users')) return res.redirect('/admin/users');
-  if (res.locals.can('admin.schools')) return res.redirect('/admin/schools/new');
-  return res.redirect('/admin/audit-log');
+  if (res.locals.can('admin.users')) return res.redirect(res.locals.href('/admin/users'));
+  if (res.locals.can('admin.schools')) return res.redirect(res.locals.href('/admin/schools/new'));
+  return res.redirect(res.locals.href('/admin/audit-log'));
 });
 
 // JSON endpoint backing the SIME autocomplete field on the "add school"

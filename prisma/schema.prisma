@@ -30,6 +30,7 @@ model Territory {
   name   String   @unique
   schools School[]
   users   User[]
+  assignments Assignment[]
 }
 
 model User {
@@ -60,8 +61,61 @@ model User {
   auditEntries AuditLogEntry[]
   confirmedCycles AssessmentCycle[] @relation("CycleConfirmedBy")
   capabilities UserCapability[]
+  assignments  Assignment[]
   feedbackTickets FeedbackTicket[] @relation("TicketAuthor")
   triagedTickets  FeedbackTicket[] @relation("TicketTriager")
+}
+
+// One post a person holds: a role, at one institution.
+//
+// A person is not a role. Elena is a meta-mentor for one lyceum and the
+// DigiPuls coordinator for another, from the same account — so the role and
+// the institution belong on the assignment, not on the user. `role`,
+// `schoolId` and `territoryId` remain on User for now, backfilled into a
+// first assignment by the migration and no longer read by application code;
+// they are dropped in a later release once this model has run in production
+// (expand/contract — see ROADMAP.md).
+//
+// Which assignment is *active* is carried in the URL (/w/<id>/...), not in
+// the session, so two browser tabs can sit in two different roles at once.
+// See src/middleware/workspace.js.
+model Assignment {
+  id          Int        @id @default(autoincrement())
+  userId      Int
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        String
+  schoolId    Int?
+  school      School?    @relation(fields: [schoolId], references: [id])
+  territoryId Int?
+  territory   Territory? @relation(fields: [territoryId], references: [id])
+  // Free text for what this post is called locally ("Coordonator DigiPuls"),
+  // shown in the switcher next to the role. Purely descriptive.
+  label       String?
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+
+  capabilities AssignmentCapability[]
+
+  // The same role at the same institution twice is not a second post, it is
+  // a duplicate. MySQL treats NULLs as distinct in a unique index, so this
+  // constrains the school/territory-scoped rows; the unscoped ones (Ministry,
+  // Admin) are guarded in routes/adminUsers.js instead.
+  @@unique([userId, role, schoolId, territoryId])
+  @@index([userId])
+}
+
+// Per-assignment override of what the assignment's role grants by default —
+// the same algebra as UserCapability, moved down a level now that permissions
+// belong to a post rather than to a person. Elena's mentor capabilities have
+// nothing to do with her coordinator ones.
+model AssignmentCapability {
+  id           Int        @id @default(autoincrement())
+  assignmentId Int
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  capability   String
+  granted      Boolean
+
+  @@unique([assignmentId, capability])
 }
 
 // Per-user override of what the account's role grants by default.
@@ -100,6 +154,7 @@ model School {
   createdAt            DateTime @default(now())
 
   users               User[]
+  assignments         Assignment[]
   cycles              AssessmentCycle[]
 }
 

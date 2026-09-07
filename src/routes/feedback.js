@@ -47,7 +47,7 @@ router.post('/tickets', requireCapability('feedback.submit'), async (req, res) =
       viewName: ticket.viewName,
     });
   }
-  res.redirect('/feedback?submitted=' + ticket.id);
+  res.redirect(res.locals.href('/feedback?submitted=' + ticket.id));
 });
 
 // Manual fallback form.
@@ -152,7 +152,7 @@ router.post('/backlog/:id', requireCapability('feedback.triage'), async (req, re
     },
   });
   await logAction(req.session.user.id, 'FEEDBACK_TRIAGED', 'FeedbackTicket', id, status);
-  res.redirect('/feedback/backlog?updated=' + id + (req.query.status ? `&status=${req.query.status}` : ''));
+  res.redirect(res.locals.href('/feedback/backlog?updated=' + id + (req.query.status ? `&status=${req.query.status}` : '')));
 });
 
 module.exports = router;

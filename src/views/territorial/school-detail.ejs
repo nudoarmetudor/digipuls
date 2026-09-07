@@ -45,7 +45,7 @@
 
 <div class="card">
   <h2 class="plain-heading"><%= t('flag_title') %></h2>
-  <form method="POST" action="/territorial/schools/<%= school.id %>/flag">
+  <form method="POST" action="<%= href('/territorial/schools/' + (school.id) + '/flag') %>">
     <label for="flag-reason"><%= t('flag_title') %></label>
     <textarea id="flag-reason" name="reason" placeholder="<%= t('flag_placeholder') %>" required></textarea>
     <div style="margin-top:0.6rem;"><button class="btn btn-sm" type="submit"><%= t('flag_button') %></button></div>

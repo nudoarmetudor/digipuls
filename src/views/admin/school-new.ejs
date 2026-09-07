@@ -12,7 +12,7 @@
 
 <div class="card">
   <h2 class="plain-heading"><%= t('admin_step2') %></h2>
-  <form method="POST" action="/admin/schools" id="school-form">
+  <form method="POST" action="<%= href('/admin/schools') %>" id="school-form">
     <label for="f-simeId"><%= t('sime_id') %></label>
     <input type="text" name="simeId" id="f-simeId">
 
@@ -78,6 +78,8 @@
   var resultsDiv = document.getElementById('sime-results');
   var statusEl = document.getElementById('sime-results-status');
   var noMatches = <%- JSON.stringify(t('admin_no_matches')) %>;
+  // Carries the workspace prefix, same as every other link on the page.
+  var searchEndpoint = <%- JSON.stringify(href('/admin/sime/search')) %>;
   var debounce;
 
   function fill(s) {
@@ -97,7 +99,7 @@
     var q = searchInput.value.trim();
     if (!q) { resultsDiv.innerHTML = ''; statusEl.textContent = ''; return; }
     debounce = setTimeout(function () {
-      fetch('/admin/sime/search?q=' + encodeURIComponent(q))
+      fetch(searchEndpoint + '?q=' + encodeURIComponent(q))
         .then(function (res) { return res.json(); })
         .then(function (data) {
           resultsDiv.innerHTML = '';

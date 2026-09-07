@@ -202,24 +202,33 @@ function templatesFor(lang) {
 
     ['admin/users.ejs', {
       users: [
-        { id: 1, name: 'Ana Popescu', email: 'ana@digipuls.md', role: 'ADMIN', isActive: true,
-          mustChangePassword: false, school: null, territory: null,
-          effective: [...capabilitiesFor('ADMIN', [])], customised: false },
-        { id: 2, name: 'Ion Rusu', email: 'ion@digipuls.md', role: 'META_MENTOR', isActive: false,
-          mustChangePassword: true, school: null, territory: { name: 'Chișinău' },
-          effective: [...capabilitiesFor('META_MENTOR', [])], customised: true },
+        { id: 1, name: 'Ana Popescu', email: 'ana@digipuls.md', isActive: true, mustChangePassword: false,
+          posts: [{ id: 1, role: 'ADMIN', label: null, institution: null, capabilityCount: 11, customised: false, isActive: true }] },
+        { id: 2, name: 'Elena Guriță', email: 'elena@digipuls.md', isActive: true, mustChangePassword: true,
+          posts: [
+            { id: 7, role: 'META_MENTOR', label: null, institution: 'LT Boris Dînga', capabilityCount: 4, customised: false, isActive: true },
+            { id: 8, role: 'SCHOOL_TEAM', label: 'Coordonator DigiPuls', institution: 'LT Gaudeamus', capabilityCount: 1, customised: true, isActive: false },
+          ] },
+        { id: 3, name: 'Fără funcție', email: 'none@digipuls.md', isActive: false, mustChangePassword: false, posts: [] },
       ],
-      roles: ROLES, filteredCount: 2, total: 12, query: { role: 'META_MENTOR' },
+      roles: ROLES, filteredCount: 3, total: 15, query: { role: 'META_MENTOR' },
     }],
     ['admin/user-form.ejs', {
-      mode: 'new', user: null, selected: new Set(ROLE_DEFAULTS.META_MENTOR), errorMessage: null,
+      mode: 'new', user: null, posts: [], errorMessage: null,
       schools: [{ id: 1, name: 'LT Mihai Eminescu' }], territories: [{ id: 1, name: 'Chișinău' }],
       roles: ROLES, capabilityGroups: CAPABILITY_GROUPS, roleDefaults: ROLE_DEFAULTS,
     }],
     ['admin/user-form.ejs', {
       mode: 'edit',
-      user: { id: 2, name: 'Ion Rusu', email: 'ion@digipuls.md', role: 'META_MENTOR', isActive: true, schoolId: null, territoryId: 1 },
-      selected: capabilitiesFor('META_MENTOR', []), errorMessage: 'Something is wrong',
+      user: { id: 2, name: 'Elena Guriță', email: 'elena@digipuls.md', isActive: true },
+      // The worked example: two posts, two institutions, one account.
+      posts: [
+        { id: 7, role: 'META_MENTOR', label: null, isActive: true, institution: 'LT Boris Dînga',
+          selected: capabilitiesFor('META_MENTOR', []) },
+        { id: 8, role: 'SCHOOL_TEAM', label: 'Coordonator DigiPuls', isActive: true, institution: 'LT Gaudeamus',
+          selected: capabilitiesFor('SCHOOL_TEAM', []) },
+      ],
+      errorMessage: 'Something is wrong',
       schools: [{ id: 1, name: 'LT Mihai Eminescu' }], territories: [{ id: 1, name: 'Chișinău' }],
       roles: ROLES, capabilityGroups: CAPABILITY_GROUPS, roleDefaults: ROLE_DEFAULTS,
     }],
@@ -244,6 +253,17 @@ function templatesFor(lang) {
       tickets: [], authors: [], byStatus: {}, totalCount: 0,
       statuses: STATUSES, severities: SEVERITIES, query: {},
     }],
+    ['workspace/choose.ejs', {
+      hasNone: false,
+      options: [
+        { id: 7, role: 'META_MENTOR', label: null, institution: 'LT Boris Dînga', isSchool: true,
+          capabilityCount: 4, href: '/w/7/ministry', isCurrent: true },
+        { id: 8, role: 'SCHOOL_TEAM', label: 'Coordonator DigiPuls', institution: 'LT Gaudeamus', isSchool: true,
+          capabilityCount: 1, href: '/w/8/school', isCurrent: false },
+      ],
+    }],
+    ['workspace/choose.ejs', { hasNone: true, options: [] }],
+
     ['feedback/new.ejs', { severities: SEVERITIES, errorMessage: null, body: { route: '/school' } }],
     ['feedback/new.ejs', { severities: SEVERITIES, errorMessage: 'Please describe it', body: {} }],
   ];
@@ -266,6 +286,16 @@ function baseLocals(lang) {
     capabilities: new Set(CAPABILITIES),
     can: (capability) => CAPABILITIES.includes(capability),
     viewName: 'test/fixture',
+    // Two posts, so the switcher renders and href() actually prefixes —
+    // rendering with a single post would leave the multi-post paths untested.
+    workspace: { id: 7, role: 'META_MENTOR', label: null, schoolId: 1, schoolName: 'LT Boris Dînga', territoryId: null, territoryName: null },
+    workspaces: [
+      { id: 7, role: 'META_MENTOR', label: null, schoolId: 1, schoolName: 'LT Boris Dînga', territoryId: null, territoryName: null },
+      { id: 8, role: 'SCHOOL_TEAM', label: 'Coordonator DigiPuls', schoolId: 2, schoolName: 'LT Gaudeamus', territoryId: null, territoryName: null },
+    ],
+    href: (path) => (typeof path === 'string' && path.startsWith('/')
+      && !/^\/(public-view|login|logout|lang|preferences|change-password|workspace)(\/|$)/.test(path)
+      ? '/w/7' + (path === '/' ? '' : path) : path),
     currentPath: '/ministry',
     demoMode: true,
     title: 'Page',

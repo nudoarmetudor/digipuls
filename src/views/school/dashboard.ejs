@@ -8,7 +8,7 @@
   <div class="card">
     <h2 class="plain-heading"><%= t('school_welcome_title') %></h2>
     <p><%= t('school_welcome_body') %></p>
-    <form method="POST" action="/school/cycles/start">
+    <form method="POST" action="<%= href('/school/cycles/start') %>">
       <button class="btn" type="submit"><%= t('school_start_first_cycle') %></button>
     </form>
   </div>
@@ -17,16 +17,16 @@
     <div class="card card-info">
       <h2 class="plain-heading"><%= t('cycle') %> <%= latest.cycleNumber %> — <%= t('school_cycle_in_progress') %></h2>
       <p><%= latest.ratings.filter(r => r.level !== null).length %> <%= t('school_indicators_rated') %></p>
-      <a class="btn" href="/school/cycles/<%= latest.id %>"><%= t('school_continue_assessment') %></a>
+      <a class="btn" href="<%= href('/school/cycles/' + (latest.id)) %>"><%= t('school_continue_assessment') %></a>
     </div>
   <% } else { %>
     <div class="card card-ok">
       <h2 class="plain-heading"><%= t('cycle') %> <%= latest.cycleNumber %> — <%= t('school_cycle_confirmed') %></h2>
       <p class="small"><%= t('school_confirmed_on') %> <%= new Date(latest.confirmedAt).toLocaleDateString(lang) %>. <%= t('school_next_renewal') %></p>
       <div class="btn-row">
-        <a class="btn btn-secondary" href="/school/cycles/<%= latest.id %>"><%= t('school_view_assessment') %></a>
-        <a class="btn btn-secondary" href="/school/cycles/<%= latest.id %>/plan"><%= t('school_view_plan') %></a>
-        <form method="POST" action="/school/cycles/start">
+        <a class="btn btn-secondary" href="<%= href('/school/cycles/' + (latest.id)) %>"><%= t('school_view_assessment') %></a>
+        <a class="btn btn-secondary" href="<%= href('/school/cycles/' + (latest.id) + '/plan') %>"><%= t('school_view_plan') %></a>
+        <form method="POST" action="<%= href('/school/cycles/start') %>">
           <button class="btn" type="submit"><%= t('school_start_renewal') %></button>
         </form>
       </div>
@@ -55,7 +55,7 @@
             <td><%= c.confirmedAt ? new Date(c.confirmedAt).toLocaleDateString(lang) : '—' %></td>
             <td><%= c.plan ? (c.plan.publishedAt ? t('plan_published') : STATUS_LABELS.DRAFT) : '—' %></td>
             <td>
-              <a class="plain" href="/school/cycles/<%= c.id %>">
+              <a class="plain" href="<%= href('/school/cycles/' + (c.id)) %>">
                 <%= t('open') %><span class="visually-hidden"> — <%= t('cycle') %> <%= c.cycleNumber %></span> <span aria-hidden="true">→</span>
               </a>
             </td>

@@ -13,7 +13,7 @@
 
 <div class="card">
   <h2 class="plain-heading"><%= t('filters') %></h2>
-  <form method="GET" action="/feedback/backlog">
+  <form method="GET" action="<%= href('/feedback/backlog') %>">
     <div class="inline-fields">
       <div>
         <label for="f-status"><%= t('th_status') %></label>
@@ -46,7 +46,7 @@
     </div>
     <div class="btn-row" style="margin-top:0.8rem;">
       <button class="btn btn-sm" type="submit"><%= t('apply') %></button>
-      <a class="btn btn-sm btn-secondary" href="/feedback/backlog"><%= t('reset') %></a>
+      <a class="btn btn-sm btn-secondary" href="<%= href('/feedback/backlog') %>"><%= t('reset') %></a>
     </div>
   </form>
 </div>
@@ -76,7 +76,7 @@
       <pre class="ticket-context"><%= ticket.block %></pre>
     </details>
 
-    <form method="POST" action="/feedback/backlog/<%= ticket.id %><%= query.status ? '?status=' + query.status : '' %>">
+    <form method="POST" action="<%= href('/feedback/backlog/' + (ticket.id) + (query.status ? '?status=' + query.status : '')) %>">
       <div class="inline-fields">
         <div>
           <label for="s-<%= ticket.id %>"><%= t('feedback_set_status') %></label>

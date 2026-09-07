@@ -9,14 +9,14 @@
    rendered this page, which language it is in, which display settings are
    active), all translated here rather than hardcoded in the script. */
 %>
-<a class="feedback-toggle" href="/feedback/new?route=<%= encodeURIComponent(currentPath) %>"
+<a class="feedback-toggle" href="<%= href('/feedback/new') %>?route=<%= encodeURIComponent(currentPath) %>"
    data-feedback-toggle
-   data-endpoint="/feedback/tickets"
+   data-endpoint="<%= href('/feedback/tickets') %>"
    data-route="<%= currentPath %>"
    data-view="<%= typeof viewName !== 'undefined' ? viewName : '' %>"
    data-lang="<%= lang %>"
    data-prefs="<%= prefsAttrs ? prefsAttrs.replace(/data-|"/g, '') : '' %>"
-   data-mine-url="/feedback"
+   data-mine-url="<%= href('/feedback') %>"
    aria-pressed="false"
    data-i18n='<%- JSON.stringify({
      start: t("feedback_overlay_start"),

@@ -30,7 +30,7 @@ const avgByDomain = { A: avgA, B: avgB, C: avgC, D: avgD };
 
 <div class="card">
   <h2 class="plain-heading"><%= t('filters') %></h2>
-  <form method="GET" action="/ministry">
+  <form method="GET" action="<%= href('/ministry') %>">
     <div class="inline-fields">
       <div>
         <label for="f-band"><%= t('band') %></label>
@@ -74,8 +74,8 @@ const avgByDomain = { A: avgA, B: avgB, C: avgC, D: avgD };
     </div>
     <div class="btn-row" style="margin-top:0.8rem;">
       <button class="btn btn-sm" type="submit"><%= t('apply') %></button>
-      <a class="btn btn-sm btn-secondary" href="/ministry"><%= t('reset') %></a>
-      <a class="btn btn-sm btn-secondary" href="/ministry/export.csv?<%= new URLSearchParams(query).toString() %>"><%= t('export_csv') %></a>
+      <a class="btn btn-sm btn-secondary" href="<%= href('/ministry') %>"><%= t('reset') %></a>
+      <a class="btn btn-sm btn-secondary" href="<%= href('/ministry/export.csv?' + (new URLSearchParams(query).toString())) %>"><%= t('export_csv') %></a>
     </div>
   </form>
 </div>
@@ -117,7 +117,7 @@ const avgByDomain = { A: avgA, B: avgB, C: avgC, D: avgD };
             <% } else { %>—<% } %>
           </td>
           <td>
-            <a class="plain" href="/ministry/schools/<%= r.school.id %>">
+            <a class="plain" href="<%= href('/ministry/schools/' + (r.school.id)) %>">
               <%= t('details') %><span class="visually-hidden"> — <%= r.school.name %></span> <span aria-hidden="true">→</span>
             </a>
           </td>

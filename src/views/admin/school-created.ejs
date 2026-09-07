@@ -25,7 +25,7 @@
 
 <div class="card card-centre">
   <div class="btn-row" style="justify-content:center;">
-    <a class="btn" href="/ministry/schools/<%= school.id %>"><%= t('admin_go_to_record') %> <span aria-hidden="true">→</span></a>
-    <a class="btn btn-secondary" href="/admin/schools/new"><%= t('admin_add_another') %></a>
+    <a class="btn" href="<%= href('/ministry/schools/' + (school.id)) %>"><%= t('admin_go_to_record') %> <span aria-hidden="true">→</span></a>
+    <a class="btn btn-secondary" href="<%= href('/admin/schools/new') %>"><%= t('admin_add_another') %></a>
   </div>
 </div>

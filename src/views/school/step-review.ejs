@@ -36,7 +36,7 @@
                 <% if (ind.rating && ind.rating.level >= 2 && (!ind.rating.evidences || ind.rating.evidences.length === 0)) { %>
                   <span class="small text-bad"><%= t('evidence_missing') %></span>
                 <% } %>
-                <a class="plain small" href="/school/cycles/<%= cycle.id %>/step/<%= d.code %>#ind-<%= ind.code %>">
+                <a class="plain small" href="<%= href('/school/cycles/' + (cycle.id) + '/step/' + (d.code) + '#ind-' + (ind.code)) %>">
                   <%= t('edit') %><span class="visually-hidden"> <%= ind.code %></span>
                 </a>
               </td>
@@ -54,7 +54,7 @@
   <div class="card">
     <h2 class="plain-heading"><%= t('assessment_confirm_title') %></h2>
     <p class="small"><%= t('assessment_confirm_body') %></p>
-    <form method="POST" action="/school/cycles/<%= cycle.id %>/confirm">
+    <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/confirm') %>">
       <button class="btn" type="submit"><%= t('assessment_confirm_button') %></button>
     </form>
   </div>
@@ -64,10 +64,10 @@
       <span class="badge badge-confirmed"><%= STATUS_LABELS.CONFIRMED %></span>
       <%= t('school_confirmed_on') %> <%= new Date(cycle.confirmedAt).toLocaleDateString(lang) %>.
     </p>
-    <a class="btn btn-secondary" href="/school/cycles/<%= cycle.id %>/plan"><%= t('school_view_plan') %></a>
+    <a class="btn btn-secondary" href="<%= href('/school/cycles/' + (cycle.id) + '/plan') %>"><%= t('school_view_plan') %></a>
   </div>
 <% } %>
 
 <div class="card card-centre">
-  <a class="btn btn-secondary" href="/school/cycles/<%= cycle.id %>"><span aria-hidden="true">←</span> <%= t('back_to_overview') %></a>
+  <a class="btn btn-secondary" href="<%= href('/school/cycles/' + (cycle.id)) %>"><span aria-hidden="true">←</span> <%= t('back_to_overview') %></a>
 </div>

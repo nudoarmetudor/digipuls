@@ -37,7 +37,7 @@
   <% } %>
 
   <% if (!plan || plan.priorities.length < 5) { %>
-  <form method="POST" action="/school/cycles/<%= cycle.id %>/plan/priorities">
+  <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/plan/priorities') %>">
     <div class="inline-fields">
       <div>
         <label for="p-indicator"><%= t('linked_indicator') %></label>
@@ -75,7 +75,7 @@
 
 <div class="card">
   <h2 class="plain-heading"><%= t('plan_funding_title') %></h2>
-  <form method="POST" action="/school/cycles/<%= cycle.id %>/plan/details">
+  <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/plan/details') %>">
     <label for="p-funding"><%= t('funding_source') %></label>
     <input type="text" id="p-funding" name="fundingSource" value="<%= plan ? (plan.fundingSource || '') : '' %>" placeholder="<%= t('funding_placeholder') %>">
     <label for="p-authority"><%= t('approving_authority') %></label>
@@ -90,13 +90,13 @@
 <div class="card card-ok">
   <h2 class="plain-heading"><%= t('plan_publish_title') %></h2>
   <p class="small"><%= t('publish_caption') %></p>
-  <form method="POST" action="/school/cycles/<%= cycle.id %>/plan/publish">
+  <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/plan/publish') %>">
     <button class="btn" type="submit"><%= t('plan_publish_button') %></button>
   </form>
 </div>
 <% } else if (plan && plan.publishedAt) { %>
 <div class="card">
   <p><%= t('plan_published') %> <%= new Date(plan.publishedAt).toLocaleDateString(lang) %>.</p>
-  <a class="btn btn-secondary" href="/school/cycles/<%= cycle.id %>/plan/document" target="_blank" rel="noopener"><%= t('plan_view_document') %></a>
+  <a class="btn btn-secondary" href="<%= href('/school/cycles/' + (cycle.id) + '/plan/document') %>" target="_blank" rel="noopener"><%= t('plan_view_document') %></a>
 </div>
 <% } %>

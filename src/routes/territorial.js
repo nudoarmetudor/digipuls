@@ -1,6 +1,7 @@
 const express = require('express');
 const prisma = require('../config/db');
 const { requireCapability } = require('../middleware/auth');
+const { activeTerritoryId } = require('../middleware/workspace');
 const { INDICATORS, DOMAINS } = require('../data/indicators');
 const { schoolsWithLatestCycle, selectOfficialAndCurrentCycle } = require('../services/schoolOverview');
 const { renderWheel, itemsFromRatings } = require('../services/wheelChart');
@@ -9,7 +10,7 @@ const router = express.Router();
 router.use(requireCapability('view.regional'));
 
 router.get('/', async (req, res) => {
-  const territoryId = req.session.user.territoryId;
+  const territoryId = activeTerritoryId(req);
   const rows = await schoolsWithLatestCycle({ territoryId });
   const confirmedRows = rows.filter((r) => r.confirmed);
   res.render('territorial/dashboard', {
@@ -24,7 +25,7 @@ router.get('/schools/:id', async (req, res) => {
     where: { id: Number(req.params.id) },
     include: { territory: true, cycles: { orderBy: { cycleNumber: 'desc' }, include: { ratings: true } } },
   });
-  if (!school || school.territoryId !== req.session.user.territoryId) {
+  if (!school || school.territoryId !== activeTerritoryId(req)) {
     return res.status(403).render('error', { title: res.locals.t('err_access_denied'), message: res.locals.t('err_outside_territory') });
   }
   // Same rule as the Ministry detail view: the official record is the
@@ -40,12 +41,12 @@ router.post('/schools/:id/flag', async (req, res) => {
   // separate Flag model — see README "Not yet built" for the fuller
   // version (UC-T3) this stands in for.
   const school = await prisma.school.findUnique({ where: { id: Number(req.params.id) } });
-  if (!school || school.territoryId !== req.session.user.territoryId) {
+  if (!school || school.territoryId !== activeTerritoryId(req)) {
     return res.status(403).render('error', { title: res.locals.t('err_access_denied'), message: res.locals.t('err_outside_territory') });
   }
   const { logAction } = require('../services/audit');
   await logAction(req.session.user.id, 'TERRITORIAL_FLAG', 'School', req.params.id, req.body.reason);
-  res.redirect(`/territorial/schools/${req.params.id}`);
+  res.redirect(res.locals.href(`/territorial/schools/${req.params.id}`));
 });
 
 module.exports = router;

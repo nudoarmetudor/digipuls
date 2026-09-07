@@ -1,0 +1,31 @@
+<%
+/* The permission checkboxes for one post. Included once per assignment on the
+   edit screen, so ids are prefixed — otherwise every label on the page would
+   point at the first post's checkboxes. */
+%>
+<fieldset class="cap-group">
+  <legend><%= t('admin_user_capabilities') %></legend>
+  <p class="small"><%= t('admin_user_capabilities_help') %></p>
+  <% capabilityGroups.forEach(function (group) { %>
+    <p class="cap-group-title"><%= t('cap_group_' + group.key) %></p>
+    <div class="cap-list">
+      <% group.capabilities.forEach(function (cap) { %>
+        <%
+          const id = idPrefix + '-cap-' + cap.replace(/\W/g, '-');
+          const isDefault = (roleDefaults[role] || []).indexOf(cap) !== -1;
+          const checked = selected ? selected.has(cap) : isDefault;
+        %>
+        <div class="cap-item">
+          <label class="checkbox" for="<%= id %>">
+            <input type="checkbox" id="<%= id %>" name="capabilities" value="<%= cap %>" <%= checked ? 'checked' : '' %>>
+            <span>
+              <%= t('cap_' + cap) %>
+              <span class="cap-code"><%= cap %></span>
+              <% if (isDefault) { %><span class="cap-default"><%= t('admin_user_cap_role_default') %></span><% } %>
+            </span>
+          </label>
+        </div>
+      <% }) %>
+    </div>
+  <% }) %>
+</fieldset>

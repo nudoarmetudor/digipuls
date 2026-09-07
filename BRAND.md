@@ -270,6 +270,11 @@ that school staff are *required* to use has no fallback audience.
   on the current page and step, live regions for status changes, and
   keyboard access to every control — including the SIME search results,
   which are buttons rather than clickable divs.
+- **Everything works without JavaScript.** The display panel, the role
+  switcher and the feedback report form are all plain links and forms that
+  scripting only upgrades. This is why the active role lives in the URL
+  rather than in `sessionStorage`: the no-JS guarantee is a commitment, not
+  a nice-to-have, and a role switcher that needed scripting would break it.
 - **Preferences are stored per browser, in a cookie plus `localStorage` — never
   against the user account.** They are a display setting, not another field
   of personal data attached to a named school employee, and they must work

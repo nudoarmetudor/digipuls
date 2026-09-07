@@ -3,7 +3,7 @@
 
 <div class="card">
   <h2 class="plain-heading"><%= t('filters') %></h2>
-  <form method="GET" action="/admin/users">
+  <form method="GET" action="<%= href('/admin/users') %>">
     <div class="inline-fields">
       <div>
         <label for="f-q"><%= t('admin_users_search') %></label>
@@ -29,8 +29,8 @@
     </div>
     <div class="btn-row" style="margin-top:0.8rem;">
       <button class="btn btn-sm" type="submit"><%= t('apply') %></button>
-      <a class="btn btn-sm btn-secondary" href="/admin/users"><%= t('reset') %></a>
-      <a class="btn btn-sm" href="/admin/users/new"><%= t('admin_user_new_title') %></a>
+      <a class="btn btn-sm btn-secondary" href="<%= href('/admin/users') %>"><%= t('reset') %></a>
+      <a class="btn btn-sm" href="<%= href('/admin/users/new') %>"><%= t('admin_user_new_title') %></a>
     </div>
   </form>
 </div>
@@ -42,9 +42,7 @@
       <tr>
         <th scope="col"><%= t('admin_user_name') %></th>
         <th scope="col"><%= t('login_email') %></th>
-        <th scope="col"><%= t('admin_user_role') %></th>
-        <th scope="col"><%= t('admin_user_scope') %></th>
-        <th scope="col"><%= t('admin_user_capabilities') %></th>
+        <th scope="col"><%= t('admin_user_posts') %></th>
         <th scope="col"><%= t('th_status') %></th>
         <th scope="col"><span class="visually-hidden"><%= t('admin_user_actions') %></span></th>
       </tr>
@@ -54,16 +52,21 @@
         <tr>
           <th scope="row" style="background:none;font-weight:400;color:inherit;"><%= u.name %></th>
           <td class="mono"><%= u.email %></td>
-          <td><%= t('role_' + u.role) %></td>
-          <td class="small">
-            <% if (u.school) { %><%= u.school.name %>
-            <% } else if (u.territory) { %><%= u.territory.name %>
-            <% } else { %>—<% } %>
-          </td>
-          <td class="small">
-            <%= u.effective.length %>
-            <% if (u.customised) { %>
-              <span class="badge badge-unvalidated"><%= t('admin_user_customised') %></span>
+          <td>
+            <% if (u.posts.length === 0) { %>
+              <span class="small"><%= t('admin_user_no_posts') %></span>
+            <% } else { %>
+              <ul class="post-list">
+                <% u.posts.forEach(function (p) { %>
+                  <li>
+                    <span class="badge badge-draft"><%= t('role_' + p.role) %></span>
+                    <% if (p.institution) { %><span class="small"><%= p.institution %></span><% } %>
+                    <% if (p.label) { %><span class="small">— <%= p.label %></span><% } %>
+                    <% if (!p.isActive) { %><span class="badge badge-maintained"><%= t('admin_user_inactive') %></span><% } %>
+                    <% if (p.customised) { %><span class="badge badge-unvalidated"><%= t('admin_user_customised') %></span><% } %>
+                  </li>
+                <% }) %>
+              </ul>
             <% } %>
           </td>
           <td>
@@ -76,10 +79,10 @@
           </td>
           <td>
             <div class="btn-row">
-              <a class="btn btn-sm btn-secondary" href="/admin/users/<%= u.id %>/edit">
+              <a class="btn btn-sm btn-secondary" href="<%= href('/admin/users/' + (u.id) + '/edit') %>">
                 <%= t('edit') %><span class="visually-hidden"> — <%= u.name %></span>
               </a>
-              <form method="POST" action="/admin/users/<%= u.id %>/active">
+              <form method="POST" action="<%= href('/admin/users/' + (u.id) + '/active') %>">
                 <input type="hidden" name="active" value="<%= u.isActive ? 'false' : 'true' %>">
                 <button class="btn btn-sm btn-secondary" type="submit">
                   <%= u.isActive ? t('admin_user_deactivate') : t('admin_user_activate') %><span class="visually-hidden"> — <%= u.name %></span>
