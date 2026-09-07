@@ -26,7 +26,20 @@ async function loadAccount(req, res, next) {
 
   let account;
   try {
-    account = await prisma.user.findUnique({ where: { id: req.session.user.id } });
+    // The posts are fetched here rather than in loadWorkspace so the two
+    // middlewares cost one query between them, not two. This host caps the
+    // database user at max_connections_per_hour, and a second round trip on
+    // every authenticated request is real budget — see src/config/db.js.
+    account = await prisma.user.findUnique({
+      where: { id: req.session.user.id },
+      include: {
+        assignments: {
+          where: { isActive: true },
+          include: { school: true, territory: true, capabilities: true },
+          orderBy: [{ role: 'asc' }, { id: 'asc' }],
+        },
+      },
+    });
   } catch (err) {
     return next(err);
   }
@@ -40,6 +53,8 @@ async function loadAccount(req, res, next) {
   // without forcing the person to sign out and back in.
   req.session.user.name = account.name;
   req.session.user.mustChangePassword = account.mustChangePassword;
+  // Handed to loadWorkspace, which decides which of these is active.
+  req.accountAssignments = account.assignments;
   next();
 }
 

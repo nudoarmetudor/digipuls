@@ -21,7 +21,6 @@
 // People with a single assignment (almost everyone) never see the prefix:
 // res.locals.href() only adds it when there is a real choice to preserve.
 
-const prisma = require('../config/db');
 const { capabilitiesFor } = require('../services/capabilities');
 
 const WORKSPACE_PATH = /^\/w\/(\d+)(\/.*)?$/;
@@ -73,7 +72,7 @@ function describe(assignment) {
  * request. Runs after loadAccount, which has already established that the
  * account exists and is active.
  */
-async function loadWorkspace(req, res, next) {
+function loadWorkspace(req, res, next) {
   res.locals.can = () => false;
   res.locals.workspace = null;
   res.locals.workspaces = [];
@@ -83,17 +82,9 @@ async function loadWorkspace(req, res, next) {
 
   if (!req.session.user) return next();
 
-  let assignments;
-  try {
-    assignments = await prisma.assignment.findMany({
-      where: { userId: req.session.user.id, isActive: true },
-      include: { school: true, territory: true, capabilities: true },
-      orderBy: [{ role: 'asc' }, { id: 'asc' }],
-    });
-  } catch (err) {
-    return next(err);
-  }
-
+  // Already loaded alongside the account — see loadAccount in
+  // middleware/auth.js for why this isn't a second query.
+  const assignments = req.accountAssignments || [];
   req.assignments = assignments;
   res.locals.workspaces = assignments.map(describe);
 
