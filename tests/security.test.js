@@ -395,3 +395,40 @@ test('a post editor is not drawn for someone who cannot save it', () => {
     'but running the pilot — issuing a new password — still works');
   assert.ok(withoutGrant.includes('LT Boris Dînga'), 'the post is still visible, just not editable');
 });
+
+test('the policy is also delivered in the document, since the host strips the header', () => {
+  const { securityHeaders, META_IGNORED } = require('../src/middleware/securityHeaders');
+  const res = { locals: {}, headers: {}, setHeader(k, v) { this.headers[k] = v; } };
+  securityHeaders({}, res, () => {});
+
+  const header = res.headers['Content-Security-Policy'];
+  const meta = res.locals.cspMeta;
+
+  assert.ok(header.includes("script-src 'self' 'nonce-"), 'the header carries the policy');
+  assert.ok(meta.includes("script-src 'self' 'nonce-"), 'and so does the meta copy');
+  assert.ok(meta.includes(res.locals.cspNonce),
+    'the meta copy must name the same nonce, or the inline scripts are blocked');
+
+  // A meta tag silently ignores these, so they are dropped from that copy
+  // rather than left in to look reassuring.
+  META_IGNORED.forEach((directive) => {
+    assert.ok(header.includes(directive), `${directive} belongs in the header`);
+    assert.ok(!meta.includes(directive), `${directive} is ignored in a meta tag`);
+  });
+
+  // Which is only acceptable because this says the same thing and survives.
+  assert.strictEqual(res.headers['X-Frame-Options'], 'DENY');
+});
+
+test('the CSP meta tag is the first policy-bearing thing in the document', () => {
+  // A meta policy governs what follows it. Placed after a <script> or a
+  // <link>, it would not apply to them.
+  const head = fs.readFileSync(
+    path.join(__dirname, '..', 'src', 'views', 'partials', 'head.ejs'), 'utf8');
+  const metaAt = head.indexOf('http-equiv="Content-Security-Policy"');
+  assert.ok(metaAt !== -1, 'head.ejs must carry the policy');
+
+  const before = head.slice(0, metaAt);
+  assert.ok(!before.includes('<script'), 'no script may precede the policy');
+  assert.ok(!before.includes('<link'), 'no link may precede the policy');
+});

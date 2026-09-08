@@ -37,10 +37,29 @@ const CSP_PARTS = [
   'upgrade-insecure-requests',
 ];
 
+// The production host overwrites the Content-Security-Policy *header* with
+// its own `upgrade-insecure-requests` — every other header set here survives,
+// that one does not, and it is set above us in LiteSpeed where the app cannot
+// reach it. A <meta http-equiv> policy is inside the document, which we do
+// control, so the policy is delivered both ways and whichever arrives applies.
+//
+// Two directives are ignored in a meta tag and so are dropped from that copy:
+// frame-ancestors and sandbox. Losing frame-ancestors costs nothing here
+// because X-Frame-Options: DENY says the same thing and does survive.
+const META_IGNORED = ['frame-ancestors'];
+
+function policyFor(nonce, parts) {
+  return parts.join('; ').replace('{NONCE}', nonce);
+}
+
 function securityHeaders(req, res, next) {
   const nonce = crypto.randomBytes(16).toString('base64');
   res.locals.cspNonce = nonce;
-  res.setHeader('Content-Security-Policy', CSP_PARTS.join('; ').replace('{NONCE}', nonce));
+  res.locals.cspMeta = policyFor(
+    nonce,
+    CSP_PARTS.filter((p) => !META_IGNORED.some((d) => p.startsWith(d))),
+  );
+  res.setHeader('Content-Security-Policy', policyFor(nonce, CSP_PARTS));
 
   // frame-ancestors above is the modern control; this is the fallback for
   // browsers that predate it. Both say the same thing: never framed. Without
@@ -66,4 +85,4 @@ function securityHeaders(req, res, next) {
   next();
 }
 
-module.exports = { securityHeaders, CSP_PARTS };
+module.exports = { securityHeaders, CSP_PARTS, META_IGNORED };

@@ -1,4 +1,8 @@
 <meta charset="UTF-8">
+<%# Carried in the document because the host overwrites the CSP response
+    header with its own. Must come before anything it is meant to govern.
+    See middleware/securityHeaders.js. %>
+<meta http-equiv="Content-Security-Policy" content="<%= cspMeta %>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="color-scheme" content="light dark">
 <meta name="description" content="<%= t('brand_tagline') %>">

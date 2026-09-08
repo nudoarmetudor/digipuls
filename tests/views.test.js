@@ -312,6 +312,7 @@ function baseLocals(lang) {
     // them.
     csrfToken: 'test-csrf-token',
     cspNonce: 'test-nonce',
+    cspMeta: "default-src 'self'; script-src 'self' 'nonce-test-nonce'",
     demoMode: true,
     title: 'Page',
     wide: false,

@@ -38,6 +38,13 @@ router.post('/login', loginRateLimit, async (req, res) => {
     return res.render('auth/login', { title: res.locals.t('login_title'), error: res.locals.t('login_error'), layout: false });
   }
   clearAttempts(req);
+
+  // Read before regenerate(), which throws the whole session away. Reading it
+  // afterwards — as this did — always found undefined, so being bounced to
+  // the login screen from a deep link has been silently dropping people on
+  // the home page ever since session regeneration was added.
+  const returnTo = req.session.returnTo;
+
   // Regenerate the session on privilege change (login) rather than reusing
   // the pre-login session id — standard session-fixation hardening.
   req.session.regenerate((err) => {
@@ -55,8 +62,7 @@ router.post('/login', loginRateLimit, async (req, res) => {
     // regenerate() threw the old session away, CSRF token included. Without
     // a fresh one every form on the next page would fail its check.
     rotateToken(req);
-    const dest = safeRedirect(req.session.returnTo || '/');
-    delete req.session.returnTo;
+    const dest = safeRedirect(returnTo || '/');
     // The audit write must not decide whether the person gets in: log the
     // failure and continue, rather than leaving the request hanging with no
     // response, which is what an uncaught rejection here used to do.
