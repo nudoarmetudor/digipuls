@@ -168,3 +168,43 @@ test('every capability has a label in all three languages', () => {
     });
   });
 });
+
+// --- what makes a post distinct -------------------------------------------
+
+test('one person can hold the same role twice when the posts differ in name', () => {
+  // The account owner holds three posts: administrator, coordinator of the
+  // meta-mentors, and an ordinary meta-mentor view for seeing the platform the
+  // way the people being supported see it. The last two share a role and have
+  // no institution, so the label is the only thing separating them — which is
+  // why routes/adminUsers.js counts the label as part of a post's identity.
+  const coordinator = capabilitiesFor('META_MENTOR', overridesFrom('META_MENTOR', [
+    ...ROLE_DEFAULTS.META_MENTOR, 'admin.users',
+  ]));
+  const plain = capabilitiesFor('META_MENTOR', []);
+
+  assert.ok(coordinator.has('admin.users'), 'the coordinator can run the pilot');
+  assert.ok(!plain.has('admin.users'), 'the plain mentor post cannot');
+  assert.ok(!coordinator.has('admin.grant'),
+    'and neither can set privileges — that belongs to the administrator post');
+
+  // If the two granted the same thing, splitting them would record nothing.
+  const same = [...coordinator].sort().join('|') === [...plain].sort().join('|');
+  assert.ok(!same, 'two posts that grant the same thing are one post with two names');
+});
+
+test('three posts between them reach everything, without any one being everything', () => {
+  const admin = capabilitiesFor('ADMIN', []);
+  const coordinator = capabilitiesFor('META_MENTOR', overridesFrom('META_MENTOR', [
+    ...ROLE_DEFAULTS.META_MENTOR, 'admin.users',
+  ]));
+  const plain = capabilitiesFor('META_MENTOR', []);
+
+  const union = new Set([...admin, ...coordinator, ...plain]);
+  CAPABILITIES.forEach((c) => assert.ok(union.has(c), `nothing should be out of reach: ${c}`));
+
+  // The point of holding three rather than one: the audit trail records which
+  // authority was actually in use, so routine work is not done under the
+  // administrator post.
+  assert.ok(coordinator.size < admin.size, 'the coordinator post is genuinely smaller');
+  assert.ok(plain.size < coordinator.size, 'and the mentor post smaller still');
+});

@@ -330,8 +330,17 @@ router.post('/:id/assignments', requireGrant, async (req, res) => {
 
   // MySQL treats NULLs as distinct in a unique index, so the unscoped posts
   // (Ministry, Admin) need the duplicate check here rather than in the schema.
+  //
+  // The label counts as part of what makes a post distinct. Two unscoped posts
+  // of the same role are a duplicate only when they are also called the same
+  // thing: someone who coordinates the mentors *and* wants to see the platform
+  // as an ordinary mentor sees it holds two meta-mentor posts that differ in
+  // nothing but their name and what they may do. Without the label in this
+  // check that arrangement could exist in the database but could never be
+  // created through this screen.
+  const label = (req.body.label || '').trim() || null;
   const duplicate = await prisma.assignment.findFirst({
-    where: { userId, role, schoolId: scope.schoolId, territoryId: scope.territoryId },
+    where: { userId, role, schoolId: scope.schoolId, territoryId: scope.territoryId, label },
   });
   if (duplicate) return res.redirect(res.locals.href(`${back}?error=admin_user_err_duplicate_post`));
 
@@ -340,7 +349,7 @@ router.post('/:id/assignments', requireGrant, async (req, res) => {
       userId,
       role,
       ...scope,
-      label: (req.body.label || '').trim() || null,
+      label,
       capabilities: { create: overridesFrom(role, ROLE_DEFAULTS[role] || []) },
     },
   });
