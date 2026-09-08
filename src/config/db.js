@@ -40,14 +40,38 @@ const POOL = {
 // which is exactly the case for the pure-logic unit tests in tests/.
 let client = null;
 
+// Transport security.
+//
+// The database is not on the same machine as the app — it is a separate
+// shared host — so every query crosses a network. Without TLS that traffic is
+// readable: the credentials, the password hashes, and the names of the people
+// at each school. The driver defaults to no encryption, so it has to be asked.
+//
+// `DB_SSL=false` exists for a local MySQL in a container that has no
+// certificate. It must never be set in production, and it is not settable by
+// accident: the value has to be exactly "false".
+//
+// Certificate verification is a separate switch because the host presents a
+// certificate for its own hostname on a shared server. Where it does not
+// validate, DB_SSL_INSECURE=true still encrypts the connection — which is
+// strictly better than cleartext — while being honest in its name about what
+// it does not do.
+function sslConfig() {
+  if (process.env.DB_SSL === 'false') return undefined;
+  if (process.env.DB_SSL_INSECURE === 'true') return { rejectUnauthorized: false };
+  return { rejectUnauthorized: true };
+}
+
 function poolConfig() {
   const url = new URL(process.env.DATABASE_URL);
+  const ssl = sslConfig();
   return {
     host: url.hostname,
     port: url.port ? Number(url.port) : 3306,
     user: decodeURIComponent(url.username),
     password: decodeURIComponent(url.password),
     database: url.pathname.replace(/^\//, ''),
+    ...(ssl ? { ssl } : {}),
     ...POOL,
   };
 }

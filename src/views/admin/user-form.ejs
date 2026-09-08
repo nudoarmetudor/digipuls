@@ -16,6 +16,7 @@ const val = (k) => (user && user[k] !== undefined && user[k] !== null ? user[k] 
 <div class="card">
   <h2 class="plain-heading"><%= t('admin_user_section_account') %></h2>
   <form method="POST" action="<%= isEdit ? href('/admin/users/' + user.id) : href('/admin/users') %>">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <label for="f-name"><%= t('admin_user_name') %></label>
     <input type="text" id="f-name" name="name" value="<%= val('name') %>" required autocomplete="off">
 
@@ -60,7 +61,9 @@ const val = (k) => (user && user[k] !== undefined && user[k] !== null ? user[k] 
         <% if (!post.isActive) { %> <span class="badge badge-maintained"><%= t('admin_user_inactive') %></span><% } %>
       </h3>
 
+      <% if (can('admin.grant')) { %>
       <form method="POST" action="<%= href('/admin/users/' + (user.id) + '/assignments/' + (post.id)) %>">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <div class="inline-fields">
           <div>
             <label for="label-<%= post.id %>"><%= t('admin_user_post_label') %></label>
@@ -88,17 +91,24 @@ const val = (k) => (user && user[k] !== undefined && user[k] !== null ? user[k] 
       </form>
 
       <form method="POST" action="<%= href('/admin/users/' + (user.id) + '/assignments/' + (post.id) + '/delete') %>"
-            onsubmit="return confirm('<%= t('admin_user_post_remove_confirm') %>');" style="margin-top:0.6rem;">
+            data-confirm="<%= t('admin_user_post_remove_confirm') %>" style="margin-top:0.6rem;">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <button class="btn btn-sm btn-danger" type="submit">
           <%= t('admin_user_post_remove') %><span class="visually-hidden"> — <%= t('role_' + post.role) %></span>
         </button>
       </form>
+      <% } else { %>
+        <p class="small"><%= post.label ? post.label + ' · ' : '' %><%= t('admin_user_cap_count', { n: post.selected.size }) %></p>
+        <p class="help"><%= t('admin_user_needs_grant') %></p>
+      <% } %>
     </section>
   <% }) %>
 
+  <% if (can('admin.grant')) { %>
   <section class="card" aria-labelledby="add-post-h">
     <h2 class="plain-heading" id="add-post-h"><%= t('admin_user_post_add') %></h2>
     <form method="POST" action="<%= href('/admin/users/' + (user.id) + '/assignments') %>">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <%- include('_post-fields', {
             idPrefix: 'add', role: 'META_MENTOR', schoolId: null, territoryId: null, label: '',
             selected: null, schools, territories, roles, capabilityGroups, roleDefaults, defaultsFor, t
@@ -109,23 +119,29 @@ const val = (k) => (user && user[k] !== undefined && user[k] !== null ? user[k] 
       <p class="help"><%= t('admin_user_post_add_help') %></p>
     </form>
   </section>
+  <% } %>
 
   <div class="card">
     <h2 class="plain-heading"><%= t('admin_user_danger_title') %></h2>
     <div class="btn-row">
       <form method="POST" action="<%= href('/admin/users/' + (user.id) + '/reset-password') %>">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <button class="btn btn-sm btn-secondary" type="submit"><%= t('admin_user_reset_password') %></button>
       </form>
       <form method="POST" action="<%= href('/admin/users/' + (user.id) + '/active') %>">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <input type="hidden" name="active" value="<%= user.isActive ? 'false' : 'true' %>">
         <button class="btn btn-sm btn-secondary" type="submit">
           <%= user.isActive ? t('admin_user_deactivate') : t('admin_user_activate') %>
         </button>
       </form>
-      <form method="POST" action="<%= href('/admin/users/' + (user.id) + '/delete') %>"
-            onsubmit="return confirm('<%= t('admin_user_delete_confirm') %>');">
-        <button class="btn btn-sm btn-danger" type="submit"><%= t('admin_user_delete') %></button>
-      </form>
+      <% if (can('admin.grant')) { %>
+        <form method="POST" action="<%= href('/admin/users/' + (user.id) + '/delete') %>"
+              data-confirm="<%= t('admin_user_delete_confirm') %>">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button class="btn btn-sm btn-danger" type="submit"><%= t('admin_user_delete') %></button>
+        </form>
+      <% } %>
     </div>
     <p class="help"><%= t('admin_user_delete_help') %></p>
   </div>

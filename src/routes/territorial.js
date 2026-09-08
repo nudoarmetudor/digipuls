@@ -15,7 +15,11 @@ router.get('/', async (req, res) => {
   const confirmedRows = rows.filter((r) => r.confirmed);
   res.render('territorial/dashboard', {
     title: res.locals.t('territorial_title'), wide: true, rows,
-    territoryName: req.session.user.territoryName,
+    // From the active post, not the legacy column on the user record. The
+    // rows are already scoped by activeTerritoryId; reading the name from a
+    // different place meant a person holding two posts could be shown one
+    // district's schools under another district's heading.
+    territoryName: req.workspace ? req.workspace.territoryName : null,
     totalSchools: rows.length, confirmedCount: confirmedRows.length,
   });
 });

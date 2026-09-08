@@ -104,6 +104,33 @@ review's own priority tiers, kept here so none of it gets silently dropped.
 - More sophisticated Ministry/territorial analytics/dashboards.
 - Additional visual refinement beyond the current DigiProf palette pass.
 
+## Security — what the September 2026 pass left open
+
+The findings from that review were fixed (CSRF tokens, session `SameSite`,
+split of `admin.users` from `admin.grant`, current-password requirement, TLS
+to the database, security headers, rate limiting, CSV formula neutralisation,
+the seed guard). Four things were deliberately not closed, and are recorded
+here rather than quietly carried:
+
+- **`mariadb` driver advisories.** Three open, including cleartext credential
+  exposure to a man-in-the-middle, and there is no fixed release. TLS is now
+  on, which addresses the exposure in practice, but the dependency needs
+  watching for a patched version.
+- **`deepmerge-ts` via the Prisma CLI.** Build-time only; the available fix is
+  a Prisma downgrade, which is a worse trade than the risk of a stack
+  exhaustion in a tool run by hand at deploy time.
+- **Rate limiting is per process and in memory.** Correct for a single
+  Passenger process on shared hosting. Running more than one process means
+  moving these counters to the database or a shared store, and the limits
+  silently become per-process until that happens.
+- **`style-src 'unsafe-inline'` in the CSP.** Several views carry inline style
+  attributes and the maturity wheel paints through CSS custom properties.
+  Removing them is a mechanical but wide change; the alternative was shipping
+  a policy that broke the layout.
+
+Also still open, and larger than this pass: no multi-factor authentication,
+and no password-strength or breach check beyond a ten-character minimum.
+
 ## Explicitly not planned
 
 Rewriting the stack (React/Next.js/microservices/GraphQL) — the review

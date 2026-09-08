@@ -279,9 +279,16 @@
       payload.comment = comment.value.trim();
       payload.severity = sev.value;
 
+      // Posted as JSON, so there is no hidden form field to carry the CSRF
+      // token; it goes in a header instead, read from the meta tag head.ejs
+      // writes.
+      var meta = document.querySelector('meta[name="csrf-token"]');
+      var headers = { 'Content-Type': 'application/json', Accept: 'application/json' };
+      if (meta) headers['X-CSRF-Token'] = meta.getAttribute('content');
+
       fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        headers: headers,
         credentials: 'same-origin',
         body: JSON.stringify(payload)
       })

@@ -204,7 +204,9 @@ npm run seed
 npm run dev
 ```
 
-Then open **http://localhost:3000**. With `DEMO_MODE` at its local default (`true`), the login page lists all demo accounts — every seeded account uses the password `DigiPuls2026!`. Set `DEMO_MODE=false` (as the live instance does) to hide that panel once real accounts exist — real accounts never use a fixed password regardless of this flag.
+Then open **http://localhost:3000**. With `DEMO_MODE` at its local default (`true`), the login page lists the demo accounts and `npm run seed` prints the password it set for them. That password is shared across every seeded account and is meant for a throwaway local database only — it is deliberately not written down here, because this repository is public.
+
+`npm run seed` refuses to run when `NODE_ENV=production` or when `DATABASE_URL` points at a non-local host. Set `DEMO_MODE=false` in any deployed instance to hide the accounts panel; note that hiding the panel is presentation, not protection — what protects a real instance is not having seeded accounts on it. Accounts created through `/admin/schools/new` and `/admin/users/new` get an individually generated one-time password and must change it at first login.
 
 Or, in one shot: `npm run setup && npm run dev`.
 

@@ -33,7 +33,6 @@
     "express-ejs-layouts": "^2.5.1",
     "express-session": "^1.19.0",
     "morgan": "^1.11.0",
-    "multer": "^2.2.0",
     "prisma": "^6.19.3"
   }
 }

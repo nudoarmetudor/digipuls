@@ -56,6 +56,7 @@ const ICONS = {
 %>
 <nav id="sidebar" class="sidebar" aria-label="<%= t('nav_primary_label') %>">
   <form method="POST" action="/preferences" class="sidebar-toggle-form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <%
       /* Everything except nav is round-tripped so a no-JS toggle doesn't reset
          the viewer's other display choices. */

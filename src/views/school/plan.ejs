@@ -38,6 +38,7 @@
 
   <% if (!plan || plan.priorities.length < 5) { %>
   <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/plan/priorities') %>">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="inline-fields">
       <div>
         <label for="p-indicator"><%= t('linked_indicator') %></label>
@@ -76,6 +77,7 @@
 <div class="card">
   <h2 class="plain-heading"><%= t('plan_funding_title') %></h2>
   <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/plan/details') %>">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <label for="p-funding"><%= t('funding_source') %></label>
     <input type="text" id="p-funding" name="fundingSource" value="<%= plan ? (plan.fundingSource || '') : '' %>" placeholder="<%= t('funding_placeholder') %>">
     <label for="p-authority"><%= t('approving_authority') %></label>
@@ -91,6 +93,7 @@
   <h2 class="plain-heading"><%= t('plan_publish_title') %></h2>
   <p class="small"><%= t('publish_caption') %></p>
   <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/plan/publish') %>">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <button class="btn" type="submit"><%= t('plan_publish_button') %></button>
   </form>
 </div>

@@ -8,8 +8,53 @@ async function hash(pw) {
   return bcrypt.hash(pw, 10);
 }
 
-// Demo password for every seeded account — documented in README.md.
-const DEMO_PASSWORD = 'DigiPuls2026!';
+// One shared, well-known password across every seeded account. That is
+// acceptable for a throwaway local database and unacceptable anywhere else:
+// these logins are listed in this file, this file is in a public repository,
+// and an account called admin@digipuls.md with a password anyone can read is
+// not a demo account, it is an open door.
+//
+// It has been one before. The guard below is here because the seed was run
+// against production once and nobody noticed for weeks.
+//
+// The password can be overridden for a local database; the point of the
+// default is to be obvious, not secret.
+const DEMO_PASSWORD = process.env.SEED_PASSWORD || 'DigiPuls2026!';
+
+/**
+ * Refuses to seed a production database.
+ *
+ * Deliberately belt and braces. NODE_ENV is the intent, but a script run by
+ * hand over SSH often carries no NODE_ENV at all, so a database host that is
+ * not local counts as production too. SEED_FORCE=yes is the escape hatch for
+ * the one legitimate case: rebuilding a demo instance on a remote host.
+ */
+function refuseIfProduction() {
+  if (process.env.SEED_FORCE === 'yes') return;
+
+  const reasons = [];
+  if (process.env.NODE_ENV === 'production') reasons.push('NODE_ENV=production');
+
+  const url = process.env.DATABASE_URL || '';
+  let host = '';
+  try { host = new URL(url).hostname; } catch (e) { /* unparseable, caught below */ }
+  const isLocal = ['localhost', '127.0.0.1', '::1', 'db', 'mysql'].includes(host);
+  if (host && !isLocal) {
+    reasons.push(`DATABASE_URL points at ${host}, which is not a local database`);
+  }
+
+  if (!reasons.length) return;
+
+  console.error('\nRefusing to seed.\n');
+  reasons.forEach((r) => console.error('  - ' + r));
+  console.error(
+    '\nThis script creates accounts that share one password, written in this file\nand published in a public repository. On a real instance those are working\ncredentials for anyone who reads it.\n',
+  );
+  console.error(
+    'If you do mean to seed demo data here, re-run with SEED_FORCE=yes and change\nevery password immediately afterwards.\n',
+  );
+  process.exit(1);
+}
 
 async function seedIndicators() {
   for (const ind of INDICATORS) {
@@ -326,6 +371,7 @@ async function seedSchoolsAndUsers(territories) {
 }
 
 async function main() {
+  refuseIfProduction();
   console.log('Seeding DigiPuls demo data...\n');
   await seedIndicators();
   const territories = await seedTerritories();

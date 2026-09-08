@@ -115,6 +115,19 @@ function filterRows(rows, query = {}) {
   return out;
 }
 
+// Excel, LibreOffice and Google Sheets all treat a leading =, +, - or @ in a
+// cell as the start of a formula, and they do so inside quoted CSV fields
+// too — quoting stops a value breaking out of its column, not from being
+// executed. A school name is admin-entered rather than public, so this is a
+// small hole, but the file's whole purpose is to be opened in a spreadsheet
+// by ministry staff, which is exactly the conditions the attack needs.
+// Prefixing a single quote makes the cell text; Excel does not display it.
+function csvCell(value) {
+  const text = String(value === null || value === undefined ? '' : value);
+  const safe = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
+  return `"${safe.replace(/"/g, '""')}"`;
+}
+
 function toCsv(rows) {
   // Status must reflect the *official* (latest-confirmed) record, not the
   // current cycle — otherwise a school with a confirmed cycle 2 and a new
@@ -132,7 +145,7 @@ function toCsv(rows) {
       r.hasNewerDraft ? 'YES' : '',
       r.domainScores?.A ?? '', r.domainScores?.B ?? '', r.domainScores?.C ?? '', r.domainScores?.D ?? '',
       r.deviceCompliance && r.networkCompliance ? (r.deviceCompliance.compliant && r.networkCompliance.compliant) : '',
-    ].map((v) => `"${String(v).replace(/"/g, '""')}"`);
+    ].map(csvCell);
     lines.push(line.join(','));
   });
   return lines.join('\n');

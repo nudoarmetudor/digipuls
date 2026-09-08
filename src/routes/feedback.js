@@ -19,6 +19,7 @@ router.post('/tickets', requireCapability('feedback.submit'), async (req, res) =
   const built = buildTicketData(req.body, {
     authorId: req.session.user.id,
     lang: req.lang,
+    userAgent: req.get('user-agent'),
   });
 
   const wantsJson = req.get('accept') && req.get('accept').includes('application/json');
@@ -126,6 +127,11 @@ router.get('/backlog', requireCapability('feedback.triage'), async (req, res) =>
 
 router.post('/backlog/:id', requireCapability('feedback.triage'), async (req, res) => {
   const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(404).render('error', {
+      title: res.locals.t('err_not_found'), message: res.locals.t('feedback_err_missing'),
+    });
+  }
   const { status, developerNote } = req.body;
   if (!STATUSES.includes(status)) {
     return res.status(400).render('error', {
@@ -152,7 +158,11 @@ router.post('/backlog/:id', requireCapability('feedback.triage'), async (req, re
     },
   });
   await logAction(req.session.user.id, 'FEEDBACK_TRIAGED', 'FeedbackTicket', id, status);
-  res.redirect(res.locals.href('/feedback/backlog?updated=' + id + (req.query.status ? `&status=${req.query.status}` : '')));
+  // The status filter is echoed back into the URL, so it is re-checked
+  // against the known list rather than passed through as typed.
+  const keepFilter = STATUSES.includes(req.query.status) || req.query.status === 'open'
+    ? `&status=${req.query.status}` : '';
+  res.redirect(res.locals.href(`/feedback/backlog?updated=${id}${keepFilter}`));
 });
 
 module.exports = router;

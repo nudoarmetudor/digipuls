@@ -6,11 +6,64 @@ const { logAction } = require('../services/audit');
 const { generateTempPassword } = require('../utils/password');
 const {
   CAPABILITY_GROUPS, ROLES, ROLE_DEFAULTS, capabilitiesFor, overridesFrom, defaultsFor,
-  roleNeedsSchool, roleNeedsTerritory, roleAllowsSchool, roleAllowsTerritory,
+  canActOn, roleNeedsSchool, roleNeedsTerritory, roleAllowsSchool, roleAllowsTerritory,
 } = require('../services/capabilities');
 
 const router = express.Router();
+// Reading and running accounts. Changing what a post may *do* needs
+// admin.grant on top — see requireGrant below.
 router.use(requireCapability('admin.users'));
+
+// Deciding a post's role or capabilities is the privilege boundary, so it is
+// gated separately from day-to-day account administration. Without this,
+// anyone who could add a mentor could also add themselves an ADMIN post.
+const requireGrant = requireCapability('admin.grant');
+
+/**
+ * A route parameter that must be a database id. Number('abc') is NaN, which
+ * Prisma turns into a 500 rather than a 404 — an unhelpful answer that also
+ * hands the visitor an internal error message.
+ */
+function idParam(value) {
+  const n = Number(value);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
+function notFound(res) {
+  return res.status(404).render('error', {
+    title: res.locals.t('err_not_found'),
+    message: res.locals.t('admin_user_err_not_found'),
+  });
+}
+
+/** Everything the target account can do, across all of its posts. */
+function unionCapabilities(user) {
+  const all = new Set();
+  (user.assignments || [])
+    .filter((a) => a.isActive)
+    .forEach((a) => capabilitiesFor(a.role, a.capabilities).forEach((c) => all.add(c)));
+  return all;
+}
+
+/**
+ * Loads the target account and refuses if it can do anything the actor
+ * cannot. Stops admin.users being a route to the administrator's account via
+ * "reset their password, then read it off the screen".
+ */
+async function loadTarget(req, res) {
+  const id = idParam(req.params.id);
+  if (id === null) { notFound(res); return null; }
+  const user = await prisma.user.findUnique({ where: { id }, include: USER_INCLUDE });
+  if (!user) { notFound(res); return null; }
+  if (!canActOn(req.capabilities || new Set(), unionCapabilities(user))) {
+    res.status(403).render('error', {
+      title: res.locals.t('err_access_denied'),
+      message: res.locals.t('admin_user_err_more_privileged'),
+    });
+    return null;
+  }
+  return user;
+}
 
 // Everything here is an administrative write against other people's accounts,
 // so every route logs to the audit trail — including the reads that reveal a
@@ -33,6 +86,19 @@ function asArray(value) {
 // remain valid: "@" is simply an allowed character, not a promise that
 // anything will ever be delivered there.
 const LOGIN_PATTERN = /^[a-z0-9][a-z0-9._@-]{2,63}$/;
+
+// The only error keys this router will echo back onto a page.
+const ALLOWED_ERRORS = new Set([
+  'admin_user_err_login',
+  'admin_user_err_name',
+  'admin_user_err_role',
+  'admin_user_err_duplicate',
+  'admin_user_err_duplicate_post',
+  'admin_user_err_school_required',
+  'admin_user_err_territory_required',
+  'admin_user_err_self_lockout',
+  'admin_user_err_more_privileged',
+]);
 
 function normaliseLogin(value) {
   return String(value || '').trim().toLowerCase();
@@ -121,7 +187,7 @@ router.get('/', async (req, res) => {
 });
 
 // --- new account -----------------------------------------------------------
-router.get('/new', async (req, res) => {
+router.get('/new', requireGrant, async (req, res) => {
   const options = await formOptions();
   res.render('admin/user-form', {
     title: res.locals.t('admin_user_new_title'),
@@ -133,7 +199,7 @@ router.get('/new', async (req, res) => {
   });
 });
 
-router.post('/', async (req, res) => {
+router.post('/', requireGrant, async (req, res) => {
   const options = await formOptions();
   const { login, name, role } = req.body;
   const desired = asArray(req.body.capabilities);
@@ -159,6 +225,13 @@ router.post('/', async (req, res) => {
   const scope = scopeFor(role, req.body);
   if (roleNeedsSchool(role) && !scope.schoolId) return fail('admin_user_err_school_required');
   if (roleNeedsTerritory(role) && !scope.territoryId) return fail('admin_user_err_territory_required');
+
+  // You cannot create an account more capable than your own — otherwise
+  // "create an ADMIN, then log in as it" is the escalation that splitting
+  // admin.grant out was meant to close.
+  if (!canActOn(req.capabilities || new Set(), capabilitiesFor(role, overridesFrom(role, desired)))) {
+    return fail('admin_user_err_more_privileged');
+  }
 
   // Same rule as school provisioning: never a fixed or shared password. A
   // random one-time password is generated, shown to the admin exactly once,
@@ -196,8 +269,8 @@ router.post('/', async (req, res) => {
 
 // --- edit account ----------------------------------------------------------
 router.get('/:id/edit', async (req, res) => {
-  const user = await prisma.user.findUnique({ where: { id: Number(req.params.id) }, include: USER_INCLUDE });
-  if (!user) return res.status(404).render('error', { title: res.locals.t('err_not_found'), message: res.locals.t('admin_user_err_not_found') });
+  const user = await loadTarget(req, res);
+  if (!user) return undefined;
 
   const options = await formOptions();
   res.render('admin/user-form', {
@@ -209,15 +282,18 @@ router.get('/:id/edit', async (req, res) => {
       selected: capabilitiesFor(a.role, a.capabilities),
       institution: a.school ? a.school.name : (a.territory ? a.territory.name : null),
     })),
-    errorMessage: req.query.error ? res.locals.t(req.query.error) : null,
+    // Only keys this router itself produces. t() falls back to returning the
+    // key verbatim, so echoing an arbitrary query value would let anyone put
+    // their own words on an administrator's screen.
+    errorMessage: ALLOWED_ERRORS.has(req.query.error) ? res.locals.t(req.query.error) : null,
     ...options,
   });
 });
 
 router.post('/:id', async (req, res) => {
-  const id = Number(req.params.id);
-  const user = await prisma.user.findUnique({ where: { id } });
-  if (!user) return res.status(404).render('error', { title: res.locals.t('err_not_found'), message: res.locals.t('admin_user_err_not_found') });
+  const user = await loadTarget(req, res);
+  if (!user) return undefined;
+  const id = user.id;
 
   const { login, name } = req.body;
   if (!isValidLogin(login)) {
@@ -235,8 +311,10 @@ router.post('/:id', async (req, res) => {
 });
 
 // --- assignments -----------------------------------------------------------
-router.post('/:id/assignments', async (req, res) => {
-  const userId = Number(req.params.id);
+router.post('/:id/assignments', requireGrant, async (req, res) => {
+  const target = await loadTarget(req, res);
+  if (!target) return undefined;
+  const userId = target.id;
   const { role } = req.body;
   const back = `/admin/users/${userId}/edit`;
   if (!ROLES.includes(role)) return res.redirect(res.locals.href(`${back}?error=admin_user_err_role`));
@@ -244,6 +322,11 @@ router.post('/:id/assignments', async (req, res) => {
   const scope = scopeFor(role, req.body);
   if (roleNeedsSchool(role) && !scope.schoolId) return res.redirect(res.locals.href(`${back}?error=admin_user_err_school_required`));
   if (roleNeedsTerritory(role) && !scope.territoryId) return res.redirect(res.locals.href(`${back}?error=admin_user_err_territory_required`));
+
+  // The new post may not exceed what the granter holds.
+  if (!canActOn(req.capabilities || new Set(), capabilitiesFor(role, []))) {
+    return res.redirect(res.locals.href(`${back}?error=admin_user_err_more_privileged`));
+  }
 
   // MySQL treats NULLs as distinct in a unique index, so the unscoped posts
   // (Ministry, Admin) need the duplicate check here rather than in the schema.
@@ -265,23 +348,38 @@ router.post('/:id/assignments', async (req, res) => {
   res.redirect(back);
 });
 
-router.post('/:id/assignments/:assignmentId', async (req, res) => {
-  const userId = Number(req.params.id);
-  const assignmentId = Number(req.params.assignmentId);
+router.post('/:id/assignments/:assignmentId', requireGrant, async (req, res) => {
+  const target = await loadTarget(req, res);
+  if (!target) return undefined;
+  const userId = target.id;
+  const assignmentId = idParam(req.params.assignmentId);
   const back = `/admin/users/${userId}/edit`;
 
-  const assignment = await prisma.assignment.findUnique({ where: { id: assignmentId } });
-  if (!assignment || assignment.userId !== userId) {
-    return res.status(404).render('error', { title: res.locals.t('err_not_found'), message: res.locals.t('admin_user_err_not_found') });
-  }
+  const assignment = assignmentId === null
+    ? null
+    : target.assignments.find((a) => a.id === assignmentId);
+  if (!assignment) return notFound(res);
 
   const desired = asArray(req.body.capabilities);
+  const wanted = capabilitiesFor(assignment.role, overridesFrom(assignment.role, desired));
 
-  // An admin removing their own last route back into account management would
-  // lock the door from the inside.
-  if (userId === req.session.user.id && assignment.role === 'ADMIN') {
-    const keeps = capabilitiesFor(assignment.role, overridesFrom(assignment.role, desired)).has('admin.users');
-    if (!keeps) return res.redirect(res.locals.href(`${back}?error=admin_user_err_self_lockout`));
+  // You cannot hand out more than you hold.
+  if (!canActOn(req.capabilities || new Set(), wanted)) {
+    return res.redirect(res.locals.href(`${back}?error=admin_user_err_more_privileged`));
+  }
+
+  // Editing your own post so that you can no longer administer accounts locks
+  // the door from the inside. Checked against the capability rather than the
+  // ADMIN role: the pilot's coordinators administer accounts from a
+  // META_MENTOR post, and the old role test never covered them.
+  if (userId === req.session.user.id) {
+    const others = target.assignments
+      .filter((a) => a.id !== assignmentId && a.isActive)
+      .some((a) => capabilitiesFor(a.role, a.capabilities).has('admin.users'));
+    const staysActive = req.body.isActive !== 'false';
+    if (!others && !(staysActive && wanted.has('admin.users'))) {
+      return res.redirect(res.locals.href(`${back}?error=admin_user_err_self_lockout`));
+    }
   }
 
   await prisma.$transaction([
@@ -299,17 +397,25 @@ router.post('/:id/assignments/:assignmentId', async (req, res) => {
   res.redirect(back);
 });
 
-router.post('/:id/assignments/:assignmentId/delete', async (req, res) => {
-  const userId = Number(req.params.id);
-  const assignmentId = Number(req.params.assignmentId);
+router.post('/:id/assignments/:assignmentId/delete', requireGrant, async (req, res) => {
+  const target = await loadTarget(req, res);
+  if (!target) return undefined;
+  const userId = target.id;
+  const assignmentId = idParam(req.params.assignmentId);
   const back = `/admin/users/${userId}/edit`;
 
-  const assignment = await prisma.assignment.findUnique({ where: { id: assignmentId } });
-  if (!assignment || assignment.userId !== userId) {
-    return res.status(404).render('error', { title: res.locals.t('err_not_found'), message: res.locals.t('admin_user_err_not_found') });
-  }
-  if (userId === req.session.user.id && assignment.role === 'ADMIN') {
-    return res.redirect(res.locals.href(`${back}?error=admin_user_err_self_lockout`));
+  const assignment = assignmentId === null
+    ? null
+    : target.assignments.find((a) => a.id === assignmentId);
+  if (!assignment) return notFound(res);
+
+  // Same lockout rule as editing: not "is this an ADMIN post" but "does this
+  // leave me able to get back in".
+  if (userId === req.session.user.id) {
+    const others = target.assignments
+      .filter((a) => a.id !== assignmentId && a.isActive)
+      .some((a) => capabilitiesFor(a.role, a.capabilities).has('admin.users'));
+    if (!others) return res.redirect(res.locals.href(`${back}?error=admin_user_err_self_lockout`));
   }
 
   await prisma.assignment.delete({ where: { id: assignmentId } });
@@ -319,7 +425,9 @@ router.post('/:id/assignments/:assignmentId/delete', async (req, res) => {
 
 // --- activate / deactivate the whole account -------------------------------
 router.post('/:id/active', async (req, res) => {
-  const id = Number(req.params.id);
+  const target = await loadTarget(req, res);
+  if (!target) return undefined;
+  const id = target.id;
   const makeActive = req.body.active === 'true';
   if (id === req.session.user.id && !makeActive) {
     return res.status(400).render('error', {
@@ -333,10 +441,13 @@ router.post('/:id/active', async (req, res) => {
 });
 
 // --- reset password --------------------------------------------------------
+// Issuing a new one-time password is the most dangerous thing admin.users
+// can do, because the new password is shown to the person doing it. loadTarget
+// is what stops it being aimed upwards at a more privileged account.
 router.post('/:id/reset-password', async (req, res) => {
-  const id = Number(req.params.id);
-  const user = await prisma.user.findUnique({ where: { id } });
-  if (!user) return res.status(404).render('error', { title: res.locals.t('err_not_found'), message: res.locals.t('admin_user_err_not_found') });
+  const user = await loadTarget(req, res);
+  if (!user) return undefined;
+  const id = user.id;
 
   const tempPassword = generateTempPassword();
   await prisma.user.update({
@@ -356,8 +467,10 @@ router.post('/:id/reset-password', async (req, res) => {
 // Only offered when the account has left no trace worth keeping. Anything
 // that has acted in the system is deactivated instead, so the audit trail and
 // the "confirmed by" attribution on assessment cycles stay intact.
-router.post('/:id/delete', async (req, res) => {
-  const id = Number(req.params.id);
+router.post('/:id/delete', requireGrant, async (req, res) => {
+  const loaded = await loadTarget(req, res);
+  if (!loaded) return undefined;
+  const id = loaded.id;
   if (id === req.session.user.id) {
     return res.status(400).render('error', {
       title: res.locals.t('err_access_denied'),
@@ -368,7 +481,7 @@ router.post('/:id/delete', async (req, res) => {
     where: { id },
     include: { _count: { select: { auditEntries: true, confirmedCycles: true, feedbackTickets: true } } },
   });
-  if (!user) return res.status(404).render('error', { title: res.locals.t('err_not_found'), message: res.locals.t('admin_user_err_not_found') });
+  if (!user) return notFound(res);
 
   const references = user._count.auditEntries + user._count.confirmedCycles + user._count.feedbackTickets;
   if (references > 0) {

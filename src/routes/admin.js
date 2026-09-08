@@ -6,6 +6,12 @@ const simeService = require('../services/sime/simeService');
 const { bandFor } = require('../data/order675');
 const { logAction } = require('../services/audit');
 const { generateTempPassword } = require('../utils/password');
+const { ROLE_DEFAULTS, overridesFrom } = require('../services/capabilities');
+
+// Same rule as the account screen. Applied here too, because a school-team
+// login created down this path is a real credential and "whatever the form
+// sent" is not a specification.
+const LOGIN_PATTERN = /^[a-z0-9][a-z0-9._@-]{2,63}$/;
 
 const router = express.Router();
 router.use(requireCapability('admin.schools', 'admin.users', 'admin.audit'));
@@ -26,53 +32,111 @@ router.get('/sime/search', requireCapability('admin.schools'), async (req, res) 
 
 router.get('/schools/new', requireCapability('admin.schools'), async (req, res) => {
   const territories = await prisma.territory.findMany({ orderBy: { name: 'asc' } });
-  res.render('admin/school-new', { title: res.locals.t('admin_add_title'), wide: true, territories });
+  res.render('admin/school-new', {
+    title: res.locals.t('admin_add_title'), wide: true, territories,
+    errorMessage: null, body: {},
+  });
 });
 
 router.post('/schools', requireCapability('admin.schools'), async (req, res) => {
   const { simeId, name, address, territoryId, enrolmentTotal, studentsGrades7to12, classroomsTotal, teamLogin, teamName } = req.body;
 
-  let territory = await prisma.territory.findFirst({ where: { name: req.body.territoryName || undefined } });
-  const territoryIdFinal = territoryId && territoryId !== 'new'
-    ? Number(territoryId)
-    : territory
-      ? territory.id
-      : (await prisma.territory.create({ data: { name: req.body.territoryName || 'Unassigned' } })).id;
+  const fail = async (messageKey) => {
+    const territories = await prisma.territory.findMany({ orderBy: { name: 'asc' } });
+    return res.status(400).render('admin/school-new', {
+      title: res.locals.t('admin_add_title'), wide: true, territories,
+      errorMessage: res.locals.t(messageKey), body: req.body,
+    });
+  };
 
-  const enrolment = Number(enrolmentTotal) || 0;
-  const school = await prisma.school.create({
-    data: {
-      simeId: simeId || null,
-      name,
-      address: address || null,
-      territoryId: territoryIdFinal,
-      enrolmentTotal: enrolment,
-      studentsGrades7to12: Number(studentsGrades7to12) || 0,
-      classroomsTotal: Number(classroomsTotal) || 0,
-      enrolmentBand: bandFor(enrolment),
-    },
-  });
+  if (!name || !name.trim()) return fail('admin_school_err_name');
 
-  let tempPassword = null;
+  // Resolving the territory.
+  //
+  // The previous version passed `{ name: undefined }` to findFirst when the
+  // form sent no territory name. Prisma drops undefined keys, so the filter
+  // became "no filter" and the query returned whichever territory happened to
+  // be first in the table — quietly filing a school under a district it has
+  // nothing to do with. An unnamed territory is now a validation error.
+  const chosenId = territoryId && territoryId !== 'new' ? Number(territoryId) : null;
+  let territoryIdFinal;
+  if (chosenId !== null) {
+    if (!Number.isInteger(chosenId)) return fail('admin_school_err_territory');
+    const exists = await prisma.territory.findUnique({ where: { id: chosenId } });
+    if (!exists) return fail('admin_school_err_territory');
+    territoryIdFinal = exists.id;
+  } else {
+    const newName = (req.body.territoryName || '').trim();
+    if (!newName) return fail('admin_school_err_territory');
+    const existing = await prisma.territory.findFirst({ where: { name: newName } });
+    territoryIdFinal = existing
+      ? existing.id
+      : (await prisma.territory.create({ data: { name: newName } })).id;
+  }
+
   let teamAccountLogin = null;
   if (teamLogin) {
-    // A real school account never gets a fixed/shared password — a random
-    // one-time password is generated and shown to the admin exactly once
-    // here; the account is forced to set its own password on first login
-    // (see mustChangePassword, enforced in app.js).
-    tempPassword = generateTempPassword();
-    teamAccountLogin = teamLogin.trim().toLowerCase();
-    await prisma.user.create({
+    teamAccountLogin = String(teamLogin).trim().toLowerCase();
+    if (!LOGIN_PATTERN.test(teamAccountLogin)) return fail('admin_school_err_login');
+    const clash = await prisma.user.findUnique({ where: { login: teamAccountLogin } });
+    // Checked before anything is written. Discovering it afterwards used to
+    // throw between the two creates, leaving a school row with no team and no
+    // explanation.
+    if (clash) return fail('admin_school_err_duplicate_login');
+  }
+
+  const enrolment = Number(enrolmentTotal) || 0;
+
+  // A real school account never gets a fixed or shared password: a random
+  // one-time password is generated, shown to the admin exactly once here, and
+  // the account is forced to replace it on first login (mustChangePassword,
+  // enforced in app.js).
+  const tempPassword = teamAccountLogin ? generateTempPassword() : null;
+  const passwordHash = tempPassword ? await bcrypt.hash(tempPassword, 10) : null;
+
+  // One transaction: a school with no team, or a team with no school, is
+  // worse than neither. The previous version created them in sequence, so any
+  // failure on the second left an orphaned school behind.
+  const school = await prisma.$transaction(async (tx) => {
+    const created = await tx.school.create({
       data: {
-        login: teamAccountLogin,
-        passwordHash: await bcrypt.hash(tempPassword, 10),
-        name: teamName || `Echipa digitală — ${name}`,
-        role: 'SCHOOL_TEAM',
-        schoolId: school.id,
-        mustChangePassword: true,
+        simeId: simeId || null,
+        name: name.trim(),
+        address: address || null,
+        territoryId: territoryIdFinal,
+        enrolmentTotal: enrolment,
+        studentsGrades7to12: Number(studentsGrades7to12) || 0,
+        classroomsTotal: Number(classroomsTotal) || 0,
+        enrolmentBand: bandFor(enrolment),
       },
     });
-  }
+
+    if (teamAccountLogin) {
+      await tx.user.create({
+        data: {
+          login: teamAccountLogin,
+          passwordHash,
+          name: teamName || `Echipa digitală — ${created.name}`,
+          role: 'SCHOOL_TEAM',
+          schoolId: created.id,
+          mustChangePassword: true,
+          // The post is what actually carries permissions — see
+          // middleware/workspace.js. Creating the account without one used to
+          // produce a login that worked and then could do nothing at all,
+          // landing on "an admin has not given you a post yet". Every school
+          // provisioned through this form was arriving broken.
+          assignments: {
+            create: [{
+              role: 'SCHOOL_TEAM',
+              schoolId: created.id,
+              capabilities: { create: overridesFrom('SCHOOL_TEAM', ROLE_DEFAULTS.SCHOOL_TEAM) },
+            }],
+          },
+        },
+      });
+    }
+    return created;
+  });
 
   await logAction(req.session.user.id, 'PROVISION_SCHOOL', 'School', school.id, simeId ? `from SIME ${simeId}` : 'manual entry');
   res.render('admin/school-created', {

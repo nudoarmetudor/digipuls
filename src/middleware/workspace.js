@@ -98,9 +98,16 @@ function loadWorkspace(req, res, next) {
   let active = null;
   if (req.requestedWorkspaceId) {
     active = assignments.find((a) => a.id === req.requestedWorkspaceId) || null;
-    // Asking for someone else's workspace, or one that has been removed, is
-    // not an error worth a 403 page: fall through to the normal choice, and
-    // the URL simply stops resolving to it.
+    if (!active) {
+      // Falling through to "some other post of theirs" would render one
+      // institution's data under a URL naming another. The entire purpose of
+      // putting the workspace in the URL is that a tab means exactly one
+      // post, so an id that does not resolve has to stop here rather than
+      // quietly become a different one.
+      req.workspace = null;
+      req.workspaceNotFound = true;
+      return next();
+    }
   }
   if (!active && assignments.length === 1) active = assignments[0];
   if (!active && req.session.lastWorkspaceId) {

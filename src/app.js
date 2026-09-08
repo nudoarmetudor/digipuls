@@ -8,6 +8,10 @@ const prefs = require('./utils/prefs');
 const { loadAccount } = require('./middleware/auth');
 const { extractWorkspace, loadWorkspace } = require('./middleware/workspace');
 const { homeFor } = require('./services/capabilities');
+const { csrf } = require('./middleware/csrf');
+const { securityHeaders } = require('./middleware/securityHeaders');
+const { throttle } = require('./middleware/rateLimit');
+const { safeRedirect } = require('./utils/safeRedirect');
 
 // No silent fallback in production — sessions signed with the checked-in
 // dev secret are not secure once real accounts/data exist on this instance.
@@ -28,28 +32,49 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(expressLayouts);
 app.set('layout', 'layout');
 
+// First, so that every response carries the policy — including the error
+// pages, which are exactly the responses an attacker wants to reach.
+app.use(securityHeaders);
+
 // Strips a /w/<id> workspace prefix off the URL before any route sees it,
 // so every route path in the app stays prefix-unaware. See
 // middleware/workspace.js for why the active role lives in the URL.
 app.use(extractWorkspace);
 
-app.use(morgan('dev'));
+// 'dev' is a developer's format, and in production it writes every request
+// path - workspace and school ids included - into the host's shared log.
+if (process.env.NODE_ENV !== 'production') app.use(morgan('dev'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use('/static', express.static(path.join(__dirname, '..', 'public')));
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+// No /uploads mount: nothing in the app writes there. Serving an empty
+// directory only creates somewhere for a future bug to drop a file and have
+// it served straight back.
 
 app.use(
   session({
     secret: process.env.SESSION_SECRET || 'digipuls-dev-secret',
     resave: false,
     saveUninitialized: false,
+    name: 'digipuls.sid',
     cookie: {
       maxAge: 1000 * 60 * 60 * 8, // 8 hours
       secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      // 'lax' rather than 'strict', deliberately. Both stop the attack that
+      // matters — the cookie is not sent on a cross-site POST either way —
+      // but 'strict' also withholds it when someone follows an ordinary link
+      // into the app from elsewhere, so a mentor clicking a link in an email
+      // arrives apparently logged out and has to reload. That is a real cost
+      // during a pilot, paid for protection the CSRF token in
+      // middleware/csrf.js already provides.
+      sameSite: 'lax',
     },
   })
 );
+
+// Version fingerprinting for free is a courtesy to an attacker, not to us.
+app.disable('x-powered-by');
 
 // Records which template is being rendered, so a feedback ticket can name
 // the file a developer needs to open. Wrapping res.render here means no route
@@ -115,12 +140,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Guard against open-redirect: the return path must be a same-site path, not
-// a protocol-relative URL (//evil.com would still start with "/").
-function safeBack(value) {
-  return value && /^\/(?!\/)/.test(value) ? value : '/';
-}
-
 app.get('/lang/:code', (req, res) => {
   if (i18n.SUPPORTED_LANGS.includes(req.params.code)) {
     req.session.lang = req.params.code;
@@ -128,7 +147,7 @@ app.get('/lang/:code', (req, res) => {
       maxAge: 1000 * 60 * 60 * 24 * 365, sameSite: 'lax',
     });
   }
-  res.redirect(safeBack(req.query.back));
+  res.redirect(safeRedirect(req.query.back));
 });
 
 // --- Display & accessibility preferences ------------------------------------
@@ -149,8 +168,16 @@ app.post('/preferences', (req, res) => {
   res.cookie(prefs.COOKIE_NAME, prefs.serialize(chosen), {
     maxAge: 1000 * 60 * 60 * 24 * 365, sameSite: 'lax',
   });
-  res.redirect(safeBack(req.body.back));
+  res.redirect(safeRedirect(req.body.back));
 });
+
+// Issues the CSRF token for every render, and verifies it on every write.
+//
+// Placed after the language and display middleware on purpose: when it
+// refuses a request it renders a full error page, and that page needs a
+// translator and the viewer's theme. Mounted earlier, the refusal itself
+// threw — which turned a clean 403 into a 500 and told the visitor nothing.
+app.use(csrf);
 
 // Forced first-login password change: nothing else is reachable for an
 // account still carrying a system-generated one-time password.
@@ -165,13 +192,30 @@ app.use((req, res, next) => {
   next();
 });
 
+// loadWorkspace runs before the language middleware, so it records the
+// refusal rather than rendering it — this is the first point where there is a
+// translator to render it with.
+app.use((req, res, next) => {
+  if (!req.workspaceNotFound) return next();
+  return res.status(404).render('error', {
+    title: res.locals.t('err_not_found'),
+    message: res.locals.t('err_workspace_not_found'),
+  });
+});
+
 app.use('/', require('./routes/auth'));
 app.use('/school', require('./routes/school'));
 app.use('/ministry', require('./routes/ministry'));
 app.use('/territorial', require('./routes/territorial'));
 app.use('/partner', require('./routes/partner'));
 app.use('/strategic', require('./routes/strategic'));
-app.use('/public-view', require('./routes/public'));
+// The only routes reachable without a login, and the only ones an anonymous
+// client can use to make the app do database work. This host bills the
+// database user a cumulative max_connections_per_hour, so an unthrottled
+// public tier is not just a slow-site risk: exhausting that quota also stops
+// `prisma migrate deploy`, which is how deployments previously stopped
+// landing. See src/config/db.js.
+app.use('/public-view', throttle({ windowMs: 60 * 1000, max: 60, message: 'err_rate_limited' }), require('./routes/public'));
 app.use('/workspace', require('./routes/workspace'));
 app.use('/admin/users', require('./routes/adminUsers'));
 app.use('/admin', require('./routes/admin'));
@@ -189,15 +233,23 @@ app.get('/', (req, res) => {
 
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
-  console.error(err);
+  // The detail goes to the log, not to the page. Prisma's messages name
+  // columns and constraints, which is exactly the map an attacker would
+  // otherwise have to guess at.
+  console.error('[error]', req.method, req.originalUrl, err);
+  const t = res.locals.t || ((k) => k);
+  // res.locals.href is set by loadWorkspace; an error thrown before that
+  // would make the error page itself throw.
+  if (!res.locals.href) res.locals.href = (p) => p;
   res.status(500).render('error', {
-    title: res.locals.t ? res.locals.t('err_something_wrong') : 'Something went wrong',
-    message: err.message,
+    title: t('err_something_wrong'),
+    message: t('err_generic_detail'),
   });
 });
 
 app.use((req, res) => {
   const t = res.locals.t || ((k) => k);
+  if (!res.locals.href) res.locals.href = (p) => p;
   res.status(404).render('error', { title: t('err_not_found'), message: t('err_no_route', { path: req.originalUrl }) });
 });
 

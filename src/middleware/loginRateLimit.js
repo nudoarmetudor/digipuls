@@ -1,45 +1,57 @@
-// Minimal in-memory login throttle — no new dependency, deliberately not a
-// distributed/production-grade rate limiter (see ROADMAP.md). Good enough
-// to stop trivial credential-stuffing against a single-process deployment;
-// keyed by IP+email so one slow attacker can't lock out a shared IP's other
-// users, and vice versa.
+// Login throttling, in two dimensions.
+//
+// Per account (IP + login) stops someone grinding one person's password.
+// Per IP stops the attack that actually works against a directory of
+// predictable logins: one common password tried against every account in
+// turn, which the per-account counter never sees because each key is touched
+// only once.
+//
+// The IP budget is deliberately larger than the per-account one — a whole
+// school sharing one NAT address is a normal thing here, and locking out a
+// lyceum because one teacher mistyped their password six times would be a
+// self-inflicted outage.
+
+const { createLimiter } = require('./rateLimit');
 
 const WINDOW_MS = 15 * 60 * 1000;
-const MAX_ATTEMPTS = 8;
-const attempts = new Map(); // key -> { count, windowStart }
+const MAX_PER_ACCOUNT = 8;
+const MAX_PER_IP = 40;
 
-function key(req) {
-  const email = (req.body && req.body.login || '').toLowerCase().trim();
-  return `${req.ip}:${email}`;
+const perAccount = createLimiter({ windowMs: WINDOW_MS, max: MAX_PER_ACCOUNT });
+const perIp = createLimiter({ windowMs: WINDOW_MS, max: MAX_PER_IP });
+
+function accountKey(req) {
+  const login = ((req.body && req.body.login) || '').toLowerCase().trim();
+  return `${req.ip}:${login}`;
 }
 
 function loginRateLimit(req, res, next) {
-  const k = key(req);
-  const now = Date.now();
-  const entry = attempts.get(k);
-  if (entry && now - entry.windowStart < WINDOW_MS && entry.count >= MAX_ATTEMPTS) {
+  if (perAccount.exceeded(accountKey(req)) || perIp.exceeded(req.ip)) {
+    const t = res.locals.t || ((k) => k);
+    res.setHeader('Retry-After', Math.ceil(WINDOW_MS / 1000));
     return res.status(429).render('auth/login', {
-      title: 'Log in',
-      error: res.locals.t('login_rate_limited') || 'Too many attempts. Please wait a few minutes and try again.',
+      title: t('login_title'),
+      error: t('login_rate_limited'),
       layout: false,
     });
   }
-  next();
+  return next();
 }
 
 function recordFailedAttempt(req) {
-  const k = key(req);
-  const now = Date.now();
-  const entry = attempts.get(k);
-  if (!entry || now - entry.windowStart >= WINDOW_MS) {
-    attempts.set(k, { count: 1, windowStart: now });
-  } else {
-    entry.count += 1;
-  }
+  perAccount.record(accountKey(req));
+  perIp.record(req.ip);
 }
 
 function clearAttempts(req) {
-  attempts.delete(key(req));
+  // Only the per-account counter is cleared on success. The per-IP counter
+  // deliberately survives: an attacker who guesses one account correctly
+  // should not thereby reset the budget they were spending on all the others.
+  perAccount.clear(accountKey(req));
 }
 
-module.exports = { loginRateLimit, recordFailedAttempt, clearAttempts };
+module.exports = {
+  loginRateLimit, recordFailedAttempt, clearAttempts,
+  WINDOW_MS, MAX_PER_ACCOUNT, MAX_PER_IP,
+  _limiters: { perAccount, perIp },
+};

@@ -26,7 +26,8 @@ const CAPABILITIES = [
   'view.training',    // the strategic-partner training-needs dashboard
   // --- administration ---
   'admin.schools',    // provision schools from SIME
-  'admin.users',      // manage accounts and their capabilities
+  'admin.users',      // manage accounts: create, rename, activate, reset password
+  'admin.grant',      // decide what a post *is*: its role and its capabilities
   'admin.audit',      // read the audit log
   // --- pilot feedback ---
   'feedback.submit',  // the click-to-report overlay, and one's own tickets
@@ -37,7 +38,7 @@ const CAPABILITIES = [
 // than eleven undifferentiated strings.
 const CAPABILITY_GROUPS = [
   { key: 'views', capabilities: ['view.school', 'view.national', 'view.compliance', 'view.regional', 'view.partner', 'view.training'] },
-  { key: 'admin', capabilities: ['admin.schools', 'admin.users', 'admin.audit'] },
+  { key: 'admin', capabilities: ['admin.schools', 'admin.users', 'admin.grant', 'admin.audit'] },
   { key: 'feedback', capabilities: ['feedback.submit', 'feedback.triage'] },
 ];
 
@@ -61,6 +62,40 @@ const ROLES = [
 // are added. It is still only a *default*: an admin can revoke it from one
 // person, because overrides are applied afterwards.
 const BASELINE_CAPABILITIES = ['feedback.submit'];
+
+// Why admin.users and admin.grant are two capabilities and not one.
+//
+// They used to be one, and holding it meant: create any account, reset
+// anyone's password and read the new one, and add an ADMIN post to any
+// account including your own. That last part makes it not an administrative
+// capability but a route to becoming the administrator, which is more than
+// anyone was ever knowingly granted.
+//
+//   admin.users  running the pilot: add a mentor, correct a name, switch an
+//                account off, issue a new one-time password.
+//   admin.grant  deciding what a post may do. This is the privilege boundary,
+//                so it is held by fewer people than admin.users.
+//
+// canActOn() below closes the remaining sideways route: admin.users can issue
+// a new password for an account, which would be a takeover if the target were
+// more privileged than the actor.
+
+// Why admin.users and admin.grant are two capabilities and not one.
+//
+// They used to be one, and holding it meant: create any account, reset
+// anyone's password and read the new one, and add an ADMIN post to any
+// account including your own. That last part makes it not an administrative
+// capability but a route to becoming the administrator, which is more than
+// anyone was ever knowingly granted.
+//
+//   admin.users  running the pilot: add a mentor, correct a name, switch an
+//                account off, issue a new one-time password.
+//   admin.grant  deciding what a post may do. This is the privilege boundary,
+//                so it is held by fewer people than admin.users.
+//
+// canActOn() below closes the remaining sideways route: admin.users can issue
+// a new password for an account, which would be a takeover if the target were
+// more privileged than the actor.
 
 // The public tier (/public-view) is deliberately absent from CAPABILITIES:
 // it requires no login at all, so gating it per account would be theatre.
@@ -126,6 +161,44 @@ function overridesFrom(role, desired) {
     if (isWanted !== isDefault) rows.push({ capability: cap, granted: isWanted });
   });
   return rows;
+}
+
+/**
+ * May an actor administer this target account?
+ *
+ * The rule is that you cannot act on someone who can do something you cannot.
+ * Without it, admin.users is still a privilege-escalation primitive by a
+ * longer route: reset the administrator's password, read it off the screen,
+ * sign in as them. Resetting a *peer's* password stays allowed, because that
+ * is the actual job.
+ *
+ * @param {Set<string>} actor   the acting account's effective capabilities
+ * @param {Set<string>} target  the union of the target account's capabilities
+ */
+function canActOn(actor, target) {
+  for (const capability of target) {
+    if (!actor.has(capability)) return false;
+  }
+  return true;
+}
+
+/**
+ * May an actor administer this target account?
+ *
+ * The rule is that you cannot act on someone who can do something you cannot.
+ * Without it, admin.users is still a privilege-escalation primitive by a
+ * longer route: reset the administrator's password, read it off the screen,
+ * sign in as them. Resetting a *peer's* password stays allowed, because that
+ * is the actual job.
+ *
+ * @param {Set<string>} actor   the acting account's effective capabilities
+ * @param {Set<string>} target  the union of the target account's capabilities
+ */
+function canActOn(actor, target) {
+  for (const capability of target) {
+    if (!actor.has(capability)) return false;
+  }
+  return true;
 }
 
 /** Where an account lands after login, given what it can actually reach. */
@@ -196,6 +269,7 @@ module.exports = {
   CAPABILITY_GROUPS,
   ROLES,
   ROLE_DEFAULTS,
+  canActOn,
   capabilitiesFor,
   overridesFrom,
   homeFor,

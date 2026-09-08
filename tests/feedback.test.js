@@ -110,13 +110,25 @@ test('a client-supplied key list is ignored — the dictionary is the authority'
 test('oversized fields are truncated, not rejected and not stored whole', () => {
   const built = buildTicketData({
     comment: 'c'.repeat(9000),
-    userAgent: 'u'.repeat(9000),
     route: '/r'.repeat(9000),
-  }, ctx);
+  }, { ...ctx, userAgent: 'u'.repeat(9000) });
   assert.ok(built.ok);
   assert.strictEqual(built.data.comment.length, LIMITS.comment);
   assert.strictEqual(built.data.userAgent.length, LIMITS.userAgent);
   assert.strictEqual(built.data.route.length, LIMITS.route);
+});
+
+test('the user agent comes from the request, not from the reporter', () => {
+  // A developer reading a ticket treats this line as evidence of what the
+  // reporter was actually using. A value the reporter could type into the
+  // request body is not evidence of anything, so a posted userAgent is
+  // ignored in favour of the real header.
+  const built = buildTicketData(
+    { comment: 'x', userAgent: 'Definitely Internet Explorer 6' },
+    { ...ctx, userAgent: 'Mozilla/5.0 (real header)' },
+  );
+  assert.ok(built.ok);
+  assert.strictEqual(built.data.userAgent, 'Mozilla/5.0 (real header)');
 });
 
 test('a missing route still produces a filable ticket', () => {

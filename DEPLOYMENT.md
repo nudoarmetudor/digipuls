@@ -170,12 +170,25 @@ and redeploys automatically.
 ## Notes that apply to both paths
 
 - **Demo/seed data**: `npm run seed` populates fictional schools and demo
-  logins (see `prisma/seed.js` — password `DigiPuls2026!` for all demo
-  accounts). Do not run it against a production database meant for real
-  Moldovan schools; provision real schools instead via the admin SIME
-  import flow (`/admin/schools/new`).
+  logins that all share one password. It is for a local throwaway database
+  only, and it now refuses to run when `NODE_ENV=production` or when
+  `DATABASE_URL` points at a non-local host (`SEED_FORCE=yes` overrides, for
+  rebuilding a demo instance — change every password straight afterwards).
+  Provision real schools via `/admin/schools/new`, which issues an
+  individually generated one-time password per account.
+
+  This guard exists because the seed was once run against production, leaving
+  thirteen accounts — including an administrator — reachable with a password
+  published in this repository.
 - **SESSION_SECRET** must be a long random value in production — sessions
-  signed with the default dev secret are not secure.
+  signed with the default dev secret are not secure. The app refuses to start
+  in production without it.
+- **DB_SSL**: the database connection is TLS-encrypted with certificate
+  verification by default, which matters because the database is on a
+  different host from the app and the traffic carries credentials and
+  personal data. Set `DB_SSL=false` only for a local container that has no
+  certificate. `DB_SSL_INSECURE=true` keeps encryption but skips certificate
+  verification — a fallback, not a destination.
 - **Backups**: use your database host's normal MySQL backup mechanism
   (Hostinger's hPanel has a database backup/export option; a self-managed
   server should run `mysqldump` on a cron schedule).

@@ -85,7 +85,7 @@ function matchI18nKeys(text, max = 6) {
  * { ok: true, data } or { ok: false, error } — never throws on bad input,
  * because this endpoint is reachable by anyone who can submit feedback.
  */
-function buildTicketData(body = {}, { authorId, lang }) {
+function buildTicketData(body = {}, { authorId, lang, userAgent }) {
   const comment = clamp(body.comment, LIMITS.comment);
   if (!comment) return { ok: false, error: 'comment_required' };
 
@@ -117,7 +117,10 @@ function buildTicketData(body = {}, { authorId, lang }) {
       lang: clamp(body.lang, LIMITS.lang) || lang || null,
       displayPrefs: clamp(body.displayPrefs, LIMITS.displayPrefs),
       viewport: clamp(body.viewport, LIMITS.viewport),
-      userAgent: clamp(body.userAgent, LIMITS.userAgent),
+      // Taken from the request header, not the posted body. A developer
+      // reading a ticket treats this as evidence of what the reporter was
+      // using; a value the reporter could type is not evidence.
+      userAgent: clamp(userAgent, LIMITS.userAgent),
     },
   };
 }

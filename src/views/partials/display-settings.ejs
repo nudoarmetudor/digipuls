@@ -23,6 +23,7 @@ const groups = [
   </summary>
   <div class="a11y-panel" data-a11y-panel>
     <form method="POST" action="<%= href('/preferences') %>">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <input type="hidden" name="back" value="<%= href(currentPath) %>">
       <h2 class="plain-heading" style="font-size:1rem;"><%= t('a11y_settings_title') %></h2>
       <p class="small"><%= t('a11y_intro') %></p>

@@ -5,6 +5,7 @@
 
 <div class="card">
   <form method="POST" action="<%= href('/feedback/tickets') %>">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <label for="f-route"><%= t('feedback_field_route') %></label>
     <input type="text" id="f-route" name="route" value="<%= body.route || '' %>" placeholder="/school/cycles/1/step/infra">
     <p class="help"><%= t('feedback_field_route_help') %></p>

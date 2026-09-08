@@ -5,7 +5,10 @@
 <title><%= typeof title !== 'undefined' && title ? title + ' — DigiPuls' : 'DigiPuls' %></title>
 <link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/static/css/style.css">
-<script>
+<%# Read by public/js/feedback.js, which posts JSON and so has no form field
+    to carry the token in. %>
+<meta name="csrf-token" content="<%= csrfToken %>">
+<script nonce="<%= cspNonce %>">
   /* Applies stored display preferences before first paint.
      The server has already set these attributes from the dp_prefs cookie;
      this only matters when cookies are blocked but localStorage isn't, and

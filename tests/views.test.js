@@ -118,7 +118,10 @@ function templatesFor(lang) {
   return [
     ['error.ejs', { title: 'T', message: 'M' }],
     ['auth/login.ejs', { title: 'Log in', error: 'Bad credentials' }],
-    ['auth/change-password.ejs', { title: 'Change', error: null }],
+    // mustChange false is the ordinary case: someone changing a password they
+    // already know, who therefore has to prove they know it. The forced-reset
+    // variant is covered separately below.
+    ['auth/change-password.ejs', { title: 'Change', error: null, mustChange: false }],
 
     ['school/dashboard.ejs', { school, cycles: [confirmedCycle], latest: confirmedCycle, hasConfirmedPrior: true }],
     ['school/dashboard.ejs', { school, cycles: [], latest: null, hasConfirmedPrior: false }],
@@ -193,7 +196,12 @@ function templatesFor(lang) {
     }],
     ['public/school-summary.ejs', { school, hasData: false }],
 
-    ['admin/school-new.ejs', { territories: [{ id: 1, name: 'Chișinău' }] }],
+    ['admin/school-new.ejs', {
+      territories: [{ id: 1, name: 'Chișinău' }],
+      // The form re-renders itself with what was typed when validation fails,
+      // so both locals are always supplied by the route.
+      errorMessage: null, body: {},
+    }],
     ['admin/school-created.ejs', { school, teamAccountLogin: 'eminescu.echipa', tempPassword: 'abc123XYZ!' }],
     ['admin/school-created.ejs', { school, teamAccountLogin: null, tempPassword: null }],
     ['admin/audit-log.ejs', {
@@ -297,6 +305,13 @@ function baseLocals(lang) {
       && !/^\/(public-view|login|logout|lang|preferences|change-password|workspace)(\/|$)/.test(path)
       ? '/w/7' + (path === '/' ? '' : path) : path),
     currentPath: '/ministry',
+    // Set for every request by middleware/csrf.js and middleware/
+    // securityHeaders.js. Present here so the views are exercised as they are
+    // actually served: every POST form must carry the token, and the two
+    // inline scripts must carry the nonce, or a strict CSP silently drops
+    // them.
+    csrfToken: 'test-csrf-token',
+    cspNonce: 'test-nonce',
     demoMode: true,
     title: 'Page',
     wide: false,

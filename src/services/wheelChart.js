@@ -20,6 +20,20 @@ const DOMAIN_COLORS = { A: '#184759', B: '#266a82', C: '#5b1f6f', D: '#3f134e' }
 const DOMAIN_VARS = { A: 'var(--wheel-a)', B: 'var(--wheel-b)', C: 'var(--wheel-c)', D: 'var(--wheel-d)' };
 const DOMAIN_ORDER = ['A', 'B', 'C', 'D'];
 
+// Everything this module returns is emitted with <%- %>, so nothing may reach
+// the output unescaped. Today every caller passes static indicator names and
+// translated domain labels, so there is no live injection here — but "the
+// current callers happen to be safe" is not a property the next caller
+// inherits, and a school name is one refactor away from this function.
+function esc(value) {
+  return String(value === null || value === undefined ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function polarToCartesian(cx, cy, r, angleDeg) {
   const a = ((angleDeg - 90) * Math.PI) / 180.0;
   return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
@@ -82,7 +96,7 @@ function renderWheel(items, opts = {}) {
   // alone — the wheel is a summary, not the only copy of the data.
   let svg = `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg" `
     + `role="img" aria-labelledby="${titleId}" style="max-width:100%;height:auto" font-family="inherit">`;
-  svg += `<title id="${titleId}">${t('wheel_title')}</title>`;
+  svg += `<title id="${titleId}">${esc(t('wheel_title'))}</title>`;
 
   // Concentric level gridlines (0 = the inner hole boundary, 5 = outer edge)
   for (let lvl = 0; lvl <= ringCount; lvl++) {
@@ -108,7 +122,7 @@ function renderWheel(items, opts = {}) {
     const levelText = item.tooltipSuffix === 'band'
       ? `${t('band')} ${item.level ?? '—'}/4`
       : `${t('level_label')} ${item.level ?? '—'}`;
-    svg += `<title>${item.code}${item.name ? ' — ' + item.name : ''}: ${levelText}</title>`;
+    svg += `<title>${esc(item.code)}${item.name ? ' — ' + esc(item.name) : ''}: ${esc(levelText)}</title>`;
     svg += '</path>';
   });
 
@@ -118,7 +132,7 @@ function renderWheel(items, opts = {}) {
       const mid = i * sectorDeg + sectorDeg / 2;
       const pos = polarToCartesian(cx, cy, labelRadius, mid);
       const anchor = mid > 180 ? 'end' : mid === 0 || mid === 180 ? 'middle' : 'start';
-      svg += `<text x="${pos.x.toFixed(1)}" y="${pos.y.toFixed(1)}" font-size="${n > 10 ? 9 : 11}" fill="var(--text)" text-anchor="${anchor}" dominant-baseline="middle">${item.code}</text>`;
+      svg += `<text x="${pos.x.toFixed(1)}" y="${pos.y.toFixed(1)}" font-size="${n > 10 ? 9 : 11}" fill="var(--text)" text-anchor="${anchor}" dominant-baseline="middle">${esc(item.code)}</text>`;
     });
   }
 

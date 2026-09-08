@@ -29,6 +29,7 @@ const demoAccounts = [
         <p class="subtitle"><%= t('login_subtitle') %></p>
         <% if (error) { %><div class="flash flash-error" role="alert"><%= error %></div><% } %>
         <form method="POST" action="<%= href('/login') %>">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <label for="login-name"><%= t('login_username') %></label>
           <input type="text" id="login-name" name="login" autocomplete="username" required autofocus
                  autocapitalize="none" spellcheck="false">
@@ -41,7 +42,10 @@ const demoAccounts = [
         <% if (demoMode) { %>
         <div class="card card-flat" style="margin-top:1.5rem;">
           <h2 class="plain-heading" style="font-size:1rem;"><%= t('login_demo_accounts') %></h2>
-          <p class="small"><%= t('login_demo_password_note') %> <span class="mono"><b>DigiPuls2026!</b></span></p>
+          <%# The password is not printed here. This panel only appears when
+              DEMO_MODE is on, but the template itself is public, so a literal
+              here is published whether the panel renders or not. %>
+          <p class="small"><%= t('login_demo_password_note') %></p>
           <div class="table-scroll">
             <table>
               <thead>

@@ -77,6 +77,7 @@
     </details>
 
     <form method="POST" action="<%= href('/feedback/backlog/' + (ticket.id) + (query.status ? '?status=' + query.status : '')) %>">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <div class="inline-fields">
         <div>
           <label for="s-<%= ticket.id %>"><%= t('feedback_set_status') %></label>

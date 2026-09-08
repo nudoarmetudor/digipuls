@@ -20,6 +20,7 @@ const nc = cycle.networkChecklist || {};
     <section aria-labelledby="inv-h">
       <h3 id="inv-h" style="font-size:0.95rem;"><%= t('device_inventory') %></h3>
       <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/device') %>">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <div class="grid-2">
           <% deviceFields.forEach(f => { %>
             <div>
@@ -35,6 +36,7 @@ const nc = cycle.networkChecklist || {};
     <section aria-labelledby="net-h">
       <h3 id="net-h" style="font-size:0.95rem;"><%= t('network_checklist') %></h3>
       <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/network') %>">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <% networkFields.forEach(f => { %>
           <label class="checkbox" for="net-<%= f %>">
             <input type="checkbox" id="net-<%= f %>" name="<%= f %>" <%= nc[f] ? 'checked' : '' %>>

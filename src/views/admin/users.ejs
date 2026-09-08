@@ -30,7 +30,9 @@
     <div class="btn-row" style="margin-top:0.8rem;">
       <button class="btn btn-sm" type="submit"><%= t('apply') %></button>
       <a class="btn btn-sm btn-secondary" href="<%= href('/admin/users') %>"><%= t('reset') %></a>
-      <a class="btn btn-sm" href="<%= href('/admin/users/new') %>"><%= t('admin_user_new_title') %></a>
+      <% if (can('admin.grant')) { %>
+        <a class="btn btn-sm" href="<%= href('/admin/users/new') %>"><%= t('admin_user_new_title') %></a>
+      <% } %>
     </div>
   </form>
 </div>
@@ -83,6 +85,7 @@
                 <%= t('edit') %><span class="visually-hidden"> — <%= u.name %></span>
               </a>
               <form method="POST" action="<%= href('/admin/users/' + (u.id) + '/active') %>">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <input type="hidden" name="active" value="<%= u.isActive ? 'false' : 'true' %>">
                 <button class="btn btn-sm btn-secondary" type="submit">
                   <%= u.isActive ? t('admin_user_deactivate') : t('admin_user_activate') %><span class="visually-hidden"> — <%= u.name %></span>

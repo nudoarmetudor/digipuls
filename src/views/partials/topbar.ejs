@@ -27,6 +27,7 @@
         <% } %>
       </span>
       <form action="/logout" method="POST">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <button class="btn btn-sm btn-secondary" type="submit"><%= t('nav_logout') %></button>
       </form>
     <% } else { %>
