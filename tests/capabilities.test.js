@@ -4,6 +4,7 @@ const assert = require('node:assert');
 const {
   CAPABILITIES, CAPABILITY_GROUPS, ROLES, ROLE_DEFAULTS,
   capabilitiesFor, overridesFrom, homeFor, canOpenSchoolWorkspace,
+  BASELINE_CAPABILITIES, defaultsFor,
 } = require('../src/services/capabilities');
 
 test('every role has defaults, and every default is a real capability', () => {
@@ -51,24 +52,24 @@ test('overrides add and remove on top of the role default', () => {
 test('a capability removed from the code cannot come back from a stale row', () => {
   const caps = capabilitiesFor('PARTNER', [{ capability: 'admin.everything', granted: true }]);
   assert.ok(!caps.has('admin.everything'));
-  assert.deepStrictEqual([...caps], ['view.partner']);
+  assert.deepStrictEqual([...caps].sort(), ['feedback.submit', 'view.partner']);
 });
 
 test('overridesFrom stores only the differences from the role default', () => {
   // Ticking exactly the role's own defaults should store nothing at all —
   // otherwise every user freezes a copy of the defaults and later changes to
   // a role stop reaching anyone.
-  assert.deepStrictEqual(overridesFrom('MINISTRY', ROLE_DEFAULTS.MINISTRY), []);
+  assert.deepStrictEqual(overridesFrom('MINISTRY', [...defaultsFor('MINISTRY')]), []);
 
-  const rows = overridesFrom('TERRITORIAL', ['view.regional', 'view.national']);
+  const rows = overridesFrom('TERRITORIAL', [...defaultsFor('TERRITORIAL'), 'view.national']);
   assert.deepStrictEqual(rows, [{ capability: 'view.national', granted: true }]);
 
-  const revoked = overridesFrom('MINISTRY', ['view.national']);
+  const revoked = overridesFrom('MINISTRY', ['view.national', 'feedback.submit']);
   assert.deepStrictEqual(revoked, [{ capability: 'view.compliance', granted: false }]);
 });
 
 test('overridesFrom ignores capabilities that do not exist', () => {
-  const rows = overridesFrom('PARTNER', ['view.partner', 'made.up']);
+  const rows = overridesFrom('PARTNER', [...defaultsFor('PARTNER'), 'made.up']);
   assert.deepStrictEqual(rows, []);
 });
 
@@ -116,7 +117,41 @@ test('an admin is never sent to a school workspace it has no school for', () => 
 
 test('a school-team account without a school is not stranded on /school', () => {
   const caps = capabilitiesFor('SCHOOL_TEAM', []);
-  assert.strictEqual(homeFor(caps, { schoolId: null }), '/public-view/schools');
+  // It can't do its job without a school, but it can say so: reporting is a
+  // baseline capability, so the landing page is the report panel.
+  assert.strictEqual(homeFor(caps, { schoolId: null }), '/feedback');
+  // Stripped of even that, it still gets a page rather than a redirect loop.
+  const stripped = capabilitiesFor('SCHOOL_TEAM', [
+    { capability: 'view.school', granted: false },
+    { capability: 'feedback.submit', granted: false },
+  ]);
+  assert.strictEqual(homeFor(stripped, { schoolId: null }), '/public-view/schools');
+});
+
+test('everyone can report a problem, whatever their role', () => {
+  // The point of the baseline: whoever hits the broken thing is the person
+  // best placed to describe it, so this must not depend on the kind of
+  // account. A role added later inherits it without anyone remembering to.
+  ROLES.forEach((role) => {
+    assert.ok(
+      capabilitiesFor(role, []).has('feedback.submit'),
+      `${role} cannot report a problem`
+    );
+  });
+  assert.deepStrictEqual(BASELINE_CAPABILITIES, ['feedback.submit']);
+});
+
+test('a baseline capability is a default, not a grant that cannot be withdrawn', () => {
+  // An admin must still be able to switch it off for one person — otherwise
+  // "baseline" would mean "unrevokable", which is a different promise.
+  const revoked = capabilitiesFor('MINISTRY', [{ capability: 'feedback.submit', granted: false }]);
+  assert.ok(!revoked.has('feedback.submit'));
+  assert.ok(revoked.has('view.national'), 'and the rest of the role is untouched');
+  // Revoking it is a real difference from the default, so it is stored.
+  assert.deepStrictEqual(
+    overridesFrom('MINISTRY', ['view.national', 'view.compliance']),
+    [{ capability: 'feedback.submit', granted: false }]
+  );
 });
 
 test('every capability has a label in all three languages', () => {

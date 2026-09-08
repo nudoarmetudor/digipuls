@@ -114,7 +114,13 @@ test('the worked example holds together', () => {
   assert.ok(!coordCaps.has('view.national'), 'and not the national dashboard');
 
   // Never both at once in one tab: the capability set comes from exactly one
-  // post, so the two can't merge.
-  const merged = [...mentorCaps].filter((c) => coordCaps.has(c));
-  assert.deepStrictEqual(merged, [], 'the two posts share no capabilities to blur together');
+  // post, so the two can't merge. Reporting is deliberately shared — it is a
+  // baseline every role holds — so the check is on what distinguishes the
+  // posts, not on the baseline they have in common.
+  const { BASELINE_CAPABILITIES } = require('../src/services/capabilities');
+  const distinguishing = (caps) => [...caps].filter((c) => !BASELINE_CAPABILITIES.includes(c));
+  const overlap = distinguishing(mentorCaps).filter((c) => coordCaps.has(c));
+  assert.deepStrictEqual(overlap, [], 'the two posts share nothing that could blur what she is doing');
+  assert.ok(mentorCaps.has('feedback.submit') && coordCaps.has('feedback.submit'),
+    'but she can report a problem from either');
 });

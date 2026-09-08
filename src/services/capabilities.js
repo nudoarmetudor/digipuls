@@ -51,6 +51,17 @@ const ROLES = [
   'ADMIN',
 ];
 
+// Held by every role. Reporting a problem is not a privilege attached to one
+// kind of account: whoever hits the thing that is wrong is the person best
+// placed to describe it, and a school secretary who cannot report a broken
+// page is a bug report the developers never get.
+//
+// Expressed as a baseline rather than repeated in all seven lists below, so
+// the intent — everyone can report — is stated once and cannot drift as roles
+// are added. It is still only a *default*: an admin can revoke it from one
+// person, because overrides are applied afterwards.
+const BASELINE_CAPABILITIES = ['feedback.submit'];
+
 // The public tier (/public-view) is deliberately absent from CAPABILITIES:
 // it requires no login at all, so gating it per account would be theatre.
 const ROLE_DEFAULTS = {
@@ -68,6 +79,16 @@ const ROLE_DEFAULTS = {
 };
 
 /**
+ * What a role grants before any per-post adjustment: the baseline everyone
+ * has, plus that role's own list. Both capabilitiesFor and overridesFrom
+ * measure against this, so a baseline capability is never stored as though
+ * someone had deliberately added it.
+ */
+function defaultsFor(role) {
+  return new Set([...BASELINE_CAPABILITIES, ...(ROLE_DEFAULTS[role] || [])]);
+}
+
+/**
  * The effective capability set for a user.
  *
  * @param {string} role
@@ -75,7 +96,7 @@ const ROLE_DEFAULTS = {
  * @returns {Set<string>}
  */
 function capabilitiesFor(role, overrides = []) {
-  const effective = new Set(ROLE_DEFAULTS[role] || []);
+  const effective = defaultsFor(role);
   overrides.forEach((o) => {
     // Ignore anything not in the current list — a capability removed from the
     // code shouldn't resurrect itself from a stale row.
@@ -96,7 +117,7 @@ function capabilitiesFor(role, overrides = []) {
  * @returns {Array<{capability: string, granted: boolean}>}
  */
 function overridesFrom(role, desired) {
-  const defaults = new Set(ROLE_DEFAULTS[role] || []);
+  const defaults = defaultsFor(role);
   const wanted = new Set(desired.filter((c) => CAPABILITIES.includes(c)));
   const rows = [];
   CAPABILITIES.forEach((cap) => {
@@ -166,6 +187,8 @@ function roleAllowsTerritory(role) {
 
 module.exports = {
   CAPABILITIES,
+  BASELINE_CAPABILITIES,
+  defaultsFor,
   roleNeedsSchool,
   roleNeedsTerritory,
   roleAllowsSchool,

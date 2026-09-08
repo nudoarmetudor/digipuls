@@ -53,6 +53,16 @@ Try it: log in as any school account, switch to **RU** or **RO** in the top navi
 Meta-mentors are the first people to test DigiPuls against real school data, and
 they are not any of the existing roles. Two things follow from that.
 
+**Everyone can report a problem.** `feedback.submit` is a *baseline*
+capability held by every role, not something granted role by role — whoever
+hits the thing that is wrong is the person best placed to describe it, and a
+school secretary who can't report a broken page is a bug report the
+developers never receive. It is expressed once in
+`BASELINE_CAPABILITIES` rather than repeated across seven role lists, so a
+role added later inherits it without anyone remembering to. It remains a
+default rather than a fixture: an admin can still revoke it from one person,
+because per-post overrides are applied afterwards.
+
 **Permissions are per post, not per person.** `src/services/capabilities.js`
 defines eleven capabilities — which pages an account may open, which
 administrative powers it holds, whether it may report issues or triage them.

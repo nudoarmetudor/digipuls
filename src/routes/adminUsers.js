@@ -5,7 +5,7 @@ const { requireCapability } = require('../middleware/auth');
 const { logAction } = require('../services/audit');
 const { generateTempPassword } = require('../utils/password');
 const {
-  CAPABILITY_GROUPS, ROLES, ROLE_DEFAULTS, capabilitiesFor, overridesFrom,
+  CAPABILITY_GROUPS, ROLES, ROLE_DEFAULTS, capabilitiesFor, overridesFrom, defaultsFor,
   roleNeedsSchool, roleNeedsTerritory, roleAllowsSchool, roleAllowsTerritory,
 } = require('../services/capabilities');
 
@@ -53,7 +53,13 @@ async function formOptions() {
     prisma.school.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } }),
     prisma.territory.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } }),
   ]);
-  return { schools, territories, roles: ROLES, capabilityGroups: CAPABILITY_GROUPS, roleDefaults: ROLE_DEFAULTS };
+  return {
+    schools, territories, roles: ROLES, capabilityGroups: CAPABILITY_GROUPS,
+    roleDefaults: ROLE_DEFAULTS,
+    // The picker marks what a role grants as standard, which now includes
+    // the baseline every role holds — not just that role's own list.
+    defaultsFor,
+  };
 }
 
 const USER_INCLUDE = {

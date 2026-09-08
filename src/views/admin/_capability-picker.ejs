@@ -12,7 +12,7 @@
       <% group.capabilities.forEach(function (cap) { %>
         <%
           const id = idPrefix + '-cap-' + cap.replace(/\W/g, '-');
-          const isDefault = (roleDefaults[role] || []).indexOf(cap) !== -1;
+          const isDefault = defaultsFor(role).has(cap);
           const checked = selected ? selected.has(cap) : isDefault;
         %>
         <div class="cap-item">

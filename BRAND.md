@@ -270,6 +270,10 @@ that school staff are *required* to use has no fallback audience.
   on the current page and step, live regions for status changes, and
   keyboard access to every control — including the SIME search results,
   which are buttons rather than clickable divs.
+- **Everyone can report a problem, whatever their account.** Reporting is a
+  baseline capability rather than a privilege of the roles we expected to
+  find bugs. A platform people are required to use should not decide in
+  advance whose difficulties count.
 - **Everything works without JavaScript.** The display panel, the role
   switcher and the feedback report form are all plain links and forms that
   scripting only upgrades. This is why the active role lives in the URL

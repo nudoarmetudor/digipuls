@@ -10,7 +10,7 @@ const { getIndicatorData } = require('../src/data/indicatorsI18n');
 const { ENROLMENT_BANDS, checkDeviceCompliance, checkNetworkCompliance } = require('../src/data/order675');
 const { renderWheel, itemsFromRatings, itemsFromDomainScores } = require('../src/services/wheelChart');
 const { computeStepStatuses, finalizeReviewStatus } = require('../src/services/stepStatus');
-const { CAPABILITIES, CAPABILITY_GROUPS, ROLES, ROLE_DEFAULTS, capabilitiesFor } = require('../src/services/capabilities');
+const { CAPABILITIES, CAPABILITY_GROUPS, ROLES, ROLE_DEFAULTS, capabilitiesFor, defaultsFor } = require('../src/services/capabilities');
 const { developerBlock, SEVERITIES, STATUSES } = require('../src/services/feedbackContext');
 
 const VIEWS = path.join(__dirname, '..', 'src', 'views');
@@ -216,7 +216,7 @@ function templatesFor(lang) {
     ['admin/user-form.ejs', {
       mode: 'new', user: null, posts: [], errorMessage: null,
       schools: [{ id: 1, name: 'LT Mihai Eminescu' }], territories: [{ id: 1, name: 'Chișinău' }],
-      roles: ROLES, capabilityGroups: CAPABILITY_GROUPS, roleDefaults: ROLE_DEFAULTS,
+      roles: ROLES, capabilityGroups: CAPABILITY_GROUPS, roleDefaults: ROLE_DEFAULTS, defaultsFor,
     }],
     ['admin/user-form.ejs', {
       mode: 'edit',
@@ -230,7 +230,7 @@ function templatesFor(lang) {
       ],
       errorMessage: 'Something is wrong',
       schools: [{ id: 1, name: 'LT Mihai Eminescu' }], territories: [{ id: 1, name: 'Chișinău' }],
-      roles: ROLES, capabilityGroups: CAPABILITY_GROUPS, roleDefaults: ROLE_DEFAULTS,
+      roles: ROLES, capabilityGroups: CAPABILITY_GROUPS, roleDefaults: ROLE_DEFAULTS, defaultsFor,
     }],
     ['admin/user-created.ejs', {
       user: { id: 2, name: 'Ion Rusu', login: 'rusu.ion', role: 'META_MENTOR' },
