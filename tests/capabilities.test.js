@@ -4,7 +4,7 @@ const assert = require('node:assert');
 const {
   CAPABILITIES, CAPABILITY_GROUPS, ROLES, ROLE_DEFAULTS,
   capabilitiesFor, overridesFrom, homeFor, canOpenSchoolWorkspace,
-  BASELINE_CAPABILITIES, defaultsFor,
+  BASELINE_CAPABILITIES, defaultsFor, capabilityIsUsableBy,
 } = require('../src/services/capabilities');
 
 test('every role has defaults, and every default is a real capability', () => {
@@ -115,17 +115,58 @@ test('an admin is never sent to a school workspace it has no school for', () => 
   assert.ok(canOpenSchoolWorkspace(adminCaps, { schoolId: 1 }));
 });
 
-test('a school-team account without a school is not stranded on /school', () => {
+test('a school-team account without a school is told what is wrong', () => {
   const caps = capabilitiesFor('SCHOOL_TEAM', []);
-  // It can't do its job without a school, but it can say so: reporting is a
-  // baseline capability, so the landing page is the report panel.
-  assert.strictEqual(homeFor(caps, { schoolId: null }), '/feedback');
-  // Stripped of even that, it still gets a page rather than a redirect loop.
+  // This used to land on /feedback, because every role holds feedback.submit
+  // and that was the first entry left in the table. Reachable, but it does not
+  // answer "where am I supposed to start" — the account is misconfigured and
+  // nothing on the report panel says so. /school now explains it: an
+  // administrator has not attached a school to this post.
+  assert.strictEqual(homeFor(caps, { schoolId: null }), '/school');
+  // With a school, the same route is the actual workspace.
+  assert.strictEqual(homeFor(caps, { schoolId: 4 }), '/school');
+
+  // Stripped of everything, it still gets a page rather than a redirect loop.
   const stripped = capabilitiesFor('SCHOOL_TEAM', [
     { capability: 'view.school', granted: false },
     { capability: 'feedback.submit', granted: false },
   ]);
   assert.strictEqual(homeFor(stripped, { schoolId: null }), '/public-view/schools');
+});
+
+test('an oversight post that names a school lands on that school', () => {
+  // A meta-mentor supports one lyceum. Their post has named it all along and
+  // nothing read it, so they arrived at a national list of fourteen and had to
+  // find their own school in it.
+  const mentor = capabilitiesFor('META_MENTOR', []);
+  assert.strictEqual(homeFor(mentor, { schoolId: 11 }), '/ministry/schools/11');
+  assert.strictEqual(homeFor(mentor, { schoolId: null }), '/ministry',
+    'a mentor with no school still gets the national dashboard');
+
+  // A post that can read only its own district gets the district's copy of
+  // the page, not the Ministry's.
+  const district = capabilitiesFor('TERRITORIAL', []);
+  assert.strictEqual(homeFor(district, { schoolId: 11 }), '/territorial/schools/11');
+
+  // A school team is not an oversight post: it opens the workspace, where it
+  // can actually enter ratings.
+  const team = capabilitiesFor('SCHOOL_TEAM', []);
+  assert.strictEqual(homeFor(team, { schoolId: 11 }), '/school');
+});
+
+test('a capability that needs a particular post says so', () => {
+  // view.school opens the school's own workspace, and routes/school.js also
+  // insists on a SCHOOL_TEAM post. An administrator holds the capability and
+  // can never use it, so the picker marks it rather than offering a control
+  // that silently does nothing.
+  assert.ok(capabilityIsUsableBy('view.school', 'SCHOOL_TEAM'));
+  assert.ok(!capabilityIsUsableBy('view.school', 'ADMIN'));
+  assert.ok(!capabilityIsUsableBy('view.school', 'META_MENTOR'));
+
+  // Everything else is usable by whoever holds it.
+  CAPABILITIES.filter((c) => c !== 'view.school').forEach((c) => {
+    ROLES.forEach((r) => assert.ok(capabilityIsUsableBy(c, r), `${c} should be usable by ${r}`));
+  });
 });
 
 test('everyone can report a problem, whatever their role', () => {

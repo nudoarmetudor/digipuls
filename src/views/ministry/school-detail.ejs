@@ -5,6 +5,9 @@
   · <%= t('enrolment') %>: <%= school.enrolmentTotal %> (<%= t('band') %> <%= school.enrolmentBand %>)
 </p>
 
+<%- include('../partials/_flags') %>
+<%- include('../partials/_progress-panel') %>
+
 <% if (!latest) { %>
   <div class="card">
     <p><%= currentCycle ? t('ministry_no_official_yet') : t('ministry_no_cycle') %></p>
@@ -100,18 +103,19 @@
   </div>
   <p class="small"><%= t('order675_scope_note') %></p>
 
-  <div class="card">
-    <h2 class="plain-heading"><%= t('validation_records') %></h2>
-    <% if (validations.length === 0) { %>
-      <p class="small"><span class="badge badge-unvalidated"><%= t('validation_records') %></span> <%= t('no_validation') %></p>
-    <% } else { %>
+  <%# External validation is not built yet — nothing writes a validation
+      record — so the section is shown only when there is something in it,
+      rather than as a permanent empty heading. See ROADMAP.md. %>
+  <% if (validations.length) { %>
+    <div class="card">
+      <h2 class="plain-heading"><%= t('validation_records') %></h2>
       <ul class="small">
         <% validations.forEach(v => { %>
           <li><b><%= v.reviewerType %></b> (<%= v.reviewerName %>): <%= v.verdict %><% if (v.reliabilityNote) { %> — <%= v.reliabilityNote %><% } %><% if (v.notes) { %> — “<%= v.notes %>”<% } %></li>
         <% }) %>
       </ul>
-    <% } %>
-  </div>
+    </div>
+  <% } %>
 
   <% if (latest.plan) { %>
     <div class="card">

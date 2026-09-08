@@ -14,6 +14,12 @@
           const id = idPrefix + '-cap-' + cap.replace(/\W/g, '-');
           const isDefault = defaultsFor(role).has(cap);
           const checked = selected ? selected.has(cap) : isDefault;
+          // Some capabilities need a particular kind of post as well as the
+          // tick. view.school opens the school's own workspace, which
+          // routes/school.js only opens for a SCHOOL_TEAM post — so on any
+          // other role this box can be ticked and change nothing. Saying so
+          // is better than a control that silently does nothing.
+          const usable = capabilityIsUsableBy(cap, role);
         %>
         <div class="cap-item">
           <label class="checkbox" for="<%= id %>">
@@ -22,6 +28,7 @@
               <%= t('cap_' + cap) %>
               <span class="cap-code"><%= cap %></span>
               <% if (isDefault) { %><span class="cap-default"><%= t('admin_user_cap_role_default') %></span><% } %>
+              <% if (!usable) { %><span class="cap-note"><%= t('admin_user_cap_needs_role', { role: t('role_' + CAPABILITY_REQUIRES_ROLE[cap]) }) %></span><% } %>
             </span>
           </label>
         </div>

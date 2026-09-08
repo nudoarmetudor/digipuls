@@ -4,6 +4,21 @@
   · <%= t('enrolment') %>: <%= school.enrolmentTotal %> (<%= t('band') %> <%= school.enrolmentBand %>)
 </p>
 
+<%# Who to ask when the team gets stuck. The answer was already recorded —
+    on the mentor's own post — and read by nothing, so a school had no way to
+    find out who was supporting it. Names only: there are no email addresses
+    in this system, and inventing a contact field would be worse than saying
+    who the person is and leaving the arrangement to the people involved. %>
+<% if (mentors && mentors.length) { %>
+  <div class="card card-flat">
+    <h2 class="plain-heading" style="font-size:1rem;"><%= t('school_mentor_title', { n: mentors.length }) %></h2>
+    <p>
+      <% mentors.forEach((m, i) => { %><%= i ? ', ' : '' %><strong><%= m.name %></strong><% if (m.label) { %> <span class="small">(<%= m.label %>)</span><% } %><% }) %>
+    </p>
+    <p class="small"><%= t('school_mentor_note') %></p>
+  </div>
+<% } %>
+
 <% if (cycles.length === 0) { %>
   <div class="card">
     <h2 class="plain-heading"><%= t('school_welcome_title') %></h2>

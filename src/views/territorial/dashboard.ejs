@@ -1,5 +1,11 @@
 <% const domainKeys = ['A', 'B', 'C', 'D']; %>
-<h1><%= t('territorial_title') %> — <%= territoryName %></h1>
+<%# An unscoped post — an administrator, or a mentor with no school — is not
+    limited to one raion. Saying so beats a heading that trails off after a
+    dash, and beats the empty list this page used to show. %>
+<h1><%= t('territorial_title') %><% if (scopedToOneDistrict) { %> — <%= territoryName %><% } %></h1>
+<% if (!scopedToOneDistrict) { %>
+  <p class="small"><%= t('territorial_all_districts') %></p>
+<% } %>
 <p class="subtitle"><%= t('territorial_subtitle') %></p>
 
 <div class="grid-2">
@@ -9,7 +15,7 @@
 
 <div class="table-scroll">
   <table>
-    <caption><%= t('territorial_title') %> — <%= territoryName %></caption>
+    <caption><%= t('territorial_title') %><% if (scopedToOneDistrict) { %> — <%= territoryName %><% } %></caption>
     <thead>
       <tr>
         <th scope="col"><%= t('school') %></th>

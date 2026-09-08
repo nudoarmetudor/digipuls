@@ -6,7 +6,8 @@ const { logAction } = require('../services/audit');
 const { generateTempPassword } = require('../utils/password');
 const {
   CAPABILITY_GROUPS, ROLES, ROLE_DEFAULTS, capabilitiesFor, overridesFrom, defaultsFor,
-  canActOn, roleNeedsSchool, roleNeedsTerritory, roleAllowsSchool, roleAllowsTerritory,
+  canActOn, capabilityIsUsableBy, CAPABILITY_REQUIRES_ROLE,
+  roleNeedsSchool, roleNeedsTerritory, roleAllowsSchool, roleAllowsTerritory,
 } = require('../services/capabilities');
 
 const router = express.Router();
@@ -125,6 +126,10 @@ async function formOptions() {
     // The picker marks what a role grants as standard, which now includes
     // the baseline every role holds — not just that role's own list.
     defaultsFor,
+    // And marks the capabilities this role could hold but never exercise,
+    // so a box that changes nothing says so instead of looking like a switch.
+    capabilityIsUsableBy,
+    CAPABILITY_REQUIRES_ROLE,
   };
 }
 

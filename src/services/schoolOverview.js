@@ -79,6 +79,13 @@ async function schoolsWithLatestCycle(where = {}) {
 function filterRows(rows, query = {}) {
   let out = rows;
   if (query.band) out = out.filter((r) => r.school.enrolmentBand === query.band);
+  // The district was already a column here and the route already loaded the
+  // list of them; only the filter itself was missing, which made "how is
+  // Criuleni doing" a question you answered by reading fourteen rows.
+  if (query.territoryId) {
+    const wanted = Number(query.territoryId);
+    if (Number.isInteger(wanted)) out = out.filter((r) => r.school.territoryId === wanted);
+  }
   if (query.status === 'confirmed') out = out.filter((r) => r.confirmed);
   if (query.status === 'no_data') out = out.filter((r) => !r.cycle);
   if (query.status === 'draft') out = out.filter((r) => r.cycle && r.cycle.status === 'DRAFT');

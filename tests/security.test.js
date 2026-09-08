@@ -356,7 +356,10 @@ test('a post editor is not drawn for someone who cannot save it', () => {
   // The capability model promises that a control is never shown to someone
   // the route will then refuse.
   const ejs = require('ejs');
-  const { CAPABILITY_GROUPS, ROLES, ROLE_DEFAULTS, defaultsFor } = require('../src/services/capabilities');
+  const {
+    CAPABILITY_GROUPS, ROLES, ROLE_DEFAULTS, defaultsFor,
+    capabilityIsUsableBy, CAPABILITY_REQUIRES_ROLE,
+  } = require('../src/services/capabilities');
   const i18n = require('../src/i18n');
   const file = path.join(__dirname, '..', 'src', 'views', 'admin', 'user-form.ejs');
 
@@ -379,6 +382,8 @@ test('a post editor is not drawn for someone who cannot save it', () => {
     capabilityGroups: CAPABILITY_GROUPS,
     roleDefaults: ROLE_DEFAULTS,
     defaultsFor,
+    capabilityIsUsableBy,
+    CAPABILITY_REQUIRES_ROLE,
   });
 
   const render = (grants) => ejs.render(fs.readFileSync(file, 'utf8'), locals(grants), { filename: file });

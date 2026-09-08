@@ -1,0 +1,29 @@
+<%
+/* Concerns a district has raised about this school.
+
+   Raising one writes an audit entry and redirected, and reading the audit log
+   needs admin.audit, which no territorial post holds — so the person who
+   raised the concern never saw it again and the button appeared to do nothing.
+   Shown here to the district that raised it and to the Ministry, which is the
+   party the escalation is aimed at.
+
+   Expects: flags (from services/flags.flagsForSchool), possibly empty. */
+%>
+<% if (typeof flags !== 'undefined' && flags && flags.length) { %>
+  <section class="card" aria-labelledby="flags-h">
+    <h2 class="plain-heading" id="flags-h"><%= t('flags_title', { n: flags.length }) %></h2>
+    <ul class="flag-list">
+      <% flags.forEach(f => { %>
+        <li>
+          <p><%= f.reason || t('flags_no_reason') %></p>
+          <p class="small">
+            <%= f.byName || t('flags_unknown_author') %> ·
+            <time datetime="<%= new Date(f.raisedAt).toISOString() %>">
+              <%= new Date(f.raisedAt).toLocaleDateString(lang) %>
+            </time>
+          </p>
+        </li>
+      <% }) %>
+    </ul>
+  </section>
+<% } %>

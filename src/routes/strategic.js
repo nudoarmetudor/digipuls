@@ -1,29 +1,29 @@
 const express = require('express');
 const { requireCapability } = require('../middleware/auth');
 const { schoolsWithLatestCycle } = require('../services/schoolOverview');
+const { rankTrainingNeed } = require('../services/trainingNeed');
 
 const router = express.Router();
 router.use(requireCapability('view.training'));
 
-// A pre-built lens on the same dashboard data, filtered to Domain C
-// (C1 teacher competence, C3 PD/mentoring capacity, C4 AI literacy) — see
+// A pre-built lens on the same dashboard data, filtered to Domain C — see
 // "DigiPuls - use case catalog.md" UC-SP1. Not a general-purpose query
 // builder; this role gets exactly the view its use case needs.
+//
+// The ranking itself lives in services/trainingNeed.js so it can be tested
+// without a server. Both of the mistakes it used to make were invisible on
+// screen with today's data and would have surfaced later.
 router.get('/', async (req, res) => {
   const rows = await schoolsWithLatestCycle();
-  const confirmedRows = rows.filter((r) => r.confirmed);
+  const { ranked, incomplete } = rankTrainingNeed(rows);
 
-  const withCScores = await Promise.all(
-    confirmedRows.map(async (r) => {
-      const c1 = r.cycle.ratings.find((x) => x.indicatorCode === 'C1');
-      const c3 = r.cycle.ratings.find((x) => x.indicatorCode === 'C3');
-      const c4 = r.cycle.ratings.find((x) => x.indicatorCode === 'C4');
-      return { school: r.school, c1: c1?.level ?? null, c3: c3?.level ?? null, c4: c4?.level ?? null };
-    })
-  );
-  withCScores.sort((a, b) => (a.c1 + a.c3 + a.c4) - (b.c1 + b.c3 + b.c4)); // lowest capacity first = highest training need
-
-  res.render('strategic/dashboard', { title: res.locals.t('strategic_title'), wide: true, rows: withCScores });
+  res.render('strategic/dashboard', {
+    title: res.locals.t('strategic_title'),
+    wide: true,
+    rows: ranked,
+    incomplete,
+    totalSchools: rows.length,
+  });
 });
 
 module.exports = router;

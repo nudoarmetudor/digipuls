@@ -35,7 +35,12 @@ async function loadAccount(req, res, next) {
       include: {
         assignments: {
           where: { isActive: true },
-          include: { school: true, territory: true, capabilities: true },
+          // school.territory as well as the post's own territory: a
+        // meta-mentor names a school and no district, and the regional view
+        // needs somewhere to stand. One extra join on a query that already
+        // runs, rather than another round trip against an hourly connection
+        // budget — see src/config/db.js.
+        include: { school: { include: { territory: true } }, territory: true, capabilities: true },
           orderBy: [{ role: 'asc' }, { id: 'asc' }],
         },
       },

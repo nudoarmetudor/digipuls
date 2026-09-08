@@ -1,6 +1,9 @@
 <h1><%= school.name %></h1>
 <p class="subtitle"><%= school.territory.name %> · <%= t('enrolment') %>: <%= school.enrolmentTotal %></p>
 
+<%- include('../partials/_flags') %>
+<%- include('../partials/_progress-panel') %>
+
 <% if (latest) { %>
   <% if (hasNewerDraft) { %>
     <div class="card card-flat">

@@ -17,6 +17,18 @@ if (can('view.school') && workspace && workspace.schoolId) {
   ] });
 }
 
+// A post that names a school but cannot open its workspace is an oversight
+// post *about* that school — a meta-mentor supporting one lyceum. Give them a
+// direct link rather than making them find it among fourteen rows.
+if (workspace && workspace.schoolId && !can('view.school')) {
+  const detail = can('view.national') || can('view.compliance')
+    ? '/ministry/schools/' + workspace.schoolId
+    : can('view.regional') ? '/territorial/schools/' + workspace.schoolId : null;
+  if (detail) {
+    groups.push({ key: 'mentoring', items: [[detail, t('nav_my_school'), 'home']] });
+  }
+}
+
 const oversight = [];
 if (can('view.national')) oversight.push(['/ministry', t('nav_national_dashboard'), 'grid']);
 if (can('view.compliance')) oversight.push(['/ministry/compliance', t('nav_compliance'), 'check']);

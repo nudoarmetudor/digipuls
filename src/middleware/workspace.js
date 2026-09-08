@@ -56,14 +56,21 @@ function makeHref(assignmentId) {
 }
 
 function describe(assignment) {
+  const school = assignment.school || null;
   return {
     id: assignment.id,
     role: assignment.role,
     label: assignment.label || null,
     schoolId: assignment.schoolId,
-    schoolName: assignment.school ? assignment.school.name : null,
+    schoolName: school ? school.name : null,
     territoryId: assignment.territoryId,
     territoryName: assignment.territory ? assignment.territory.name : null,
+    // The district of the school this post is attached to, which is not the
+    // same thing as the district the post is scoped to. A meta-mentor for
+    // LT „Boris Dînga" names a school and no district; without this the
+    // regional view has nothing to stand on. See activeTerritoryId.
+    schoolTerritoryId: school ? school.territoryId : null,
+    schoolTerritoryName: school && school.territory ? school.territory.name : null,
   };
 }
 
@@ -122,7 +129,16 @@ function loadWorkspace(req, res, next) {
     return next();
   }
 
-  req.workspace = active;
+  // The described shape, not the raw assignment row.
+  //
+  // These used to differ: req.workspace was the Prisma record while
+  // res.locals.workspace was describe(active). Two things called "workspace"
+  // with different fields is a trap, and it sprang — activeTerritoryId read a
+  // field that only existed on the other one, so the district scope silently
+  // resolved to null and every mentor saw every school. The raw row is still
+  // available here as `active` for the capability lookup below, which is the
+  // only thing that needs it.
+  req.workspace = describe(active);
   // Remembered only as the default for a *new* tab that arrives without a
   // prefix. It never overrides an explicit /w/<id>, so it cannot make one tab
   // hijack another.
@@ -132,7 +148,7 @@ function loadWorkspace(req, res, next) {
   req.capabilities = capabilities;
   res.locals.capabilities = capabilities;
   res.locals.can = (capability) => capabilities.has(capability);
-  res.locals.workspace = describe(active);
+  res.locals.workspace = req.workspace;
 
   // Only prefix once there is genuinely more than one workspace to keep apart,
   // so a single-post account sees exactly the URLs it saw before.
@@ -148,8 +164,43 @@ function activeSchoolId(req) {
   return req.workspace ? req.workspace.schoolId : null;
 }
 
+/**
+ * The district this request is working in, or null meaning "not limited to
+ * one".
+ *
+ * Three cases, in order:
+ *   the post names a district   a territorial authority: that district
+ *   the post names a school     a meta-mentor: that school's district, so
+ *                               the regional view shows the neighbourhood
+ *                               they actually work in
+ *   neither                     national: every district
+ *
+ * The third case used to be indistinguishable from the first, and callers
+ * passed the null straight to Prisma, where `{ territoryId: null }` means
+ * IS NULL rather than "no filter". Every meta-mentor and both administrators
+ * were shown an empty list. Callers must now treat null as "no filter" —
+ * territoryFilter() below does it for them.
+ */
 function activeTerritoryId(req) {
-  return req.workspace ? req.workspace.territoryId : null;
+  if (!req.workspace) return null;
+  if (req.workspace.territoryId) return req.workspace.territoryId;
+  return req.workspace.schoolTerritoryId || null;
 }
 
-module.exports = { extractWorkspace, loadWorkspace, makeHref, activeSchoolId, activeTerritoryId, describe, WORKSPACE_PATH };
+/** The Prisma `where` fragment for the active district, or {} for all. */
+function territoryFilter(req) {
+  const id = activeTerritoryId(req);
+  return id === null ? {} : { territoryId: id };
+}
+
+/** Whether this request may read a school, given its district scope. */
+function coversSchool(req, school) {
+  if (!school) return false;
+  const id = activeTerritoryId(req);
+  return id === null || school.territoryId === id;
+}
+
+module.exports = {
+  extractWorkspace, loadWorkspace, makeHref, activeSchoolId, activeTerritoryId,
+  territoryFilter, coversSchool, describe, WORKSPACE_PATH,
+};

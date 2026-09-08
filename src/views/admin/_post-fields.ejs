@@ -40,4 +40,4 @@
   </div>
 </div>
 <p class="help"><%= t('admin_user_scope_help') %></p>
-<%- include('_capability-picker', { idPrefix, role, selected, capabilityGroups, roleDefaults, defaultsFor, roles, t }) %>
+<%- include('_capability-picker', { idPrefix, role, selected, capabilityGroups, roleDefaults, defaultsFor, roles, capabilityIsUsableBy, CAPABILITY_REQUIRES_ROLE, t }) %>

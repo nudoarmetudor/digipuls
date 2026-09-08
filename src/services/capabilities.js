@@ -63,6 +63,24 @@ const ROLES = [
 // person, because overrides are applied afterwards.
 const BASELINE_CAPABILITIES = ['feedback.submit'];
 
+// A few capabilities need more than themselves. view.school opens the school's
+// own editing workspace, and routes/school.js also insists on a SCHOOL_TEAM
+// post because every route under it reads the active school. So an
+// administrator holds view.school and can never use it.
+//
+// Rather than quietly leave a control in the picker that does nothing for six
+// of the seven roles, the requirement is declared here and the picker says so.
+const CAPABILITY_REQUIRES_ROLE = {
+  'view.school': 'SCHOOL_TEAM',
+};
+
+/** True when this role can actually exercise the capability, not merely hold it. */
+function capabilityIsUsableBy(capability, role) {
+  const needed = CAPABILITY_REQUIRES_ROLE[capability];
+  return !needed || needed === role;
+}
+
+
 // Why admin.users and admin.grant are two capabilities and not one.
 //
 // They used to be one, and holding it meant: create any account, reset
@@ -201,7 +219,12 @@ function canActOn(actor, target) {
   return true;
 }
 
-/** Where an account lands after login, given what it can actually reach. */
+/**
+ * Where an account lands after login, given what it can actually reach.
+ *
+ * Order matters: the first entry whose test passes wins, so the most specific
+ * destination has to come before the general dashboards.
+ */
 const HOME_BY_CAPABILITY = [
   ['view.school', '/school'],
   ['view.national', '/ministry'],
@@ -223,14 +246,46 @@ function canOpenSchoolWorkspace(capabilities, user) {
   return capabilities.has('view.school') && !!(user && user.schoolId);
 }
 
+/**
+ * A post that names a school but cannot open its workspace is an oversight
+ * post about that school — a meta-mentor supporting one lyceum. Send them to
+ * that school rather than to a national list of fourteen they then have to
+ * search. Which detail route depends on what they may read.
+ */
+function mentoredSchoolPath(capabilities, user) {
+  if (!user || !user.schoolId) return null;
+  if (canOpenSchoolWorkspace(capabilities, user)) return null;
+  if (capabilities.has('view.national') || capabilities.has('view.compliance')) {
+    return `/ministry/schools/${user.schoolId}`;
+  }
+  if (capabilities.has('view.regional')) return `/territorial/schools/${user.schoolId}`;
+  return null;
+}
+
 function homeFor(capabilities, user) {
+  const mentored = mentoredSchoolPath(capabilities, user);
+  if (mentored) return mentored;
+
+  // A school-team post with no school is a misconfiguration, not a person
+  // with nothing to do. /school explains what is wrong; the feedback page,
+  // which is where this used to land because every role holds
+  // feedback.submit, does not answer "where am I supposed to start".
+  // Checked before the table below for exactly that reason.
+  if (capabilities.has('view.school') && !canOpenSchoolWorkspace(capabilities, user)
+      && !capabilities.has('view.national') && !capabilities.has('view.regional')
+      && !capabilities.has('view.partner') && !capabilities.has('view.training')) {
+    return '/school';
+  }
+
   const found = HOME_BY_CAPABILITY.find(([cap]) => {
     if (cap === 'view.school') return canOpenSchoolWorkspace(capabilities, user);
     return capabilities.has(cap);
   });
+  if (found) return found[1];
+
   // An account with nothing at all still gets a page rather than a redirect
   // loop — the public tier needs no login.
-  return found ? found[1] : '/public-view/schools';
+  return '/public-view/schools';
 }
 
 // How a role relates to an institution.
@@ -270,6 +325,9 @@ module.exports = {
   ROLES,
   ROLE_DEFAULTS,
   canActOn,
+  CAPABILITY_REQUIRES_ROLE,
+  capabilityIsUsableBy,
+  mentoredSchoolPath,
   capabilitiesFor,
   overridesFrom,
   homeFor,

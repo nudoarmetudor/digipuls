@@ -6,6 +6,8 @@ const { checkDeviceCompliance, checkNetworkCompliance } = require('../data/order
 const { logAction } = require('../services/audit');
 const { schoolsWithLatestCycle, filterRows, toCsv, ENROLMENT_BANDS, selectOfficialAndCurrentCycle } = require('../services/schoolOverview');
 const { renderWheel, itemsFromRatings } = require('../services/wheelChart');
+const { progressSummary } = require('../services/stepStatus');
+const { flagsForSchool } = require('../services/flags');
 
 const router = express.Router();
 router.use(requireCapability('view.national', 'view.compliance'));
@@ -41,7 +43,21 @@ router.get('/export.csv', async (req, res) => {
 router.get('/schools/:id', async (req, res) => {
   const school = await prisma.school.findUnique({
     where: { id: Number(req.params.id) },
-    include: { territory: true, cycles: { orderBy: { cycleNumber: 'desc' }, include: { ratings: true, deviceInventory: true, networkChecklist: true, plan: { include: { priorities: true } } } } },
+    include: {
+      territory: true,
+      cycles: {
+        orderBy: { cycleNumber: 'desc' },
+        include: {
+          // evidences so progressSummary can say which indicators are rated
+          // Level 2+ with nothing attached — one of the two things that
+          // actually blocks a school from confirming.
+          ratings: { include: { evidences: true } },
+          deviceInventory: true,
+          networkChecklist: true,
+          plan: { include: { priorities: true } },
+        },
+      },
+    },
   });
   if (!school) return res.status(404).render('error', { title: res.locals.t('err_not_found'), message: res.locals.t('err_school_not_found') });
   // The official record shown here (wheel, compliance, validations) must
@@ -54,9 +70,14 @@ router.get('/schools/:id', async (req, res) => {
   const networkCompliance = latest?.networkChecklist ? checkNetworkCompliance(latest.networkChecklist) : null;
   const validations = latest ? await prisma.validationRecord.findMany({ where: { cycleId: latest.id } }) : [];
   const wheelSvg = latest ? renderWheel(itemsFromRatings(latest.ratings, INDICATORS), { mode: 'indicators', size: 380, t: res.locals.t }) : null;
+  const flags = await flagsForSchool(school.id);
   res.render('ministry/school-detail', {
     title: school.name, wide: true, school, latest, currentCycle, hasNewerDraft,
     deviceCompliance, networkCompliance, validations, INDICATORS, DOMAINS, wheelSvg,
+    // Half the pilot has no confirmed cycle yet, so without this the page for
+    // a school midway through its first assessment says almost nothing.
+    progress: currentCycle && currentCycle.status === 'DRAFT' ? progressSummary(currentCycle) : null,
+    flags,
   });
 });
 

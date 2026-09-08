@@ -10,33 +10,62 @@ const { logAction } = require('../services/audit');
 const { renderWheel, itemsFromRatings } = require('../services/wheelChart');
 const { computeStepStatuses, finalizeReviewStatus, overallProgress } = require('../services/stepStatus');
 const { ValidationError, toLevel, toNonNegativeInt } = require('../utils/validate');
+const { mentorsForSchool } = require('../services/mentors');
 
 const router = express.Router();
 // Both must hold: the role because every route below reads the session's
 // schoolId, the capability so an admin can suspend a school's access
 // without changing what kind of account it is.
-router.use(requireRole('SCHOOL_TEAM'), requireCapability('view.school'));
+router.use(requireRole('SCHOOL_TEAM'), requireCapability('view.school'), requireSchool);
 
 async function getSchool(req) {
-  return prisma.school.findUnique({ where: { id: activeSchoolId(req) } });
+  const id = activeSchoolId(req);
+  // A school-team post with no school is an administrator's mistake, not a
+  // state the app should crash on. findUnique with a null id throws, which
+  // used to make every page under /school a 500 with an internal message.
+  if (!Number.isInteger(id)) return null;
+  return prisma.school.findUnique({ where: { id } });
+}
+
+/**
+ * Every route below reads the active school. Rather than repeat the same
+ * null check, this middleware answers once — with an explanation of what an
+ * administrator needs to fix, instead of a stack trace.
+ */
+async function requireSchool(req, res, next) {
+  const school = req.school;
+  if (!school) {
+    return res.status(409).render('error', {
+      title: res.locals.t('school_missing_title'),
+      message: res.locals.t('school_missing_detail'),
+    });
+  }
+  req.school = school;
+  return next();
 }
 
 router.get('/', async (req, res) => {
-  const school = await getSchool(req);
-  const cycles = await prisma.assessmentCycle.findMany({
-    where: { schoolId: school.id },
-    orderBy: { cycleNumber: 'desc' },
-    include: { ratings: true, plan: true },
-  });
+  const school = req.school;
+  const [cycles, mentors] = await Promise.all([
+    prisma.assessmentCycle.findMany({
+      where: { schoolId: school.id },
+      orderBy: { cycleNumber: 'desc' },
+      include: { ratings: true, plan: true },
+    }),
+    // "Who do I ask when we get stuck" is the first question a school team
+    // has, and the answer was already in the database — recorded on the
+    // mentor's post and read by nothing.
+    mentorsForSchool(school.id),
+  ]);
   const latest = cycles[0];
   const hasConfirmedPrior = cycles.some((c) => c.status === 'CONFIRMED');
   res.render('school/dashboard', {
-    title: res.locals.t('nav_dashboard'), wide: true, school, cycles, latest, hasConfirmedPrior,
+    title: res.locals.t('nav_dashboard'), wide: true, school, cycles, latest, hasConfirmedPrior, mentors,
   });
 });
 
 router.post('/cycles/start', async (req, res) => {
-  const school = await getSchool(req);
+  const school = req.school;
   const existingDraft = await prisma.assessmentCycle.findFirst({ where: { schoolId: school.id, status: 'DRAFT' } });
   if (existingDraft) return res.redirect(res.locals.href(`/school/cycles/${existingDraft.id}`));
 
@@ -94,7 +123,7 @@ function ratingsWithEvidenceCheck(cycle) {
 
 router.get('/cycles/:id', loadCycleForSchool, async (req, res) => {
   const cycle = req.cycle;
-  const school = await getSchool(req);
+  const school = req.school;
   const localeData = getIndicatorData(req.lang);
   const wheelSvg = renderWheel(itemsFromRatings(cycle.ratings, localeData.INDICATORS), { mode: 'indicators', t: res.locals.t });
 
@@ -109,7 +138,7 @@ router.get('/cycles/:id', loadCycleForSchool, async (req, res) => {
 
 router.get('/cycles/:id/step/:stepKey', loadCycleForSchool, async (req, res) => {
   const cycle = req.cycle;
-  const school = await getSchool(req);
+  const school = req.school;
   const { stepKey } = req.params;
   const localeData = getIndicatorData(req.lang);
   const stepStatuses = stepStatusesFor(ratingsWithEvidenceCheck(cycle));
@@ -190,7 +219,7 @@ router.post('/cycles/:id/ratings/:code', loadCycleForSchool, requireDraftCycle, 
   // minimum — this is a fact derived from data, not a self-report, so the
   // server (not just the UI hint) must enforce it.
   if ((code === 'D1' || code === 'D2') && level > 0) {
-    const school = await getSchool(req);
+    const school = req.school;
     if (code === 'D1') {
       const nc = cycle.networkChecklist;
       const compliance = checkNetworkCompliance(nc);
@@ -264,7 +293,7 @@ router.post('/cycles/:id/network', loadCycleForSchool, requireDraftCycle, async 
 router.post('/cycles/:id/confirm', loadCycleForSchool, async (req, res) => {
   const cycle = req.cycle;
   if (cycle.status === 'CONFIRMED') return res.redirect(res.locals.href(`/school/cycles/${cycle.id}/plan`));
-  const school = await getSchool(req);
+  const school = req.school;
   const unrated = cycle.ratings.filter((r) => r.level === null || r.level === undefined);
   if (unrated.length > 0) {
     const msg = encodeURIComponent(`${unrated.length} indicator(s) still need a rating before this cycle can be confirmed: ${unrated.map((r) => r.indicatorCode).join(', ')}.`);
@@ -347,7 +376,7 @@ router.post('/cycles/:id/plan/publish', loadCycleForSchool, async (req, res) => 
 
 router.get('/cycles/:id/plan/document', loadCycleForSchool, async (req, res) => {
   const cycle = req.cycle;
-  const school = await getSchool(req);
+  const school = req.school;
   const plan = await prisma.developmentPlan.findUnique({
     where: { cycleId: cycle.id },
     include: { priorities: { include: { indicator: true } } },
@@ -359,7 +388,7 @@ router.get('/cycles/:id/plan/document', loadCycleForSchool, async (req, res) => 
 // -------------------- Progress over time --------------------
 
 router.get('/history', async (req, res) => {
-  const school = await getSchool(req);
+  const school = req.school;
   const cycles = await prisma.assessmentCycle.findMany({
     where: { schoolId: school.id, status: 'CONFIRMED' },
     orderBy: { cycleNumber: 'asc' },

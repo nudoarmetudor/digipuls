@@ -91,3 +91,63 @@ function overallProgress(cycle) {
 }
 
 module.exports = { STEPS, computeStepStatuses, finalizeReviewStatus, overallProgress };
+
+/**
+ * A read-only picture of how far a cycle has got, for people who support a
+ * school rather than fill it in: meta-mentors, the Ministry, the district.
+ *
+ * The school's own step navigator answers "what do I do next". This answers a
+ * different question — "is this school stuck, and on what" — so it names the
+ * blockers explicitly rather than colouring a step red and leaving the reader
+ * to work out why. The two rules below are the same ones routes/school.js
+ * enforces at confirmation, read from one place so the mentor's page can never
+ * disagree with what the school is actually told.
+ */
+function progressSummary(cycle) {
+  if (!cycle) return null;
+  const ratings = cycle.ratings || [];
+  const steps = finalizeReviewStatus(computeStepStatuses(cycle));
+  const { rated, total } = overallProgress(cycle);
+
+  const unrated = INDICATORS
+    .filter((i) => {
+      const r = ratings.find((x) => x.indicatorCode === i.code);
+      return !r || r.level === null || r.level === undefined;
+    })
+    .map((i) => i.code);
+
+  // Evidence is required from Level 2 upward. `evidences` is only loaded on
+  // some queries; where it is absent this cannot be judged, so it is not
+  // guessed at.
+  const evidenceLoaded = ratings.every((r) => Array.isArray(r.evidences));
+  const missingEvidence = evidenceLoaded
+    ? ratings.filter((r) => r.level >= 2 && r.evidences.length === 0).map((r) => r.indicatorCode)
+    : null;
+
+  const deviceStarted = !!(cycle.deviceInventory
+    && Object.entries(cycle.deviceInventory).some(([k, v]) => k !== 'id' && k !== 'cycleId' && v > 0));
+  const networkFields = ['wifiWholeSchool', 'subnetsSeparated', 'wifi80211n', 'wifi80211ac', 'firewallActive', 'contentFiltering'];
+  const networkAnswered = cycle.networkChecklist
+    ? networkFields.filter((f) => cycle.networkChecklist[f]).length : 0;
+
+  const blockers = [];
+  if (unrated.length) blockers.push({ kind: 'unrated', codes: unrated });
+  if (missingEvidence && missingEvidence.length) blockers.push({ kind: 'evidence', codes: missingEvidence });
+  if (!deviceStarted) blockers.push({ kind: 'devices', codes: [] });
+
+  return {
+    cycle,
+    steps,
+    rated,
+    total,
+    unrated,
+    missingEvidence,
+    deviceStarted,
+    networkAnswered,
+    networkTotal: networkFields.length,
+    blockers,
+    readyToConfirm: cycle.status === 'DRAFT' && blockers.length === 0,
+  };
+}
+
+module.exports.progressSummary = progressSummary;

@@ -1,0 +1,86 @@
+<%
+/* What a school is doing right now, for people who support it rather than
+   fill it in: meta-mentors, the Ministry, the district authority.
+
+   The pages this appears on show the *official* record — the latest confirmed
+   cycle — which is correct for reporting and useless for support: seven of the
+   fourteen pilot schools have never confirmed anything, so their page said
+   almost nothing. This panel answers the other question. It is read-only, and
+   it names what is blocking confirmation rather than colouring a step red and
+   leaving the reader to work out why.
+
+   Expects: progress (from services/stepStatus.progressSummary), or null. */
+%>
+<% if (progress) { %>
+  <section class="card" aria-labelledby="progress-h">
+    <h2 class="plain-heading" id="progress-h">
+      <%= t('progress_in_progress_title', { n: progress.cycle.cycleNumber }) %>
+      <span class="badge badge-draft"><%= STATUS_LABELS.DRAFT %></span>
+    </h2>
+    <p class="small"><%= t('progress_panel_note') %></p>
+
+    <p>
+      <strong><%= t('progress_rated', { rated: progress.rated, total: progress.total }) %></strong>
+    </p>
+
+    <div class="table-scroll">
+      <table>
+        <caption class="visually-hidden"><%= t('progress_steps_caption') %></caption>
+        <thead>
+          <tr>
+            <th scope="col"><%= t('progress_th_step') %></th>
+            <th scope="col"><%= t('progress_th_state') %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% progress.steps.forEach(step => { %>
+            <tr>
+              <th scope="row" style="background:none;font-weight:400;color:inherit;">
+                <%= step.kind === 'domain' ? t('domain') + ' ' + step.domain
+                    : step.kind === 'infra' ? t('progress_step_infra')
+                    : t('progress_step_review') %>
+              </th>
+              <td>
+                <%# Same dot vocabulary as the school's own step navigator, so
+                    a mentor and the team they support are reading the same
+                    four colours rather than two different schemes. %>
+                <span class="status-chip step-<%= step.status %>">
+                  <span class="step-dot" aria-hidden="true"></span><%= t('progress_state_' + step.status) %>
+                </span>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="plain-heading" style="margin-top:1.1rem;font-size:1rem;">
+      <%= t('progress_blockers_title') %>
+    </h3>
+    <% if (progress.readyToConfirm) { %>
+      <p class="small"><%= t('progress_ready') %></p>
+    <% } else if (progress.blockers.length === 0) { %>
+      <p class="small"><%= t('progress_nothing_blocking') %></p>
+    <% } else { %>
+      <ul>
+        <% progress.blockers.forEach(b => { %>
+          <li>
+            <% if (b.kind === 'unrated') { %>
+              <%= t('progress_blocker_unrated', { n: b.codes.length }) %>
+              <span class="mono small"><%= b.codes.join(', ') %></span>
+            <% } else if (b.kind === 'evidence') { %>
+              <%= t('progress_blocker_evidence', { n: b.codes.length }) %>
+              <span class="mono small"><%= b.codes.join(', ') %></span>
+            <% } else { %>
+              <%= t('progress_blocker_devices') %>
+            <% } %>
+          </li>
+        <% }) %>
+      </ul>
+    <% } %>
+
+    <p class="small">
+      <%= t('progress_network', { n: progress.networkAnswered, total: progress.networkTotal }) %>
+    </p>
+  </section>
+<% } %>

@@ -32,3 +32,46 @@
     </table>
   </div>
 <% } %>
+
+<%# Schools that cannot be ranked are named rather than silently dropped.
+    Half the pilot has no confirmed cycle, and a school that has not filled in
+    Domain C used to be ranked as the country's most urgent training case,
+    because three missing levels summed to zero. "Nothing is known about this
+    school" is a different answer from "this school scored zero", and the two
+    now sit in different lists. %>
+<% if (incomplete && incomplete.length) { %>
+  <section class="card" aria-labelledby="incomplete-h">
+    <h2 class="plain-heading" id="incomplete-h">
+      <%= t('strategic_incomplete_title', { n: incomplete.length, total: totalSchools }) %>
+    </h2>
+    <p class="small"><%= t('strategic_incomplete_note') %></p>
+    <div class="table-scroll">
+      <table>
+        <caption class="visually-hidden"><%= t('strategic_incomplete_title', { n: incomplete.length, total: totalSchools }) %></caption>
+        <thead>
+          <tr>
+            <th scope="col"><%= t('school') %></th>
+            <th scope="col"><%= t('progress_th_state') %></th>
+            <th scope="col"><%= t('th_c1') %></th>
+            <th scope="col"><%= t('th_c3') %></th>
+            <th scope="col"><%= t('th_c4') %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% incomplete.forEach(r => { %>
+            <tr>
+              <th scope="row" style="background:none;font-weight:400;color:inherit;"><%= r.school.name %></th>
+              <td><span class="badge badge-unvalidated"><%= t('strategic_reason_' + r.reason) %></span></td>
+              <% ['c1', 'c3', 'c4'].forEach(key => { %>
+                <td>
+                  <% if (r[key] === null || r[key] === undefined) { %>—
+                  <% } else { %><span class="badge badge-level<%= r[key] %>"><%= t('level_label') %> <%= r[key] %></span><% } %>
+                </td>
+              <% }) %>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+<% } %>

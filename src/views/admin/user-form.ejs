@@ -34,7 +34,8 @@ const val = (k) => (user && user[k] !== undefined && user[k] !== null ? user[k] 
             role: typeof firstRole !== 'undefined' && firstRole ? firstRole : 'META_MENTOR',
             schoolId: null, territoryId: null, label: '',
             selected: typeof firstSelected !== 'undefined' ? firstSelected : null,
-            schools, territories, roles, capabilityGroups, roleDefaults, defaultsFor, t
+            schools, territories, roles, capabilityGroups, roleDefaults, defaultsFor,
+            capabilityIsUsableBy, CAPABILITY_REQUIRES_ROLE, t
           }) %>
       <p class="help"><%= t('admin_user_create_password_note') %></p>
     <% } %>
@@ -80,7 +81,8 @@ const val = (k) => (user && user[k] !== undefined && user[k] !== null ? user[k] 
 
         <%- include('_capability-picker', {
               idPrefix: 'p' + post.id, role: post.role, selected: post.selected,
-              capabilityGroups, roleDefaults, defaultsFor, roles, t
+              capabilityGroups, roleDefaults, defaultsFor, roles,
+              capabilityIsUsableBy, CAPABILITY_REQUIRES_ROLE, t
             }) %>
 
         <div class="btn-row" style="margin-top:0.8rem;">
@@ -111,7 +113,8 @@ const val = (k) => (user && user[k] !== undefined && user[k] !== null ? user[k] 
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <%- include('_post-fields', {
             idPrefix: 'add', role: 'META_MENTOR', schoolId: null, territoryId: null, label: '',
-            selected: null, schools, territories, roles, capabilityGroups, roleDefaults, defaultsFor, t
+            selected: null, schools, territories, roles, capabilityGroups, roleDefaults, defaultsFor,
+            capabilityIsUsableBy, CAPABILITY_REQUIRES_ROLE, t
           }) %>
       <div class="btn-row" style="margin-top:0.8rem;">
         <button class="btn" type="submit"><%= t('admin_user_post_add') %></button>

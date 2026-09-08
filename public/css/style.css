@@ -1202,3 +1202,34 @@ footer a { color: var(--primary-text); }
   a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 0.8em; }
   tr { break-inside: avoid; }
 }
+
+/* --- Status chip -----------------------------------------------------------
+   The step navigator's four-colour vocabulary, in a form that sits in a table
+   cell rather than in a row of navigation pills. Same dots, same meanings, so
+   a meta-mentor reading a school's progress and the school's own team are
+   looking at one scheme rather than two. */
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+/* --- Concerns raised by a district ---------------------------------------- */
+.flag-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.9rem; }
+.flag-list > li {
+  border-left: 3px solid var(--status-red);
+  padding-left: 0.8rem;
+}
+.flag-list p { margin: 0 0 0.15rem; }
+
+/* --- A capability this role could hold but never use ----------------------- */
+.cap-note {
+  display: inline-block;
+  margin-left: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--status-red);
+  border: 1px solid var(--status-red);
+  border-radius: 3px;
+  padding: 0 0.3rem;
+}

@@ -9,8 +9,11 @@ const prefsUtil = require('../src/utils/prefs');
 const { getIndicatorData } = require('../src/data/indicatorsI18n');
 const { ENROLMENT_BANDS, checkDeviceCompliance, checkNetworkCompliance } = require('../src/data/order675');
 const { renderWheel, itemsFromRatings, itemsFromDomainScores } = require('../src/services/wheelChart');
-const { computeStepStatuses, finalizeReviewStatus } = require('../src/services/stepStatus');
-const { CAPABILITIES, CAPABILITY_GROUPS, ROLES, ROLE_DEFAULTS, capabilitiesFor, defaultsFor } = require('../src/services/capabilities');
+const { computeStepStatuses, finalizeReviewStatus, progressSummary } = require('../src/services/stepStatus');
+const {
+  CAPABILITIES, CAPABILITY_GROUPS, ROLES, ROLE_DEFAULTS, capabilitiesFor, defaultsFor,
+  capabilityIsUsableBy, CAPABILITY_REQUIRES_ROLE,
+} = require('../src/services/capabilities');
 const { developerBlock, SEVERITIES, STATUSES } = require('../src/services/feedbackContext');
 
 const VIEWS = path.join(__dirname, '..', 'src', 'views');
@@ -100,6 +103,15 @@ function templatesFor(lang) {
   const confirmedCycle = makeCycle(indicators, 'CONFIRMED');
   const translate = i18n.t(lang);
   const stepStatuses = finalizeReviewStatus(computeStepStatuses(draftCycle));
+  // Built by the real service, so this fixture cannot describe a shape
+  // progressSummary never produces.
+  const progress = progressSummary(draftCycle);
+  const flags = [
+    { id: 1, raisedAt: new Date('2026-09-01T10:00:00Z'), reason: 'Datele de rețea par incomplete.', byName: 'Autoritatea teritorială' },
+    { id: 2, raisedAt: new Date('2026-08-20T09:30:00Z'), reason: null, byName: null },
+  ];
+  const mentors = [{ name: 'Elena Guriță', label: null }];
+  const territories = [{ id: 1, name: 'Chișinău' }, { id: 2, name: 'Criuleni' }];
   const wheelSvg = renderWheel(itemsFromRatings(draftCycle.ratings, indicators), { mode: 'indicators', t: translate });
   const domainScores = { A: 2.4, B: 3.1, C: 1.8, D: 0.5 };
   const row = overviewRow(school, confirmedCycle);
@@ -123,8 +135,9 @@ function templatesFor(lang) {
     // variant is covered separately below.
     ['auth/change-password.ejs', { title: 'Change', error: null, mustChange: false }],
 
-    ['school/dashboard.ejs', { school, cycles: [confirmedCycle], latest: confirmedCycle, hasConfirmedPrior: true }],
-    ['school/dashboard.ejs', { school, cycles: [], latest: null, hasConfirmedPrior: false }],
+    ['school/dashboard.ejs', { school, cycles: [confirmedCycle], latest: confirmedCycle, hasConfirmedPrior: true, mentors }],
+    // A school with no mentor assigned yet must render just as happily.
+    ['school/dashboard.ejs', { school, cycles: [], latest: null, hasConfirmedPrior: false, mentors: [] }],
     ['school/cycle-overview.ejs', { school, cycle: draftCycle, isContinuation: true, stepStatuses, progress: { rated: 15, total: 19 }, wheelSvg }],
     ['school/step-domain.ejs', {
       school, cycle: draftCycle, stepStatuses, domainCode: 'A', domainName: data.DOMAINS.A,
@@ -161,31 +174,45 @@ function templatesFor(lang) {
 
     ['ministry/dashboard.ejs', {
       rows: [row], totalSchools: 8, filteredCount: 1, confirmedCount: 7, complianceCount: 2,
-      avgA: '1.9', avgB: '2.0', avgC: '1.8', avgD: '1.4', bands: ENROLMENT_BANDS, query: { band: '251-500' },
+      avgA: '1.9', avgB: '2.0', avgC: '1.8', avgD: '1.4', bands: ENROLMENT_BANDS, territories,
+      query: { band: '251-500', territoryId: '2' },
     }],
     ['ministry/compliance.ejs', { rows: [row], allCount: 7 }],
     ['ministry/compliance.ejs', { rows: [], allCount: 7 }],
     ['ministry/school-detail.ejs', withIndicators({
       school, latest: confirmedCycle, currentCycle: draftCycle, hasNewerDraft: true, wheelSvg,
       deviceCompliance: row.deviceCompliance, networkCompliance: row.networkCompliance,
-      validations: [],
+      validations: [], progress, flags,
     })],
+    // The case half the pilot is in: work under way, nothing confirmed yet.
     ['ministry/school-detail.ejs', withIndicators({
       school, latest: null, currentCycle: draftCycle, hasNewerDraft: false, wheelSvg: null,
-      deviceCompliance: null, networkCompliance: null, validations: [],
+      deviceCompliance: null, networkCompliance: null, validations: [], progress, flags: [],
     })],
 
-    ['territorial/dashboard.ejs', { rows: [row], totalSchools: 3, confirmedCount: 2, territoryName: 'Chișinău' }],
+    ['territorial/dashboard.ejs', { rows: [row], totalSchools: 3, confirmedCount: 2, territoryName: 'Chișinău', scopedToOneDistrict: true }],
+    // An unscoped post — an administrator, or a mentor with no school — sees
+    // every district and no name in the heading.
+    ['territorial/dashboard.ejs', { rows: [row], totalSchools: 14, confirmedCount: 7, territoryName: null, scopedToOneDistrict: false }],
     ['territorial/school-detail.ejs', withIndicators({
       school, latest: confirmedCycle, currentCycle: draftCycle, hasNewerDraft: true, wheelSvg,
+      progress, flags,
     })],
     ['territorial/school-detail.ejs', withIndicators({
       school, latest: null, currentCycle: null, hasNewerDraft: false, wheelSvg: null,
+      progress: null, flags: [],
     })],
 
     ['partner/dashboard.ejs', { rows: [row], totalSchools: 8, filteredCount: 1, bands: ENROLMENT_BANDS, query: {} }],
-    ['strategic/dashboard.ejs', { rows: [{ school, c1: 2, c3: null, c4: 1 }] }],
-    ['strategic/dashboard.ejs', { rows: [] }],
+    ['strategic/dashboard.ejs', {
+      rows: [{ school, c1: 2, c3: 1, c4: 1, total: 4 }],
+      incomplete: [
+        { school, reason: 'partial', c1: 2, c3: null, c4: 1 },
+        { school, reason: 'not_started', c1: null, c3: null, c4: null },
+      ],
+      totalSchools: 14,
+    }],
+    ['strategic/dashboard.ejs', { rows: [], incomplete: [], totalSchools: 14 }],
 
     ['public/schools-list.ejs', { schools: [school], q: '' }],
     ['public/school-summary.ejs', {
@@ -224,7 +251,7 @@ function templatesFor(lang) {
     ['admin/user-form.ejs', {
       mode: 'new', user: null, posts: [], errorMessage: null,
       schools: [{ id: 1, name: 'LT Mihai Eminescu' }], territories: [{ id: 1, name: 'Chișinău' }],
-      roles: ROLES, capabilityGroups: CAPABILITY_GROUPS, roleDefaults: ROLE_DEFAULTS, defaultsFor,
+      roles: ROLES, capabilityGroups: CAPABILITY_GROUPS, roleDefaults: ROLE_DEFAULTS, defaultsFor, capabilityIsUsableBy, CAPABILITY_REQUIRES_ROLE,
     }],
     ['admin/user-form.ejs', {
       mode: 'edit',
@@ -238,7 +265,7 @@ function templatesFor(lang) {
       ],
       errorMessage: 'Something is wrong',
       schools: [{ id: 1, name: 'LT Mihai Eminescu' }], territories: [{ id: 1, name: 'Chișinău' }],
-      roles: ROLES, capabilityGroups: CAPABILITY_GROUPS, roleDefaults: ROLE_DEFAULTS, defaultsFor,
+      roles: ROLES, capabilityGroups: CAPABILITY_GROUPS, roleDefaults: ROLE_DEFAULTS, defaultsFor, capabilityIsUsableBy, CAPABILITY_REQUIRES_ROLE,
     }],
     ['admin/user-created.ejs', {
       user: { id: 2, name: 'Ion Rusu', login: 'rusu.ion', role: 'META_MENTOR' },

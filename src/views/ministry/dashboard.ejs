@@ -33,6 +33,13 @@ const avgByDomain = { A: avgA, B: avgB, C: avgC, D: avgD };
   <form method="GET" action="<%= href('/ministry') %>">
     <div class="inline-fields">
       <div>
+        <label for="f-territory"><%= t('territory') %></label>
+        <select id="f-territory" name="territoryId">
+          <option value="">—</option>
+          <% territories.forEach(terr => { %><option value="<%= terr.id %>" <%- String(query.territoryId) === String(terr.id) ? 'selected' : '' %>><%= terr.name %></option><% }) %>
+        </select>
+      </div>
+      <div>
         <label for="f-band"><%= t('band') %></label>
         <select id="f-band" name="band">
           <option value="">—</option>
