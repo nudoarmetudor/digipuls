@@ -21,7 +21,15 @@ router.get('/', async (req, res) => {
     return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2) : '—';
   };
   const complianceCount = confirmedRows.filter((r) => r.deviceCompliance?.compliant && r.networkCompliance?.compliant).length;
-  const territories = await prisma.territory.findMany({ orderBy: { name: 'asc' } });
+  // Only districts that actually have a school. Offering an empty one is the
+  // same defect as the regional dashboard that returned nothing: a control
+  // that looks like it filters and answers with a blank page. Districts come
+  // and go as schools are provisioned, so this is decided per request rather
+  // than by tidying the table.
+  const territories = await prisma.territory.findMany({
+    where: { schools: { some: {} } },
+    orderBy: { name: 'asc' },
+  });
 
   res.render('ministry/dashboard', {
     title: res.locals.t('ministry_dashboard_title'), wide: true,
