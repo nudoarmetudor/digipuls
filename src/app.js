@@ -203,6 +203,24 @@ app.use((req, res, next) => {
   });
 });
 
+// TEMPORARY — removed in the follow-up commit.
+//
+// The app sees one client address for the whole internet: a request from a
+// different continent was refused by a rate limit this machine had just
+// tripped. That makes both throttles global, which is a launch blocker. This
+// reports which headers actually arrive so the real client address can be
+// recovered, if it is there at all. Returns nothing but the request's own
+// metadata, at a path nobody will guess.
+app.get('/__whoami-7f3a2c', (req, res) => {
+  res.json({
+    reqIp: req.ip,
+    reqIps: req.ips,
+    trustProxy: app.get('trust proxy'),
+    socket: req.socket && req.socket.remoteAddress,
+    headers: req.headers,
+  });
+});
+
 app.use('/', require('./routes/auth'));
 app.use('/school', require('./routes/school'));
 app.use('/ministry', require('./routes/ministry'));
