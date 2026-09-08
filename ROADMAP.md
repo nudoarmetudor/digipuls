@@ -119,6 +119,12 @@ here rather than quietly carried:
 - **`deepmerge-ts` via the Prisma CLI.** Build-time only; the available fix is
   a Prisma downgrade, which is a worse trade than the risk of a stack
   exhaustion in a tool run by hand at deploy time.
+- **Sessions are stored in memory.** One Passenger process makes that
+  consistent, and anonymous visitors no longer create sessions, so the store
+  holds only signed-in people — tens, not thousands. But every deploy signs
+  everyone out, and a second process would split the store. A Prisma-backed
+  session store is the fix; the cost is a query per request against an hourly
+  connection budget, which is why it has not been done yet.
 - **Rate limiting is per process and in memory.** Correct for a single
   Passenger process on shared hosting. Running more than one process means
   moving these counters to the database or a shared store, and the limits

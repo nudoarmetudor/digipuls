@@ -81,12 +81,48 @@ function run(req, res) {
   return passed;
 }
 
-test('a GET is never blocked, and is what issues the token', () => {
-  const req = fakeReq('GET');
+test('a GET is never blocked', () => {
+  const req = fakeReq('GET', { path: '/login' });
   const res = fakeRes();
   assert.ok(run(req, res), 'reads must not be blocked');
+});
+
+test('the login page gets a token, because it carries the one anonymous form', () => {
+  const req = fakeReq('GET', { path: '/login' });
+  const res = fakeRes();
+  run(req, res);
   assert.ok(req.session.csrfToken, 'a token is minted');
   assert.strictEqual(res.locals.csrfToken, req.session.csrfToken, 'and published to the view');
+});
+
+test('a signed-in person gets a token on any page', () => {
+  const req = fakeReq('GET', { path: '/ministry', session: { user: { id: 1 } } });
+  const res = fakeRes();
+  run(req, res);
+  assert.ok(req.session.csrfToken);
+});
+
+test('an anonymous reader of the public pages is given no session at all', () => {
+  // Storing a token modifies the session, which makes express-session persist
+  // it even with saveUninitialized off. Issuing one to every request meant
+  // every visitor — and every crawler — was handed a session on a
+  // memory-backed store, on a host with a memory limit. That is a leak with
+  // the whole internet holding the pump, and the public tier needs no token:
+  // it is read-only, and /preferences is exempt.
+  const req = fakeReq('GET', { path: '/public-view/schools' });
+  const res = fakeRes();
+  assert.ok(run(req, res), 'public pages must still render');
+  assert.strictEqual(req.session.csrfToken, undefined,
+    'nothing may be written to the session, or a session is created and stored');
+  assert.strictEqual(res.locals.csrfToken, '', 'views get an empty token, not undefined');
+});
+
+test('a session that already has a token keeps it', () => {
+  const session = { csrfToken: 'existing-token' };
+  const req = fakeReq('GET', { path: '/public-view/schools', session });
+  const res = fakeRes();
+  run(req, res);
+  assert.strictEqual(res.locals.csrfToken, 'existing-token');
 });
 
 test('a POST without the token is refused', () => {
@@ -436,4 +472,70 @@ test('the CSP meta tag is the first policy-bearing thing in the document', () =>
   const before = head.slice(0, metaAt);
   assert.ok(!before.includes('<script'), 'no script may precede the policy');
   assert.ok(!before.includes('<link'), 'no link may precede the policy');
+});
+
+// ---------------------------------------------------------------------------
+// Rate limits on a deployment that cannot see client addresses
+// ---------------------------------------------------------------------------
+
+test('twelve people mistyping their passwords do not lock each other out', () => {
+  // The scenario this has to survive: a room of meta-mentors at a workshop,
+  // behind one connection, typing twelve-character one-time passwords. The
+  // CDN gives every request the same address, so an address-keyed budget is
+  // really one budget for everybody — and the old numbers (40 failures) would
+  // have been spent between them.
+  const { createLimiter } = require('../src/middleware/rateLimit');
+  const { MAX_PER_ACCOUNT, MAX_OVERALL } = require('../src/middleware/loginRateLimit');
+
+  const perAccount = createLimiter({ windowMs: 900000, max: MAX_PER_ACCOUNT });
+  const overall = createLimiter({ windowMs: 900000, max: MAX_OVERALL });
+
+  const people = Array.from({ length: 12 }, (_, i) => `mentor.${i}`);
+  const TYPOS = 3;
+  people.forEach((login) => {
+    for (let i = 0; i < TYPOS; i++) { perAccount.record(login); overall.record('all'); }
+  });
+
+  people.forEach((login) => {
+    assert.ok(!perAccount.exceeded(login), `${login} must still be able to sign in`);
+  });
+  assert.ok(!overall.exceeded('all'),
+    `12 people x ${TYPOS} typos must stay under the overall ceiling of ${MAX_OVERALL}`);
+});
+
+test('one account being guessed at is still stopped', () => {
+  const { createLimiter } = require('../src/middleware/rateLimit');
+  const { MAX_PER_ACCOUNT } = require('../src/middleware/loginRateLimit');
+  const perAccount = createLimiter({ windowMs: 900000, max: MAX_PER_ACCOUNT });
+
+  for (let i = 0; i < MAX_PER_ACCOUNT; i++) perAccount.record('gurita.elena');
+  assert.ok(perAccount.exceeded('gurita.elena'), 'the account under attack is protected');
+  assert.ok(!perAccount.exceeded('donos.inna'), 'and nobody else is affected');
+});
+
+test('the per-account budget does not depend on the address', () => {
+  // It used to be keyed on IP+login, so an attacker who could present
+  // different addresses got a fresh budget for each. Behind this CDN nobody
+  // can, but the rule should not depend on that being true.
+  const { _limiters } = require('../src/middleware/loginRateLimit');
+  _limiters.perAccount.reset();
+  _limiters.overall.reset();
+
+  const req = (login) => ({ body: { login }, ip: Math.random().toString() });
+  const { recordFailedAttempt } = require('../src/middleware/loginRateLimit');
+  for (let i = 0; i < 10; i++) recordFailedAttempt(req('victim.account'));
+  assert.ok(_limiters.perAccount.exceeded('victim.account'),
+    'ten failures is ten failures, whatever address they claim to come from');
+  _limiters.perAccount.reset();
+  _limiters.overall.reset();
+});
+
+test('limits are honestly labelled as global on this deployment', () => {
+  const { limitsAreGlobal, clientId } = require('../src/utils/clientId');
+  // TRUST_CLIENT_IP is off by default because the CDN does not forward the
+  // client address. Claiming to distinguish clients when you cannot is worse
+  // than admitting you cannot.
+  assert.strictEqual(limitsAreGlobal, true);
+  assert.strictEqual(clientId({ ip: '203.0.113.9' }), 'all',
+    'every visitor counts against the same bucket, and the code says so');
 });

@@ -26,6 +26,30 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 // privacy-preserving choice, not a gap.
 const EXEMPT = /^\/preferences(\/|$)/;
 
+/**
+ * Who gets a token — and therefore who gets a session at all.
+ *
+ * Storing a token modifies the session, which makes express-session persist
+ * it even with saveUninitialized off. The first version of this middleware
+ * issued one to every request, so every anonymous visitor to the public school
+ * pages was given a session, and every crawler got one too. On a memory-backed
+ * store, on a shared host with a memory limit, that is a slow leak with the
+ * whole internet holding the pump.
+ *
+ * Only two kinds of request actually need a token:
+ *   - a signed-in person, whose pages carry forms that change things;
+ *   - the login page, which must carry one so the login POST can be checked.
+ *
+ * Everything else — the public tier, static assets — is read-only or exempt,
+ * and now leaves no trace on the server.
+ */
+function needsToken(req) {
+  if (!req.session) return false;
+  if (req.session.csrfToken) return true;      // already has one; keep it
+  if (req.session.user) return true;           // signed in
+  return req.path === '/login';                // the one anonymous form
+}
+
 function issueToken(req) {
   if (!req.session) return null;
   if (!req.session.csrfToken) {
@@ -54,7 +78,7 @@ function submittedToken(req) {
  * every request that changes something.
  */
 function csrf(req, res, next) {
-  const token = issueToken(req);
+  const token = needsToken(req) ? issueToken(req) : (req.session && req.session.csrfToken) || null;
   // Views read this; head.ejs also publishes it as a <meta> so the feedback
   // overlay's fetch() can send it as a header.
   res.locals.csrfToken = token || '';
@@ -87,4 +111,4 @@ function rotateToken(req) {
   return issueToken(req);
 }
 
-module.exports = { csrf, rotateToken, issueToken };
+module.exports = { csrf, rotateToken, issueToken, needsToken };

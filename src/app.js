@@ -12,6 +12,7 @@ const { csrf } = require('./middleware/csrf');
 const { securityHeaders } = require('./middleware/securityHeaders');
 const { throttle } = require('./middleware/rateLimit');
 const { safeRedirect } = require('./utils/safeRedirect');
+const { clientId, limitsAreGlobal } = require('./utils/clientId');
 
 // No silent fallback in production — sessions signed with the checked-in
 // dev secret are not secure once real accounts/data exist on this instance.
@@ -203,24 +204,6 @@ app.use((req, res, next) => {
   });
 });
 
-// TEMPORARY — removed in the follow-up commit.
-//
-// The app sees one client address for the whole internet: a request from a
-// different continent was refused by a rate limit this machine had just
-// tripped. That makes both throttles global, which is a launch blocker. This
-// reports which headers actually arrive so the real client address can be
-// recovered, if it is there at all. Returns nothing but the request's own
-// metadata, at a path nobody will guess.
-app.get('/__whoami-7f3a2c', (req, res) => {
-  res.json({
-    reqIp: req.ip,
-    reqIps: req.ips,
-    trustProxy: app.get('trust proxy'),
-    socket: req.socket && req.socket.remoteAddress,
-    headers: req.headers,
-  });
-});
-
 app.use('/', require('./routes/auth'));
 app.use('/school', require('./routes/school'));
 app.use('/ministry', require('./routes/ministry'));
@@ -228,12 +211,29 @@ app.use('/territorial', require('./routes/territorial'));
 app.use('/partner', require('./routes/partner'));
 app.use('/strategic', require('./routes/strategic'));
 // The only routes reachable without a login, and the only ones an anonymous
-// client can use to make the app do database work. This host bills the
-// database user a cumulative max_connections_per_hour, so an unthrottled
-// public tier is not just a slow-site risk: exhausting that quota also stops
-// `prisma migrate deploy`, which is how deployments previously stopped
-// landing. See src/config/db.js.
-app.use('/public-view', throttle({ windowMs: 60 * 1000, max: 60, message: 'err_rate_limited' }), require('./routes/public'));
+// client can use to make the app do database work.
+//
+// This limit is GLOBAL, not per visitor, because the CDN in front of this app
+// does not forward the client address — see utils/clientId.js. It was written
+// as 60 requests a minute per client and was therefore 60 a minute for the
+// whole internet: one browser opening a dozen pages could have taken the
+// public tier down on launch day, which a test promptly demonstrated.
+//
+// Sized instead as a ceiling on total load: far above anything twelve schools
+// and their visitors will produce, low enough to bound a scraper. The database
+// connection quota is protected by the pool rather than by this — the pool
+// opens at most four connections and keeps them, so a flood queues instead of
+// opening more (src/config/db.js).
+app.use(
+  '/public-view',
+  throttle({
+    windowMs: 60 * 1000,
+    max: limitsAreGlobal ? 600 : 120,
+    keyFn: clientId,
+    message: 'err_rate_limited',
+  }),
+  require('./routes/public'),
+);
 app.use('/workspace', require('./routes/workspace'));
 app.use('/admin/users', require('./routes/adminUsers'));
 app.use('/admin', require('./routes/admin'));

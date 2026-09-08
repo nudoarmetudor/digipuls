@@ -180,6 +180,26 @@ and redeploys automatically.
   This guard exists because the seed was once run against production, leaving
   thirteen accounts — including an administrator — reachable with a password
   published in this repository.
+- **Rate limits are global, not per visitor.** The CDN in front of this app
+  does not forward the client address: every request arrives with
+  `x-real-ip` and `x-forwarded-for` set to the same edge IP. This was
+  established by tripping a limit from one machine and finding a request from
+  another continent refused by it. Consequences:
+
+  - The public tier is capped at 600 requests a minute **in total**, not each.
+  - Login allows 10 failed attempts per account, and 200 across the whole app
+    per 15 minutes. Keyed on the account, never the address, so a room of
+    meta-mentors at a workshop cannot lock each other out.
+
+  To get per-visitor limits, make the real client address arrive — turn the
+  CDN off for this domain in hPanel, or configure it to pass a client-IP
+  header — then set `TRUST_CLIENT_IP=true`. Until then the limits are honest
+  about being shared; see `src/utils/clientId.js`.
+- **Sessions live in memory.** With one Passenger process that is consistent,
+  and anonymous visitors are given no session at all, so the public tier
+  cannot grow it. Two things follow: every deploy signs everyone out, and a
+  second process would split the session store. Moving to a database-backed
+  store is on ROADMAP.md and is worth doing before the pilot grows.
 - **SESSION_SECRET** must be a long random value in production — sessions
   signed with the default dev secret are not secure. The app refuses to start
   in production without it.
