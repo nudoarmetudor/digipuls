@@ -72,7 +72,7 @@ router.post('/login', loginRateLimit, async (req, res) => {
     // The audit write must not decide whether the person gets in: log the
     // failure and continue, rather than leaving the request hanging with no
     // response, which is what an uncaught rejection here used to do.
-    logAction(user.id, 'LOGIN', 'User', user.id, null)
+    logAction(user.id, 'LOGIN', 'User', user.id, null, req.ip)
       .catch((err) => console.error('[audit] LOGIN write failed', err))
       .then(() => {
         if (user.mustChangePassword) return res.redirect('/change-password');

@@ -1,5 +1,6 @@
 <h1><%= t('audit_title') %></h1>
 <p class="subtitle"><%= t('audit_subtitle') %></p>
+<p class="small"><%= t('audit_ip_note') %></p>
 
 <div class="table-scroll">
   <table>
@@ -11,6 +12,7 @@
         <th scope="col"><%= t('th_action') %></th>
         <th scope="col"><%= t('th_entity') %></th>
         <th scope="col"><%= t('th_details') %></th>
+        <th scope="col"><%= t('th_from') %></th>
       </tr>
     </thead>
     <tbody>
@@ -21,6 +23,8 @@
           <td class="small mono"><%= e.action %></td>
           <td class="small"><%= e.entityType %> #<%= e.entityId %></td>
           <td class="small"><%= e.details || '' %></td>
+          <%# Only sign-in carries one; everything else is blank on purpose. %>
+          <td class="small mono"><%= e.ipAddress || '' %></td>
         </tr>
       <% }) %>
     </tbody>

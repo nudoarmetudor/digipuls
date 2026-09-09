@@ -554,5 +554,14 @@ model AuditLogEntry {
   entityType String
   entityId   String?
   details    String?  @db.Text
+  // The address a sign-in came from. Recorded for LOGIN only, and nothing
+  // else: knowing where a session started is worth having when an account is
+  // questioned, while a per-request trail of everyone's movements is
+  // surveillance nobody asked for.
+  //
+  // This is personal data. It is written on one action, shown only to an
+  // account holding admin.audit, and it is the reason the platform can tell
+  // one visitor from another at all — see src/utils/clientId.js.
+  ipAddress  String?
   createdAt  DateTime @default(now())
 }

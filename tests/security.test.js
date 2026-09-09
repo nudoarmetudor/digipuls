@@ -634,3 +634,33 @@ test('no route sits on a path a cache will mistake for a static file', () => {
     'these routes look like static files to a CDN — drop the extension and name '
     + 'the download with Content-Disposition instead');
 });
+
+test('the sign-in address is recorded, and only for sign-in', () => {
+  // Personal data, so the scope is the point: knowing where a session began is
+  // worth having when an account is questioned; a trail of every page a named
+  // person opened is surveillance nobody asked for. One action carries an
+  // address, and the rest of the log must stay blank.
+  const auth = fs.readFileSync(
+    path.join(__dirname, '..', 'src', 'routes', 'auth.js'), 'utf8');
+  assert.match(auth, /logAction\(user\.id, 'LOGIN', 'User', user\.id, null, req\.ip\)/,
+    'sign-in passes the address');
+
+  const routes = path.join(__dirname, '..', 'src', 'routes');
+  const offenders = [];
+  fs.readdirSync(routes).filter((f) => f.endsWith('.js')).forEach((file) => {
+    const src = fs.readFileSync(path.join(routes, file), 'utf8');
+    (src.match(/logAction\([^)]*\)/g) || []).forEach((call) => {
+      if (/req\.ip/.test(call) && !/'LOGIN'/.test(call)) offenders.push(`${file}: ${call}`);
+    });
+  });
+  assert.deepStrictEqual(offenders, [], 'only sign-in may record an address');
+});
+
+test('an address is normalised before it is stored', () => {
+  // Express hands back ::ffff:1.2.3.4 on a dual-stack socket. Two spellings of
+  // one address in a log is two addresses to whoever reads it.
+  const audit = fs.readFileSync(
+    path.join(__dirname, '..', 'src', 'services', 'audit.js'), 'utf8');
+  assert.match(audit, /replace\(\/\^::ffff:\//, 'the IPv4-mapped prefix is stripped');
+  assert.match(audit, /slice\(0, 45\)/, 'and the value is bounded to the column width');
+});
