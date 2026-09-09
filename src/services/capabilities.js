@@ -108,12 +108,34 @@ const BASELINE_CAPABILITIES = ['feedback.submit'];
 //
 // Rather than quietly leave a control in the picker that does nothing for most
 // roles, the requirement is declared here and the picker says so.
+//
+// ADMIN is on each list as well, and that is not a loophole: an administrator
+// holds admin.schools, which means every institution is theirs to work in.
+// Before this they held view.school and could never use it — the picker said
+// so, and the school workspace refused them — which made "the administrator
+// can fix it" untrue of the one part of the platform most likely to need
+// fixing during a pilot.
+const SCHOOL_CAPABILITY_ROLES = [...SCHOOL_ROLES, 'ADMIN'];
 const CAPABILITY_REQUIRES_ROLE = {
-  'view.school': SCHOOL_ROLES,
-  'school.manage': SCHOOL_ROLES,
-  'school.publish': SCHOOL_ROLES,
-  'school.accounts': SCHOOL_ROLES,
+  'view.school': SCHOOL_CAPABILITY_ROLES,
+  'school.manage': SCHOOL_CAPABILITY_ROLES,
+  'school.publish': SCHOOL_CAPABILITY_ROLES,
+  'school.accounts': SCHOOL_CAPABILITY_ROLES,
 };
+
+/**
+ * A post that may act inside *any* institution rather than one.
+ *
+ * Two capabilities together, not a role name: admin.schools is the authority
+ * over institutions and view.school is the authority to work inside one, and
+ * only an administrator is given both. Expressed this way, revoking either
+ * from a particular administrator takes the reach away with it — which a
+ * `role === 'ADMIN'` check would not.
+ */
+function reachesEverySchool(capabilities) {
+  if (!capabilities) return false;
+  return capabilities.has('admin.schools') && capabilities.has('view.school');
+}
 
 /** True when this role can actually exercise the capability, not merely hold it. */
 function capabilityIsUsableBy(capability, role) {
@@ -228,25 +250,6 @@ function canActOn(actor, target) {
 }
 
 /**
- * May an actor administer this target account?
- *
- * The rule is that you cannot act on someone who can do something you cannot.
- * Without it, admin.users is still a privilege-escalation primitive by a
- * longer route: reset the administrator's password, read it off the screen,
- * sign in as them. Resetting a *peer's* password stays allowed, because that
- * is the actual job.
- *
- * @param {Set<string>} actor   the acting account's effective capabilities
- * @param {Set<string>} target  the union of the target account's capabilities
- */
-function canActOn(actor, target) {
-  for (const capability of target) {
-    if (!actor.has(capability)) return false;
-  }
-  return true;
-}
-
-/**
  * Where an account lands after login, given what it can actually reach.
  *
  * Order matters: the first entry whose test passes wins, so the most specific
@@ -269,6 +272,12 @@ const HOME_BY_CAPABILITY = [
  * including view.school, but have no schoolId — so without this check an
  * admin is sent straight to a page that refuses them.
  */
+// Deliberately still requires a school, administrator or not. This answers
+// "does this workspace have an institution to open", which is a different
+// question from "may this post work inside one" — reachesEverySchool above
+// answers that. An administrator's plain workspace has no school and must not
+// land on /school; the same administrator's workspace at /w/3s1 has one and
+// should.
 function canOpenSchoolWorkspace(capabilities, user) {
   return capabilities.has('view.school') && !!(user && user.schoolId);
 }
@@ -361,6 +370,7 @@ module.exports = {
   CAPABILITY_GROUPS,
   ROLES,
   ROLE_DEFAULTS,
+  reachesEverySchool,
   canActOn,
   CAPABILITY_REQUIRES_ROLE,
   capabilityIsUsableBy,

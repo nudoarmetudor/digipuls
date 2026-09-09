@@ -124,3 +124,78 @@ test('the worked example holds together', () => {
   assert.ok(mentorCaps.has('feedback.submit') && coordCaps.has('feedback.submit'),
     'but she can report a problem from either');
 });
+
+// --- an administrator in every institution ----------------------------------
+//
+// An administrator holds one post and no school, which for most of this
+// pilot meant they held view.school and could never use it: the one person who
+// could fix a school's record was the one person locked out of it. The school
+// is now chosen rather than owned, and travels in the URL beside the post.
+
+const {
+  describeInSchool, activeTerritoryId, territoryFilter,
+} = require('../src/middleware/workspace');
+const { reachesEverySchool, capabilitiesFor } = require('../src/services/capabilities');
+
+function parse(url) {
+  const req = { url };
+  extractWorkspace(req, {}, () => {});
+  return req;
+}
+
+test('the URL carries the post and, for an administrator, the institution', () => {
+  const plain = parse('/w/12/school/cycles/3');
+  assert.strictEqual(plain.requestedWorkspaceId, 12);
+  assert.strictEqual(plain.requestedSchoolId, undefined);
+  assert.strictEqual(plain.url, '/school/cycles/3');
+
+  const inSchool = parse('/w/12s3/school/cycles/3');
+  assert.strictEqual(inSchool.requestedWorkspaceId, 12);
+  assert.strictEqual(inSchool.requestedSchoolId, 3);
+  assert.strictEqual(inSchool.url, '/school/cycles/3',
+    'the routes stay prefix-unaware, school suffix included');
+
+  // A bare workspace, with and without the school.
+  assert.strictEqual(parse('/w/12').url, '/');
+  assert.strictEqual(parse('/w/12s3').url, '/');
+
+  // Not a workspace prefix at all.
+  const other = parse('/ws/12/school');
+  assert.strictEqual(other.requestedWorkspaceId, undefined);
+  assert.strictEqual(other.url, '/ws/12/school');
+});
+
+test('the institution is part of every link, or the next click loses it', () => {
+  const href = makeHref('12s3');
+  assert.strictEqual(href('/school/cycles/3'), '/w/12s3/school/cycles/3');
+  assert.strictEqual(href('/'), '/w/12s3');
+  // The account-level routes still mean the same thing in every workspace.
+  assert.strictEqual(href('/logout'), '/logout');
+  assert.strictEqual(href('/public-view/schools'), '/public-view/schools');
+});
+
+test('an administrator working in a school is not narrowed to its district', () => {
+  const post = { id: 3, role: 'ADMIN', label: null, schoolId: null, territoryId: null };
+  const school = { id: 5, name: 'LT Boris Dînga', territoryId: 9 };
+  const inSchool = describeInSchool(post, school);
+
+  assert.strictEqual(inSchool.key, '3s5');
+  assert.strictEqual(inSchool.schoolId, 5);
+  assert.strictEqual(inSchool.schoolName, 'LT Boris Dînga');
+  assert.ok(inSchool.inEverySchool);
+
+  // The school context is there to let them act, not to take away what they
+  // can see. A metamentor's post names a school precisely in order to scope
+  // them; an administrator's does not.
+  assert.strictEqual(inSchool.schoolTerritoryId, null);
+  assert.strictEqual(activeTerritoryId({ workspace: inSchool }), null,
+    'an administrator still reads every district');
+  assert.deepStrictEqual(territoryFilter({ workspace: inSchool }), {},
+    'and every school in it');
+});
+
+test('only an administrator reaches every institution', () => {
+  assert.ok(reachesEverySchool(capabilitiesFor('ADMIN', [])));
+  ['SCHOOL_PRINCIPAL', 'META_COORDINATOR', 'MINISTRY', 'TERRITORIAL']
+    .forEach((role) => assert.ok(!reachesEverySchool(capabilitiesFor(role, []))));
+});

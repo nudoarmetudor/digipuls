@@ -10,6 +10,15 @@
     <% if (currentUser) { %><%- include('partials/sidebar') %><% } %>
     <main id="main" tabindex="-1">
       <div class="container<%= typeof wide !== 'undefined' && wide ? ' wide' : '' %>">
+        <%# An administrator working inside an institution they hold no post at.
+            Said on every page rather than only on the way in, because the one
+            thing that must never happen is someone editing a school's record
+            without noticing whose record it is. %>
+        <% if (workspace && workspace.inEverySchool) { %>
+          <div class="flash flash-info" role="status">
+            <b><%= workspace.schoolName %></b> — <%= t('school_admin_notice') %>
+          </div>
+        <% } %>
         <%- body %>
       </div>
     </main>

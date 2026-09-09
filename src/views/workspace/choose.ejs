@@ -10,6 +10,7 @@
     <p class="small" style="margin:0;"><%= t('workspace_tab_note') %></p>
   </div>
 
+  <% if (options.length) { %>
   <ul class="workspace-list">
     <% options.forEach(function (o) { %>
       <li>
@@ -28,4 +29,26 @@
       </li>
     <% }) %>
   </ul>
+  <% } %>
+
+  <%# An administrator holds one post and every institution. The schools are
+      derived from that post rather than stored as assignments, so a school
+      added tomorrow appears here on its own. %>
+  <% if (institutions.length) { %>
+    <h2><%= t('workspace_institutions_title') %></h2>
+    <p class="small"><%= t('workspace_institutions_note') %></p>
+    <ul class="workspace-list">
+      <% institutions.forEach(function (o) { %>
+        <li>
+          <a class="workspace-card<%= o.isCurrent ? ' is-current' : '' %>" href="<%= o.href %>">
+            <span class="workspace-role"><%= o.institution %></span>
+            <span class="workspace-institution"><%= t('workspace_as_admin') %></span>
+            <% if (o.isCurrent) { %>
+              <span class="badge badge-draft"><%= t('workspace_current') %></span>
+            <% } %>
+          </a>
+        </li>
+      <% }) %>
+    </ul>
+  <% } %>
 <% } %>

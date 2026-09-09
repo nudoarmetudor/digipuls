@@ -21,9 +21,15 @@
 // People with a single assignment (almost everyone) never see the prefix:
 // res.locals.href() only adds it when there is a real choice to preserve.
 
-const { capabilitiesFor } = require('../services/capabilities');
+const prisma = require('../config/db');
+const { capabilitiesFor, reachesEverySchool } = require('../services/capabilities');
 
-const WORKSPACE_PATH = /^\/w\/(\d+)(\/.*)?$/;
+// `/w/12` is assignment 12. `/w/12s3` is assignment 12 working inside school
+// 3 — the form an administrator uses, because an administrator holds one post
+// and every institution. The school is in the URL for the same reason the post
+// is: two tabs must be able to sit in two different schools at once, which
+// neither the session nor a cookie can do.
+const WORKSPACE_PATH = /^\/w\/(\d+)(?:s(\d+))?(\/.*)?$/;
 
 /**
  * Pulls `/w/<id>` off the front of the URL. Must run before any router.
@@ -32,8 +38,9 @@ function extractWorkspace(req, res, next) {
   const match = WORKSPACE_PATH.exec(req.url);
   if (match) {
     req.requestedWorkspaceId = Number(match[1]);
+    if (match[2]) req.requestedSchoolId = Number(match[2]);
     // Rewriting req.url is what lets the rest of the app stay prefix-unaware.
-    req.url = match[2] || '/';
+    req.url = match[3] || '/';
   }
   next();
 }
@@ -47,11 +54,11 @@ const UNSCOPED = /^\/(public-view|login|logout|lang|preferences|change-password|
  * Builds the link helper for one workspace. Exported so the prefixing rule can
  * be tested on its own rather than only through a rendered page.
  */
-function makeHref(assignmentId) {
+function makeHref(workspaceKey) {
   return (path) => {
     if (typeof path !== 'string' || !path.startsWith('/')) return path;
     if (UNSCOPED.test(path)) return path;
-    return `/w/${assignmentId}${path === '/' ? '' : path}`;
+    return `/w/${workspaceKey}${path === '/' ? '' : path}`;
   };
 }
 
@@ -59,6 +66,10 @@ function describe(assignment) {
   const school = assignment.school || null;
   return {
     id: assignment.id,
+    // What goes in the URL. The same as the id for an ordinary post; an
+    // administrator working inside an institution carries the school too.
+    key: String(assignment.id),
+    inEverySchool: false,
     role: assignment.role,
     label: assignment.label || null,
     schoolId: assignment.schoolId,
@@ -75,11 +86,36 @@ function describe(assignment) {
 }
 
 /**
+ * A universal post pointed at one institution.
+ *
+ * Derived rather than stored, so an administrator does not need an assignment
+ * row per school — and a school added next month is reachable the moment it
+ * exists, with nothing to remember to do.
+ *
+ * Note what is deliberately *not* narrowed: schoolTerritory stays null. An
+ * administrator working inside one lyceum still reads every district, because
+ * the school context is there to let them act, not to take away what they can
+ * see. For a metamentor, whose post names a school precisely in order to scope
+ * them, the opposite is true — see activeTerritoryId.
+ */
+function describeInSchool(assignment, school) {
+  return {
+    ...describe(assignment),
+    key: `${assignment.id}s${school.id}`,
+    inEverySchool: true,
+    schoolId: school.id,
+    schoolName: school.name,
+    schoolTerritoryId: null,
+    schoolTerritoryName: null,
+  };
+}
+
+/**
  * Resolves the active assignment and hangs the derived permissions off the
  * request. Runs after loadAccount, which has already established that the
  * account exists and is active.
  */
-function loadWorkspace(req, res, next) {
+async function loadWorkspace(req, res, next) {
   res.locals.can = () => false;
   res.locals.workspace = null;
   res.locals.workspaces = [];
@@ -93,7 +129,22 @@ function loadWorkspace(req, res, next) {
   // middleware/auth.js for why this isn't a second query.
   const assignments = req.accountAssignments || [];
   req.assignments = assignments;
-  res.locals.workspaces = assignments.map(describe);
+
+  // A post that reaches every institution turns into one option per school in
+  // the switcher and the picker. The query runs only for an account that has
+  // such a post — in practice the two administrators — and returns twelve
+  // rows on a pooled connection, so it costs nothing against the host's
+  // connection budget (see src/config/db.js).
+  const universal = assignments.filter(
+    (a) => reachesEverySchool(capabilitiesFor(a.role, a.capabilities)));
+  let schools = [];
+  if (universal.length) {
+    schools = await prisma.school.findMany({ orderBy: { name: 'asc' } });
+  }
+  req.everySchool = schools;
+
+  res.locals.workspaces = assignments.map(describe).concat(
+    universal.flatMap((a) => schools.map((s) => describeInSchool(a, s))));
 
   if (assignments.length === 0) {
     // An account with every assignment removed can still reach the public
@@ -129,6 +180,24 @@ function loadWorkspace(req, res, next) {
     return next();
   }
 
+  // An administrator pointed at an institution. Checked here rather than
+  // trusted from the URL: the suffix is only meaningful on a post that
+  // actually reaches every school, so on any other post it is a 404 rather
+  // than a quiet no-op that would leave the person looking at their own
+  // school under a URL naming a different one.
+  let inSchool = null;
+  if (req.requestedSchoolId !== undefined) {
+    const allowed = reachesEverySchool(capabilitiesFor(active.role, active.capabilities));
+    inSchool = allowed
+      ? schools.find((s) => s.id === req.requestedSchoolId) || null
+      : null;
+    if (!inSchool) {
+      req.workspace = null;
+      req.workspaceNotFound = true;
+      return next();
+    }
+  }
+
   // The described shape, not the raw assignment row.
   //
   // These used to differ: req.workspace was the Prisma record while
@@ -138,7 +207,7 @@ function loadWorkspace(req, res, next) {
   // resolved to null and every mentor saw every school. The raw row is still
   // available here as `active` for the capability lookup below, which is the
   // only thing that needs it.
-  req.workspace = describe(active);
+  req.workspace = inSchool ? describeInSchool(active, inSchool) : describe(active);
   // Remembered only as the default for a *new* tab that arrives without a
   // prefix. It never overrides an explicit /w/<id>, so it cannot make one tab
   // hijack another.
@@ -151,8 +220,11 @@ function loadWorkspace(req, res, next) {
   res.locals.workspace = req.workspace;
 
   // Only prefix once there is genuinely more than one workspace to keep apart,
-  // so a single-post account sees exactly the URLs it saw before.
-  if (assignments.length > 1) res.locals.href = makeHref(active.id);
+  // so a single-post account sees exactly the URLs it saw before. An
+  // administrator always has more than one — their own post, and every
+  // institution — and must keep the prefix, or the school they are working in
+  // would be dropped from the very next link they follow.
+  if (res.locals.workspaces.length > 1) res.locals.href = makeHref(req.workspace.key);
   next();
 }
 
@@ -202,5 +274,5 @@ function coversSchool(req, school) {
 
 module.exports = {
   extractWorkspace, loadWorkspace, makeHref, activeSchoolId, activeTerritoryId,
-  territoryFilter, coversSchool, describe, WORKSPACE_PATH,
+  territoryFilter, coversSchool, describe, describeInSchool, WORKSPACE_PATH,
 };

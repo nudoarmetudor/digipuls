@@ -16,6 +16,24 @@ const {
 } = require('../src/services/capabilities');
 const { developerBlock, SEVERITIES, STATUSES } = require('../src/services/feedbackContext');
 const { buildTour } = require('../src/services/tour');
+const {
+  describe: describeWorkspace, describeInSchool,
+} = require('../src/middleware/workspace');
+
+// Built through the middleware rather than written out by hand, so a field
+// the views start reading cannot be missing here and present in production.
+function ws(id, role, opts = {}) {
+  return describeWorkspace({
+    id, role, label: opts.label || null,
+    schoolId: opts.school ? opts.school.id : null,
+    school: opts.school || null,
+    territoryId: opts.territory ? opts.territory.id : null,
+    territory: opts.territory || null,
+  });
+}
+const DINGA = { id: 1, name: 'LT Boris Dînga', territoryId: null, territory: null };
+const GAUDEAMUS = { id: 2, name: 'LT Gaudeamus', territoryId: null, territory: null };
+const GHIBU = { id: 3, name: 'LT Onisifor Ghibu', territoryId: null, territory: null };
 
 const VIEWS = path.join(__dirname, '..', 'src', 'views');
 
@@ -453,13 +471,28 @@ function templatesFor(lang) {
     ['workspace/choose.ejs', {
       hasNone: false,
       options: [
-        { id: 7, role: 'META_MENTOR', label: null, institution: 'LT Boris Dînga', isSchool: true,
+        { key: '7', role: 'META_MENTOR', label: null, institution: 'LT Boris Dînga', isSchool: true,
           capabilityCount: 4, href: '/w/7/ministry', isCurrent: true },
-        { id: 8, role: 'SCHOOL_MENTOR', label: 'Coordonator DigiPuls', institution: 'LT Gaudeamus', isSchool: true,
+        { key: '8', role: 'SCHOOL_MENTOR', label: 'Coordonator DigiPuls', institution: 'LT Gaudeamus', isSchool: true,
           capabilityCount: 1, href: '/w/8/school', isCurrent: false },
       ],
+      institutions: [],
     }],
-    ['workspace/choose.ejs', { hasNone: true, options: [] }],
+    // An administrator: one post, and every institution offered beneath it.
+    ['workspace/choose.ejs', {
+      hasNone: false,
+      options: [
+        { key: '3', role: 'ADMIN', label: null, institution: null, isSchool: false,
+          capabilityCount: 15, href: '/w/3/admin/users', isCurrent: true },
+      ],
+      institutions: [
+        { key: '3s1', role: 'ADMIN', label: null, institution: 'LT Boris Dînga', isSchool: true,
+          capabilityCount: 15, href: '/w/3s1/school', isCurrent: false },
+        { key: '3s2', role: 'ADMIN', label: null, institution: 'LT Gaudeamus', isSchool: true,
+          capabilityCount: 15, href: '/w/3s2/school', isCurrent: false },
+      ],
+    }],
+    ['workspace/choose.ejs', { hasNone: true, options: [], institutions: [] }],
 
     ['feedback/new.ejs', { severities: SEVERITIES, errorMessage: null, body: { route: '/school' } }],
     ['feedback/new.ejs', { severities: SEVERITIES, errorMessage: 'Please describe it', body: {} }],
@@ -485,10 +518,10 @@ function baseLocals(lang) {
     viewName: 'test/fixture',
     // Two posts, so the switcher renders and href() actually prefixes —
     // rendering with a single post would leave the multi-post paths untested.
-    workspace: { id: 7, role: 'META_MENTOR', label: null, schoolId: 1, schoolName: 'LT Boris Dînga', territoryId: null, territoryName: null },
+    workspace: ws(7, 'META_MENTOR', { school: DINGA }),
     workspaces: [
-      { id: 7, role: 'META_MENTOR', label: null, schoolId: 1, schoolName: 'LT Boris Dînga', territoryId: null, territoryName: null },
-      { id: 8, role: 'SCHOOL_MENTOR', label: 'Coordonator DigiPuls', schoolId: 2, schoolName: 'LT Gaudeamus', territoryId: null, territoryName: null },
+      ws(7, 'META_MENTOR', { school: DINGA }),
+      ws(8, 'SCHOOL_MENTOR', { label: 'Coordonator DigiPuls', school: GAUDEAMUS }),
     ],
     href: (path) => (typeof path === 'string' && path.startsWith('/')
       && !/^\/(public-view|login|logout|lang|preferences|change-password|workspace)(\/|$)/.test(path)
@@ -611,9 +644,9 @@ test('every page renders before a workspace has been chosen', () => {
     workspace: null,
     can: () => true,
     workspaces: [
-      { id: 7, role: 'ADMIN', label: null, schoolId: null, schoolName: null, territoryId: null, territoryName: null },
-      { id: 8, role: 'META_MENTOR', label: 'Meta-coordonator', schoolId: 1, schoolName: 'LT Onisifor Ghibu', territoryId: null, territoryName: null },
-      { id: 9, role: 'META_MENTOR', label: 'Mentor simplu', schoolId: null, schoolName: null, territoryId: null, territoryName: null },
+      ws(7, 'ADMIN'),
+      ws(8, 'META_MENTOR', { label: 'Meta-coordonator', school: GHIBU }),
+      ws(9, 'META_MENTOR', { label: 'Mentor simplu' }),
     ],
   });
 
@@ -629,10 +662,10 @@ test('every page renders before a workspace has been chosen', () => {
 test('the switcher still marks the active post once one is chosen', () => {
   const locals = Object.assign(baseLocals('ro'), {
     can: () => true,
-    workspace: { id: 8, role: 'META_MENTOR', label: null, schoolId: 1, schoolName: 'LT Onisifor Ghibu', territoryId: null, territoryName: null },
+    workspace: ws(8, 'META_MENTOR', { school: GHIBU }),
     workspaces: [
-      { id: 7, role: 'ADMIN', label: null, schoolId: null, schoolName: null, territoryId: null, territoryName: null },
-      { id: 8, role: 'META_MENTOR', label: null, schoolId: 1, schoolName: 'LT Onisifor Ghibu', territoryId: null, territoryName: null },
+      ws(7, 'ADMIN'),
+      ws(8, 'META_MENTOR', { school: GHIBU }),
     ],
   });
   const html = render('partials/workspace-switch.ejs', locals);

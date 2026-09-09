@@ -16,30 +16,41 @@ router.use(requireLogin);
 
 router.get('/', (req, res) => {
   const assignments = req.assignments || [];
+  const byId = new Map(assignments.map((a) => [a.id, a]));
 
-  const options = assignments.map((a) => {
-    const capabilities = capabilitiesFor(a.role, a.capabilities);
+  // Built from res.locals.workspaces rather than from the assignments, because
+  // an administrator's institutions are derived rather than stored — one
+  // option per school, from a post that reaches all of them. See
+  // middleware/workspace.js.
+  const toOption = (w) => {
+    const assignment = byId.get(w.id);
+    const capabilities = capabilitiesFor(assignment.role, assignment.capabilities);
     // Send each one straight to the page that post actually starts on, rather
     // than to a landing page it may not be able to open.
-    const home = homeFor(capabilities, { schoolId: a.schoolId });
+    const home = homeFor(capabilities, { schoolId: w.schoolId });
     return {
-      id: a.id,
-      role: a.role,
-      label: a.label,
-      institution: a.school ? a.school.name : (a.territory ? a.territory.name : null),
-      isSchool: !!a.schoolId,
+      key: w.key,
+      role: w.role,
+      label: w.label,
+      institution: w.schoolName || w.territoryName || null,
+      isSchool: !!w.schoolId,
       capabilityCount: capabilities.size,
-      href: `/w/${a.id}${home === '/' ? '' : home}`,
-      isCurrent: !!(req.workspace && req.workspace.id === a.id),
+      href: `/w/${w.key}${home === '/' ? '' : home}`,
+      isCurrent: !!(req.workspace && req.workspace.key === w.key),
     };
-  });
+  };
+
+  const all = res.locals.workspaces || [];
+  const options = all.filter((w) => !w.inEverySchool).map(toOption);
+  const institutions = all.filter((w) => w.inEverySchool).map(toOption);
 
   res.render('workspace/choose', {
     title: res.locals.t('workspace_choose_title'),
     options,
+    institutions,
     // A person with no assignment at all is not broken — an admin has simply
     // not given them a post yet, and saying so beats an empty page.
-    hasNone: options.length === 0,
+    hasNone: options.length === 0 && institutions.length === 0,
   });
 });
 

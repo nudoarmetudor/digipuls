@@ -24,17 +24,17 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const prisma = require('../config/db');
-const { requireRole, requireCapability } = require('../middleware/auth');
+const { requireSchoolWorkspace, requireCapability } = require('../middleware/auth');
 const { activeSchoolId } = require('../middleware/workspace');
 const { logAction } = require('../services/audit');
 const { generateTempPassword } = require('../utils/password');
 const {
-  SCHOOL_ROLES, defaultsFor, overridesFrom, capabilitiesFor,
+  SCHOOL_ROLES, defaultsFor, overridesFrom, capabilitiesFor, reachesEverySchool,
 } = require('../services/capabilities');
 const { nameProblem, normaliseName } = require('../services/personalAccount');
 
 const router = express.Router();
-router.use(requireRole(...SCHOOL_ROLES), requireCapability('school.accounts'));
+router.use(requireSchoolWorkspace, requireCapability('school.accounts'));
 
 /**
  * The school this post belongs to. Mounted separately from routes/school.js,
@@ -44,6 +44,9 @@ router.use(requireRole(...SCHOOL_ROLES), requireCapability('school.accounts'));
 async function loadSchool(req, res, next) {
   const id = activeSchoolId(req);
   if (!Number.isInteger(id)) {
+    // See routes/school.js: for an administrator this is an unmade choice
+    // rather than a broken post.
+    if (reachesEverySchool(req.capabilities)) return res.redirect('/workspace');
     return res.status(409).render('error', {
       title: res.locals.t('school_missing_title'),
       message: res.locals.t('school_missing_detail'),

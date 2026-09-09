@@ -4,7 +4,7 @@ const assert = require('node:assert');
 const {
   CAPABILITIES, CAPABILITY_GROUPS, ROLES, ROLE_DEFAULTS,
   capabilitiesFor, overridesFrom, homeFor, canOpenSchoolWorkspace,
-  SCHOOL_ROLES, roleNeedsSchool, roleNeedsTerritory, roleAllowsTerritory,
+  SCHOOL_ROLES, roleNeedsSchool, roleNeedsTerritory, roleAllowsTerritory, reachesEverySchool,
   BASELINE_CAPABILITIES, defaultsFor, capabilityIsUsableBy, CAPABILITY_REQUIRES_ROLE,
 } = require('../src/services/capabilities');
 
@@ -100,20 +100,44 @@ test('homeFor sends each account somewhere it can actually reach', () => {
   assert.strictEqual(homeFor(new Set(['feedback.submit']), {}), '/feedback');
 });
 
-test('an admin is never sent to a school workspace it has no school for', () => {
-  // Admins hold every capability, view.school included, but have no schoolId.
-  // Without the extra check they land on /school, which then refuses them —
-  // exactly what happened on the live instance before this guard existed.
+test('an administrator may open any school, and belongs to none', () => {
+  // An administrator holds every capability and no schoolId. That used to mean
+  // they held view.school and could never use it — the one part of the
+  // platform most likely to need fixing during a pilot was the one part the
+  // person fixing it could not enter. Now the school is chosen rather than
+  // owned: they may open any institution, and the choice travels in the URL
+  // (see middleware/workspace.js).
   const adminCaps = capabilitiesFor('ADMIN', []);
-  assert.ok(adminCaps.has('view.school'));
-  const landing = homeFor(adminCaps, { schoolId: null });
-  assert.notStrictEqual(landing, '/school', 'an admin must not be sent to a school workspace');
-  // It falls through to the next thing an admin genuinely can open.
-  assert.strictEqual(landing, '/ministry');
+  assert.ok(reachesEverySchool(adminCaps));
+
+  // But "may open any school" is not "is currently in one". An administrator
+  // who has not chosen an institution still must not land on /school, which
+  // would have no school to show and would answer 409 — the same outage as
+  // before, reached from the other direction.
   assert.ok(!canOpenSchoolWorkspace(adminCaps, { schoolId: null }));
-  assert.ok(!canOpenSchoolWorkspace(adminCaps, undefined));
-  // An admin that *is* attached to a school may still open it.
+  assert.strictEqual(homeFor(adminCaps, { schoolId: null }), '/ministry');
+  // Once they have picked one, that is exactly where they start.
   assert.ok(canOpenSchoolWorkspace(adminCaps, { schoolId: 1 }));
+  assert.strictEqual(homeFor(adminCaps, { schoolId: 1 }), '/school');
+
+  // Nobody else reaches every school — not even the metacoordinator, who
+  // manages accounts across the whole mentor group.
+  ['SCHOOL_PRINCIPAL', 'SCHOOL_DEPUTY', 'SCHOOL_MENTOR', 'META_MENTOR',
+    'META_COORDINATOR', 'MINISTRY', 'TERRITORIAL', 'PARTNER', 'STRATEGIC_PARTNER',
+  ].forEach((role) => {
+    assert.ok(!reachesEverySchool(capabilitiesFor(role, [])), role);
+  });
+
+  // It is the pair of capabilities, not the role name: take either away from
+  // one administrator and the reach goes with it.
+  assert.ok(!reachesEverySchool(capabilitiesFor('ADMIN', [{ capability: 'admin.schools', granted: false }])));
+  assert.ok(!reachesEverySchool(capabilitiesFor('ADMIN', [{ capability: 'view.school', granted: false }])));
+
+  // A school-side post still needs its own school, and is still told when it
+  // has none — that misconfiguration has not stopped being one.
+  const mentor = capabilitiesFor('SCHOOL_MENTOR', []);
+  assert.ok(!canOpenSchoolWorkspace(mentor, { schoolId: null }));
+  assert.ok(canOpenSchoolWorkspace(mentor, { schoolId: 1 }));
 });
 
 test('a school-team account without a school is told what is wrong', () => {
@@ -175,7 +199,10 @@ test('a capability that needs a particular post says so', () => {
 
   // The school workspace is the case this was built for.
   assert.ok(capabilityIsUsableBy('view.school', 'SCHOOL_MENTOR'));
-  assert.ok(!capabilityIsUsableBy('view.school', 'ADMIN'));
+  // An administrator is the deliberate exception: they can use it, in any
+  // institution they choose.
+  assert.ok(capabilityIsUsableBy('view.school', 'ADMIN'));
+  assert.ok(!capabilityIsUsableBy('view.school', 'META_MENTOR'));
   assert.ok(!capabilityIsUsableBy('view.school', 'META_MENTOR'));
 
   // Everything not in the map is usable by whoever holds it.

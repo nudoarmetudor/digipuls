@@ -33,21 +33,38 @@ const current = workspace || null;
     <h2 class="plain-heading" style="font-size:1rem;"><%= t('workspace_switch_title') %></h2>
     <p class="small"><%= t('workspace_tab_note') %></p>
     <ul class="workspace-list workspace-list-compact">
-      <% workspaces.forEach(function (w) { %>
+      <% workspaces.filter(function (w) { return !w.inEverySchool; }).forEach(function (w) { %>
         <li>
-          <a class="workspace-card<%= current && w.id === current.id ? ' is-current' : '' %>" href="/w/<%= w.id %>/">
+          <a class="workspace-card<%= current && w.key === current.key ? ' is-current' : '' %>" href="/w/<%= w.key %>/">
             <span class="workspace-role"><%= t('role_' + w.role) %></span>
             <span class="workspace-institution">
               <% if (w.schoolName || w.territoryName) { %><%= w.schoolName || w.territoryName %>
               <% } else { %><%= t('workspace_no_institution') %><% } %>
             </span>
             <% if (w.label && w.label !== t('role_' + w.role)) { %><span class="workspace-label"><%= w.label %></span><% } %>
-            <% if (current && w.id === current.id) { %>
+            <% if (current && w.key === current.key) { %>
               <span class="visually-hidden"><%= t('workspace_current') %></span>
             <% } %>
           </a>
         </li>
       <% }) %>
     </ul>
+
+    <%# An administrator's twelve institutions would swamp this panel, so they
+        are one line each in their own scrolling list rather than full cards. %>
+    <% var everySchool = workspaces.filter(function (w) { return w.inEverySchool; }); %>
+    <% if (everySchool.length) { %>
+      <h3 class="plain-heading" style="font-size:.9rem;margin-top:.9rem;">
+        <%= t('workspace_institutions_title') %>
+      </h3>
+      <ul class="workspace-institution-list">
+        <% everySchool.forEach(function (w) { %>
+          <li>
+            <a href="/w/<%= w.key %>/school"
+               <%- current && w.key === current.key ? 'aria-current="true"' : '' %>><%= w.schoolName %></a>
+          </li>
+        <% }) %>
+      </ul>
+    <% } %>
   </div>
 </details>

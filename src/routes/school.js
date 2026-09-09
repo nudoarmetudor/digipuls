@@ -1,6 +1,6 @@
 const express = require('express');
 const prisma = require('../config/db');
-const { requireRole, requireCapability } = require('../middleware/auth');
+const { requireSchoolWorkspace, requireCapability } = require('../middleware/auth');
 const { activeSchoolId } = require('../middleware/workspace');
 const { INDICATORS, DOMAINS } = require('../data/indicators'); // structural use only (codes, counts) — locale-invariant
 const { getIndicatorData } = require('../data/indicatorsI18n');
@@ -11,7 +11,7 @@ const { renderWheel, itemsFromRatings } = require('../services/wheelChart');
 const { computeStepStatuses, finalizeReviewStatus, overallProgress } = require('../services/stepStatus');
 const { ValidationError, toLevel, toNonNegativeInt } = require('../utils/validate');
 const { mentorsForSchool } = require('../services/mentors');
-const { SCHOOL_ROLES } = require('../services/capabilities');
+const { SCHOOL_ROLES, reachesEverySchool } = require('../services/capabilities');
 const { trackForRole, AGREED, reconciliation, outstanding } = require('../services/tracks');
 const {
   ADVANCE, MAINTAIN, INTENTS, INITIATIVE_STATUSES,
@@ -29,7 +29,7 @@ const router = express.Router();
 // Any of the positions a school fills — principal, deputy, mentor. They work
 // on the same assessment; the two-track split between administration and team
 // is a workflow question and is not a permissions boundary today.
-router.use(requireRole(...SCHOOL_ROLES), requireCapability('view.school'), requireSchool);
+router.use(requireSchoolWorkspace, requireCapability('view.school'), requireSchool);
 
 /**
  * Loads the active school onto the request, and refuses the whole router if
@@ -53,6 +53,11 @@ async function requireSchool(req, res, next) {
     : null;
 
   if (!school) {
+    // An administrator has every school and none by default, so arriving here
+    // without one is not a misconfiguration — it is a choice they have not
+    // made yet. Send them to the picker rather than to an error page telling
+    // them to ask an administrator, which they are.
+    if (reachesEverySchool(req.capabilities)) return res.redirect('/workspace');
     return res.status(409).render('error', {
       title: res.locals.t('school_missing_title'),
       message: res.locals.t('school_missing_detail'),
@@ -127,6 +132,14 @@ async function loadCycleForSchool(req, res, next) {
   //                  school's own workspace it means your own work, because
   //                  showing someone the agreed column while they fill in
   //                  theirs would be answering a question nobody asked.
+  //
+  // An administrator is not one of the two sides — they hold no post at this
+  // school and are standing outside its process — so they write to the agreed
+  // record directly rather than joining the administration's column and
+  // silently becoming half of a reconciliation the school did not have. That
+  // is what the AGREED fallback means here, and it is a decision rather than
+  // an accident: an administrator editing a school's assessment should be
+  // editing the official record, visibly, under their own name.
   const track = trackForRole(req.workspace ? req.workspace.role : null) || AGREED;
   cycle.allRatings = cycle.ratings;
   cycle.agreedRatings = cycle.ratings.filter((r) => r.track === AGREED);

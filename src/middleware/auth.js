@@ -1,4 +1,5 @@
 const prisma = require('../config/db');
+const { SCHOOL_ROLES, reachesEverySchool } = require('../services/capabilities');
 
 function requireLogin(req, res, next) {
   if (!req.session.user) {
@@ -114,4 +115,38 @@ function requireRole(...roles) {
   };
 }
 
-module.exports = { requireLogin, loadAccount, requireCapability, requireRole };
+/**
+ * The guard on the school's own workspace.
+ *
+ * Two kinds of post belong there. One of the school's own positions —
+ * principal, deputy, mentor — which is what requireRole used to say on its
+ * own. And an administrator, who holds no post at any school and every
+ * authority over all of them; they pick the institution, and it arrives in the
+ * URL (see middleware/workspace.js).
+ *
+ * Stated as its own guard rather than by widening requireRole, because the two
+ * cases are different in kind: one is "this is my school", the other is "every
+ * school is mine". A metamentor is in neither, and still cannot get in even if
+ * an administrator hands them view.school — their job is to advise the school,
+ * and a record the school did not write is not a self-assessment.
+ */
+function requireSchoolWorkspace(req, res, next) {
+  if (!req.session.user) {
+    req.session.returnTo = req.originalUrl;
+    return res.redirect('/login');
+  }
+  const role = req.workspace ? req.workspace.role : null;
+  if (SCHOOL_ROLES.includes(role) || reachesEverySchool(req.capabilities)) return next();
+
+  return res.status(403).render('error', {
+    title: res.locals.t('err_access_denied'),
+    message: res.locals.t('err_wrong_role', {
+      roles: SCHOOL_ROLES.map((r) => res.locals.t('role_' + r)).join(', '),
+      role: role ? res.locals.t('role_' + role) : '—',
+    }),
+  });
+}
+
+module.exports = {
+  requireLogin, loadAccount, requireCapability, requireRole, requireSchoolWorkspace,
+};

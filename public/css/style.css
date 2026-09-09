@@ -1441,3 +1441,29 @@ footer a { color: var(--primary-text); }
 @media print {
   .tour-panel, .tour-spot, .tour-bubble, .tour-toggle { display: none !important; }
 }
+
+/* An administrator's institutions in the workspace switcher. Twelve full
+   cards would swamp the panel, so they are one line each in a list that
+   scrolls on its own. */
+.workspace-institution-list {
+  list-style: none;
+  margin: .3rem 0 0;
+  padding: 0;
+  max-height: 13rem;
+  overflow-y: auto;
+  border-top: 1px solid var(--border);
+}
+.workspace-institution-list li { border-bottom: 1px solid var(--border); }
+.workspace-institution-list a {
+  display: block;
+  padding: .5rem .4rem;
+  min-height: var(--tap);
+  font-size: 0.88rem;
+  text-decoration: var(--link-decoration);
+}
+.workspace-institution-list a:hover { background: var(--surface-alt); }
+.workspace-institution-list a[aria-current="true"] {
+  background: var(--primary-soft);
+  color: var(--primary-text);
+  font-weight: 700;
+}
