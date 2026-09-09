@@ -7,7 +7,12 @@
    navigation. Opening two of them in two tabs gives two genuinely independent
    contexts, which is the whole reason the active post lives in the URL rather
    than in the session. Built on <details> so it opens without JavaScript. */
-const current = workspace;
+/* current is null whenever no post has been chosen yet — which is the normal
+   state on /workspace, and on any page reached before a choice is made. This
+   partial used to read current.role regardless, so a person holding more than
+   one post got a 500 on the very page that exists to let them choose. Every
+   authenticated page failed with it, because the topbar is in the layout. */
+const current = workspace || null;
 %>
 <details class="a11y workspace-switch">
   <summary aria-label="<%= t('workspace_switch_label') %>">
@@ -16,8 +21,12 @@ const current = workspace;
       <path d="M4 7h11l-3-3"/><path d="M20 17H9l3 3"/>
     </svg>
     <span class="workspace-summary">
-      <%= t('role_' + current.role) %><% if (current.schoolName || current.territoryName) { %> ·
-        <%= current.schoolName || current.territoryName %><% } %>
+      <% if (current) { %>
+        <%= t('role_' + current.role) %><% if (current.schoolName || current.territoryName) { %> ·
+          <%= current.schoolName || current.territoryName %><% } %>
+      <% } else { %>
+        <%= t('workspace_choose_title') %>
+      <% } %>
     </span>
   </summary>
   <div class="a11y-panel">
@@ -26,14 +35,14 @@ const current = workspace;
     <ul class="workspace-list workspace-list-compact">
       <% workspaces.forEach(function (w) { %>
         <li>
-          <a class="workspace-card<%= w.id === current.id ? ' is-current' : '' %>" href="/w/<%= w.id %>/">
+          <a class="workspace-card<%= current && w.id === current.id ? ' is-current' : '' %>" href="/w/<%= w.id %>/">
             <span class="workspace-role"><%= t('role_' + w.role) %></span>
             <span class="workspace-institution">
               <% if (w.schoolName || w.territoryName) { %><%= w.schoolName || w.territoryName %>
               <% } else { %><%= t('workspace_no_institution') %><% } %>
             </span>
             <% if (w.label && w.label !== t('role_' + w.role)) { %><span class="workspace-label"><%= w.label %></span><% } %>
-            <% if (w.id === current.id) { %>
+            <% if (current && w.id === current.id) { %>
               <span class="visually-hidden"><%= t('workspace_current') %></span>
             <% } %>
           </a>

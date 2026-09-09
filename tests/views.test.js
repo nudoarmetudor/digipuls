@@ -433,3 +433,44 @@ test('the language switcher offers all three languages, marking the current one'
   });
   assert.match(html, /hreflang="ro" lang="ro"\s+aria-current="true"/, 'the active language must be marked');
 });
+
+test('every page renders before a workspace has been chosen', () => {
+  // The state on /workspace, and on any page reached before a choice is made:
+  // several posts, none active yet. The topbar sits in the layout and its
+  // switcher read workspace.role unconditionally, so this threw — and because
+  // it threw inside the layout, the error page could not render either and
+  // Express answered with a bare "Internal Server Error". Every authenticated
+  // page failed at once for anyone holding more than one post, which is to say
+  // for the account that runs the pilot.
+  const locals = Object.assign(baseLocals('ro'), {
+    workspace: null,
+    can: () => true,
+    workspaces: [
+      { id: 7, role: 'ADMIN', label: null, schoolId: null, schoolName: null, territoryId: null, territoryName: null },
+      { id: 8, role: 'META_MENTOR', label: 'Meta-coordonator', schoolId: 1, schoolName: 'LT Onisifor Ghibu', territoryId: null, territoryName: null },
+      { id: 9, role: 'META_MENTOR', label: 'Mentor simplu', schoolId: null, schoolName: null, territoryId: null, territoryName: null },
+    ],
+  });
+
+  assert.doesNotThrow(() => render('partials/workspace-switch.ejs', locals),
+    'the switcher must render with nothing selected — that is the whole point of the picker');
+
+  const html = render('partials/workspace-switch.ejs', locals);
+  assert.ok(html.includes('/w/7/') && html.includes('/w/8/') && html.includes('/w/9/'),
+    'all three posts are offered');
+  assert.ok(!html.includes('is-current'), 'and none is marked current, because none is');
+});
+
+test('the switcher still marks the active post once one is chosen', () => {
+  const locals = Object.assign(baseLocals('ro'), {
+    can: () => true,
+    workspace: { id: 8, role: 'META_MENTOR', label: null, schoolId: 1, schoolName: 'LT Onisifor Ghibu', territoryId: null, territoryName: null },
+    workspaces: [
+      { id: 7, role: 'ADMIN', label: null, schoolId: null, schoolName: null, territoryId: null, territoryName: null },
+      { id: 8, role: 'META_MENTOR', label: null, schoolId: 1, schoolName: 'LT Onisifor Ghibu', territoryId: null, territoryName: null },
+    ],
+  });
+  const html = render('partials/workspace-switch.ejs', locals);
+  assert.ok(html.includes('is-current'), 'the active post is marked');
+  assert.ok(html.includes('LT Onisifor Ghibu'), 'and named in the summary');
+});
