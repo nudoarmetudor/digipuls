@@ -5,3 +5,6 @@ dev.db-journal
 uploads/*
 !uploads/.gitkeep
 *.log
+
+# Scratch files: anything *.tmp.js is a throwaway, never part of the app.
+*.tmp.js
