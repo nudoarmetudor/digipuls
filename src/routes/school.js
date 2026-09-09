@@ -23,22 +23,27 @@ const router = express.Router();
 // is a workflow question and is not a permissions boundary today.
 router.use(requireRole(...SCHOOL_ROLES), requireCapability('view.school'), requireSchool);
 
-async function getSchool(req) {
-  const id = activeSchoolId(req);
-  // A school-team post with no school is an administrator's mistake, not a
-  // state the app should crash on. findUnique with a null id throws, which
-  // used to make every page under /school a 500 with an internal message.
-  if (!Number.isInteger(id)) return null;
-  return prisma.school.findUnique({ where: { id } });
-}
-
 /**
- * Every route below reads the active school. Rather than repeat the same
- * null check, this middleware answers once — with an explanation of what an
- * administrator needs to fix, instead of a stack trace.
+ * Loads the active school onto the request, and refuses the whole router if
+ * there isn't one — with an explanation of what an administrator needs to fix,
+ * rather than a stack trace.
+ *
+ * This used to be two functions: one that loaded the school and one that
+ * checked req.school had been set. Nothing set it, so every route under
+ * /school answered 409 to everybody — a complete outage for all twelve
+ * schools, and one no test noticed because none of them issues a real request
+ * as a school account. Loading and checking in one place is what makes that
+ * impossible rather than merely fixed.
  */
 async function requireSchool(req, res, next) {
-  const school = req.school;
+  const id = activeSchoolId(req);
+  // A school-side post with no school is an administrator's mistake, not a
+  // state the app should crash on. findUnique with a null id throws, which
+  // used to make every page under /school a 500 with an internal message.
+  const school = Number.isInteger(id)
+    ? await prisma.school.findUnique({ where: { id } })
+    : null;
+
   if (!school) {
     return res.status(409).render('error', {
       title: res.locals.t('school_missing_title'),
@@ -48,6 +53,7 @@ async function requireSchool(req, res, next) {
   req.school = school;
   return next();
 }
+
 
 router.get('/', async (req, res) => {
   const school = req.school;
