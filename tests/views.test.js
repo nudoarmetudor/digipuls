@@ -691,3 +691,37 @@ test('the switcher still marks the active post once one is chosen', () => {
   assert.ok(html.includes('is-current'), 'the active post is marked');
   assert.ok(html.includes('LT Onisifor Ghibu'), 'and named in the summary');
 });
+
+test('the DigiPlan is drawn on the wheel as a line, never as an area', () => {
+  // "Not a filled area, but a bold dotted line that shows what is currently
+  // being developed." A second filled wedge would read as a second
+  // measurement, and a target is not a measurement.
+  const indicators = getIndicatorData('en').INDICATORS;
+  const ratings = indicators.map((ind, i) => ({ indicatorCode: ind.code, level: (i % 4) + 1 }));
+  const priorities = [
+    { indicatorCode: 'A1', currentLevel: 2, targetLevel: 4 },   // advancing
+    { indicatorCode: 'B1', currentLevel: 1, targetLevel: 3 },   // advancing
+    { indicatorCode: 'C1', currentLevel: 3, targetLevel: 3 },   // maintaining
+    { indicatorCode: 'D1', currentLevel: 4, targetLevel: 2 },   // "target" below today
+  ];
+
+  const withPlan = itemsFromRatings(ratings, indicators, priorities);
+  const targets = withPlan.filter((i) => i.target !== null).map((i) => i.code);
+  assert.deepStrictEqual(targets.sort(), ['A1', 'B1'],
+    'only the parameters actually being advanced carry a target');
+
+  const svg = renderWheel(withPlan, { mode: 'indicators', t: i18n.t('ro') });
+  const arcs = svg.match(/stroke-dasharray="5 4"/g) || [];
+  assert.strictEqual(arcs.length, 2, 'one dotted arc per advancing parameter');
+  // A line, not a wedge: no fill, and no path closing back to the centre.
+  const arcPaths = svg.match(/<path d="M[^"]*A[^"]*" fill="none"[^>]*stroke-dasharray[^>]*>/g) || [];
+  assert.strictEqual(arcPaths.length, 2, 'the plan is stroked, never filled');
+  assert.match(svg, /Ținta DigiPlanului/, 'and its tooltip is translated');
+
+  // Without a plan, nothing is drawn — the wheel is unchanged for a school
+  // that has only assessed itself.
+  const noPlan = renderWheel(itemsFromRatings(ratings, indicators), { t: i18n.t('en') });
+  assert.ok(!noPlan.includes('stroke-dasharray'), 'no plan, no line');
+  assert.strictEqual(
+    itemsFromRatings(ratings, indicators, null).filter((i) => i.target !== null).length, 0);
+});

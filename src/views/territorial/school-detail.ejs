@@ -15,6 +15,10 @@
     <figure>
       <h2 class="plain-heading"><%= t('wheel_title') %></h2>
       <%- wheelSvg %>
+      <%# Only when there is actually a dotted line to explain. %>
+      <% if (wheelSvg && wheelSvg.indexOf('stroke-dasharray') !== -1) { %>
+        <p class="small wheel-plan-legend"><%= t('wheel_plan_legend') %></p>
+      <% } %>
       <figcaption><%= t('wheel_caption') %></figcaption>
     </figure>
   </div>

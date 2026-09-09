@@ -66,7 +66,23 @@ function wedgePath(cx, cy, r, startAngle, endAngle, innerHole) {
 }
 
 /**
- * @param {Array<{code:string, domain:string, level:number|null, name?:string}>} items
+ * An arc at one radius across one sector — no fill, just the line.
+ *
+ * This is how the plan is drawn. A second filled wedge on top of the first
+ * would read as a second measurement, and the target is not a measurement: it
+ * is where the school intends to be. A line has no area, so it cannot be
+ * mistaken for one.
+ */
+function arcPath(cx, cy, r, startAngle, endAngle) {
+  const from = polarToCartesian(cx, cy, r, endAngle);
+  const to = polarToCartesian(cx, cy, r, startAngle);
+  const largeArc = endAngle - startAngle > 180 ? 1 : 0;
+  return ['M', from.x, from.y, 'A', r, r, 0, largeArc, 0, to.x, to.y].join(' ');
+}
+
+/**
+ * @param {Array<{code:string, domain:string, level:number|null, name?:string,
+ *   target?:number|null}>} items
  * @param {object} opts { mode, size, showLabels, title, t }
  *   t — the translate function; the wheel's tooltips and its accessible
  *   description are read by people, so they can't be hardcoded English.
@@ -126,6 +142,25 @@ function renderWheel(items, opts = {}) {
     svg += '</path>';
   });
 
+  // The DigiPlan in progress: a bold dotted arc at the level each parameter is
+  // aiming at, on the sectors the school has chosen to develop. Drawn after
+  // the wedges so it is never hidden behind one, and in the signal colour
+  // rather than the domain's, because it is a different kind of statement —
+  // the wedges say what was measured, this says what is intended. Parameters
+  // the plan is maintaining carry no line: nothing is being developed there,
+  // and a line at the current level would say the opposite.
+  items.forEach((item, i) => {
+    if (item.target === null || item.target === undefined) return;
+    const start = i * sectorDeg + gapDeg / 2;
+    const end = (i + 1) * sectorDeg - gapDeg / 2;
+    const r = innerHole + (item.target / ringCount) * (outerRadius - innerHole);
+    svg += `<path d="${arcPath(cx, cy, r, start, end)}" fill="none" stroke="var(--signal)" `
+      + `stroke-width="3.5" stroke-linecap="round" stroke-dasharray="5 4">`;
+    svg += `<title>${esc(item.code)}${item.name ? ' — ' + esc(item.name) : ''}: `
+      + `${esc(t('wheel_plan_target', { level: item.target }))}</title>`;
+    svg += '</path>';
+  });
+
   // Sector labels (indicator codes / domain names) around the outside
   if (showLabels) {
     items.forEach((item, i) => {
@@ -143,13 +178,36 @@ function renderWheel(items, opts = {}) {
   return svg;
 }
 
-function itemsFromRatings(ratings, indicators) {
+/**
+ * @param {Array} ratings
+ * @param {Array} indicators
+ * @param {Array} [priorities] the plan's rows, when there is a plan. Only the
+ *   ones actually being advanced produce a target: a priority set to maintain
+ *   is a decision to hold a level, not to develop it, and drawing a line there
+ *   would claim work nobody has planned.
+ */
+function itemsFromRatings(ratings, indicators, priorities) {
+  const targets = new Map();
+  (priorities || []).forEach((p) => {
+    const target = p.targetLevel;
+    if (target === null || target === undefined) return;
+    // Advancing is the intent *and* the arithmetic: a target at or below the
+    // current level is a plan to maintain, whatever the row says.
+    if (p.currentLevel !== null && p.currentLevel !== undefined && target <= p.currentLevel) return;
+    targets.set(p.indicatorCode, target);
+  });
+
   return indicators
     .slice()
     .sort((a, b) => DOMAIN_ORDER.indexOf(a.domain) - DOMAIN_ORDER.indexOf(b.domain))
     .map((ind) => {
       const r = ratings.find((x) => x.indicatorCode === ind.code);
-      return { code: ind.code, domain: ind.domain, name: ind.name, level: r ? r.level : null };
+      const target = targets.has(ind.code) ? targets.get(ind.code) : null;
+      return {
+        code: ind.code, domain: ind.domain, name: ind.name,
+        level: r ? r.level : null,
+        target,
+      };
     });
 }
 

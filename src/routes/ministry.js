@@ -90,7 +90,12 @@ router.get('/schools/:id', async (req, res) => {
   const networkCompliance = latest?.networkChecklist ? checkNetworkCompliance(latest.networkChecklist) : null;
   const validations = latest ? await prisma.validationRecord.findMany({ where: { cycleId: latest.id } }) : [];
   const { INDICATORS, DOMAINS } = getIndicatorData(req.lang);
-  const wheelSvg = latest ? renderWheel(itemsFromRatings(latest.ratings, INDICATORS), { mode: 'indicators', size: 380, t: res.locals.t }) : null;
+  const wheelSvg = latest
+    ? renderWheel(
+      itemsFromRatings(latest.ratings, INDICATORS, latest.plan ? latest.plan.priorities : null),
+      { mode: 'indicators', size: 380, t: res.locals.t },
+    )
+    : null;
   const flags = await flagsForSchool(school.id);
   res.render('ministry/school-detail', {
     title: school.name, wide: true, school, latest, currentCycle, hasNewerDraft,

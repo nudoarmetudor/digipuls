@@ -181,7 +181,11 @@ router.get('/cycles/:id', loadCycleForSchool, async (req, res) => {
   const cycle = req.cycle;
   const school = req.school;
   const localeData = getIndicatorData(req.lang);
-  const wheelSvg = renderWheel(itemsFromRatings(cycle.ratings, localeData.INDICATORS), { mode: 'indicators', t: res.locals.t });
+  const planTargets = cycle.plan ? cycle.plan.priorities : null;
+  const wheelSvg = renderWheel(
+    itemsFromRatings(cycle.ratings, localeData.INDICATORS, planTargets),
+    { mode: 'indicators', t: res.locals.t },
+  );
 
   res.render('school/cycle-overview', {
     title: `Cycle ${cycle.cycleNumber}`, wide: true,
@@ -240,7 +244,10 @@ router.get('/cycles/:id/step/:stepKey', loadCycleForSchool, async (req, res) => 
         rating: ratingsByCode.get(ind.code) || null,
       })),
     }));
-    const wheelSvg = renderWheel(itemsFromRatings(cycle.ratings, localeData.INDICATORS), { mode: 'indicators', t: res.locals.t });
+    const wheelSvg = renderWheel(
+      itemsFromRatings(cycle.ratings, localeData.INDICATORS, cycle.plan ? cycle.plan.priorities : null),
+      { mode: 'indicators', t: res.locals.t },
+    );
     return res.render('school/step-review', {
       title: `Cycle ${cycle.cycleNumber} — Review`, wide: true,
       school, cycle, stepStatuses, domains, wheelSvg,

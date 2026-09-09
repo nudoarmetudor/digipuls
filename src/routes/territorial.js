@@ -55,6 +55,9 @@ router.get('/schools/:id', async (req, res) => {
           ratings: { where: { track: 'AGREED' }, include: { evidences: true } },
           deviceInventory: true,
           networkChecklist: true,
+          // For the plan's targets on the wheel — the district reads what the
+          // school intends, not only what it measured.
+          plan: { include: { priorities: true } },
         },
       },
     },
@@ -66,7 +69,12 @@ router.get('/schools/:id', async (req, res) => {
   // latest CONFIRMED cycle, never a newer draft in progress.
   const { currentCycle, officialCycle: latest, hasNewerDraft } = selectOfficialAndCurrentCycle(school.cycles);
   const { INDICATORS, DOMAINS } = getIndicatorData(req.lang);
-  const wheelSvg = latest ? renderWheel(itemsFromRatings(latest.ratings, INDICATORS), { mode: 'indicators', size: 380, t: res.locals.t }) : null;
+  const wheelSvg = latest
+    ? renderWheel(
+      itemsFromRatings(latest.ratings, INDICATORS, latest.plan ? latest.plan.priorities : null),
+      { mode: 'indicators', size: 380, t: res.locals.t },
+    )
+    : null;
   const flags = await flagsForSchool(school.id);
   res.render('territorial/school-detail', {
     title: school.name, wide: true, school, latest, currentCycle, hasNewerDraft,
