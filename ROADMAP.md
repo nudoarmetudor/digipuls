@@ -35,6 +35,16 @@ review's own priority tiers, kept here so none of it gets silently dropped.
   cycle: `confirmedBy` and `publishedBy` exist on the cycle, but an individual
   rating and its evidence still do not record who entered them. The two-track
   split records which *side* wrote a rating, not which person.
+- **Sessions in memory, and more than one app process.** Sessions live in the
+  Node process, so every deploy signs everyone out — with seventy people that
+  is a real interruption rather than a nuisance. Worse, the host currently runs
+  *two* lsnode processes for this app. Measured on 2026-09-09, only one of them
+  receives HTTP: two hundred requests on two hundred fresh TCP connections all
+  kept their session, and twenty simultaneous form posts all passed their CSRF
+  check. But which processes are routed is the host's decision, not ours, and
+  the day it routes both, sessions and CSRF tokens both break at random. A
+  database-backed session store fixes the deploy problem and removes the
+  latent one.
 - **External validation workflow.** `ValidationRecord` currently has no
   enforced relationship integrity (free-text reviewer name, no route-level
   workflow tying it to submission → review → resolution). Either build the

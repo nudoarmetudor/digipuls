@@ -586,3 +586,25 @@ test('the download is not shaped like a static file', () => {
     path.join(__dirname, '..', 'src', 'views', 'ministry', 'dashboard.ejs'), 'utf8');
   assert.ok(!view.includes('/ministry/export.csv'), 'and no link may point at the old one');
 });
+
+test('a room full of people fumbling their passwords cannot lock out the cohort', () => {
+  // Measured, not guessed: the platform is sized for seventy people at once,
+  // and on a training morning they are typing twelve-character one-time
+  // passwords by hand. Three fumbles each is 210 failures. The ceiling was
+  // 200, chosen when the pilot meant twelve people — so the whole cohort would
+  // have been locked out for fifteen minutes at the moment everyone was
+  // watching.
+  const {
+    MAX_OVERALL, MAX_PER_ACCOUNT, COHORT,
+  } = require('../src/middleware/loginRateLimit');
+
+  const FUMBLES = 3;
+  assert.ok(MAX_OVERALL > COHORT * FUMBLES,
+    `${COHORT} people fumbling ${FUMBLES} times is ${COHORT * FUMBLES} failures, `
+    + `which must not reach the ceiling of ${MAX_OVERALL}`);
+
+  // And still bounded: the per-account rule is the real protection, and the
+  // ceiling has to stay far below anything useful for guessing.
+  assert.ok(MAX_PER_ACCOUNT <= 10, 'one account still gets ten tries, not more');
+  assert.ok(MAX_OVERALL <= 5000, 'the ceiling must still bound a brute-force run');
+});

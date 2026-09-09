@@ -40,9 +40,25 @@ const WINDOW_MS = 15 * 60 * 1000;
 // useful for guessing.
 const MAX_PER_ACCOUNT = 10;
 
-// Across everybody. Twelve people failing ten times each is 120, so this sits
-// above any workshop and well below a brute-force run.
-const MAX_OVERALL = 200;
+// Across everybody, and sized against the cohort rather than a round number.
+//
+// It was 200, chosen when the pilot meant twelve meta-mentors: "twelve people
+// failing ten times each is 120". The platform is now sized for seventy people
+// at once — twelve schools of five or six, plus the mentoring line — and
+// seventy people hand-typing twelve-character one-time passwords on a training
+// morning reach 210 on three fumbles each. That would have locked out the
+// entire cohort for fifteen minutes, at the exact moment everyone was watching.
+//
+// The per-account rule is what actually protects an account; this is a
+// throughput ceiling on guessing. At bcrypt cost 10 — measured at roughly 90ms
+// on this host — a thousand failures in fifteen minutes is about one a second,
+// which is a tenth of one core and nowhere near useful against a randomly
+// generated password.
+//
+// Successful logins never touch this counter: only recordFailedAttempt does.
+// Seventy people signing in correctly cost nothing at all.
+const COHORT = 70;
+const MAX_OVERALL = 1000;
 
 const perAccount = createLimiter({ windowMs: WINDOW_MS, max: MAX_PER_ACCOUNT });
 const overall = createLimiter({ windowMs: WINDOW_MS, max: MAX_OVERALL });
@@ -79,6 +95,6 @@ function clearAttempts(req) {
 
 module.exports = {
   loginRateLimit, recordFailedAttempt, clearAttempts,
-  WINDOW_MS, MAX_PER_ACCOUNT, MAX_OVERALL, limitsAreGlobal,
+  WINDOW_MS, MAX_PER_ACCOUNT, MAX_OVERALL, COHORT, limitsAreGlobal,
   _limiters: { perAccount, overall },
 };
