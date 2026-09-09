@@ -306,7 +306,24 @@ top bar. They are stored per browser and applied before the page is drawn, so
 there is no flash of the wrong theme, and the whole thing works with JavaScript
 switched off.
 
-### 5.4 The navigation panel
+### 5.4 The guided tutorial
+
+The **Guide** button in the top bar opens a step-by-step walkthrough of
+everything in this document, inside the platform itself. It highlights the
+actual control on the actual page and explains what it is for, chapter by
+chapter, and you can move back and forth through the steps from the list on
+the right.
+
+It is written for the people who have work to do in the platform — the
+principal, the deputy principal and the mentors — and it shows each of them
+only what their own position can reach: a mentor is never walked through a
+publish button they do not have. The oversight roles are not offered it,
+because they arrive at a finished dashboard rather than a workflow.
+
+The guide never blocks the page. You can click the control it is pointing at
+while it is still highlighted, and it remembers where you were if you close it.
+
+### 5.5 The navigation panel
 
 The left panel is built from what your post may actually do, so you are never
 offered a link that would then refuse you. It folds away, and the choice
