@@ -336,7 +336,9 @@ persists.
 ### 6.1 Two tracks, in parallel
 
 The administration and the team assess **independently and at the same time**,
-and neither sees the other's answers while doing it.
+and neither sees the other's answers while doing it. This is enforced, not
+merely asked for: on the reconciliation screen, the other side's level for a
+parameter stays hidden until you have recorded your own for it.
 
 | Who | Writes into the track |
 | --- | --- |
@@ -410,8 +412,10 @@ Both feed the Ministry's compliance monitor. Neither affects a maturity rating.
 
 ### 7.1 What this screen is for
 
-Once both sides have finished, the two readings are put side by side and the
-school works through the differences. This is the conversation the method is
+The other side's level for a parameter is hidden until you have recorded your
+own for it — so this screen fills in as the work is done, and nobody can read
+the other column first. Once both sides have finished, the two readings sit
+side by side in full and the school works through the differences. This is the conversation the method is
 built around: the interesting parameter is not the one both sides rated 3, it is
 the one the administration rated 4 and the team rated 1.
 

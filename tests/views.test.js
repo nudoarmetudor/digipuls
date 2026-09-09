@@ -362,7 +362,25 @@ function templatesFor(lang) {
           agreedLevel: null, settled: false, state: 'empty', gap: null },
       ],
       summary: { unsettled: ['A2', 'B1', 'B2'], differing: ['A1'], incomplete: ['B1'], untouched: ['B2'] },
+      hiddenCount: 0,
       canSettle: true, myTrack: 'ADMINISTRATION', errorMessage: null, predatesTracks: false,
+    }],
+    // A mentor who has not answered two of these yet: the administration's
+    // column is not theirs to read until they have. See maskForTrack.
+    ['school/reconcile.ejs', {
+      school: { id: 1, name: 'LT „Boris Dînga” — Criuleni' },
+      cycle: { id: 4, cycleNumber: 1, status: 'DRAFT' },
+      rows: [
+        { indicator: { code: 'A1', name: 'Viziune' }, administrationLevel: 4, teamLevel: 2,
+          agreedLevel: null, settled: false, state: 'differ', gap: 2 },
+        { indicator: { code: 'A2', name: 'Conducere' }, administrationLevel: null, teamLevel: null,
+          agreedLevel: null, settled: false, state: 'hidden', gap: null, hidden: true },
+        { indicator: { code: 'B1', name: 'Infrastructură' }, administrationLevel: null, teamLevel: null,
+          agreedLevel: null, settled: false, state: 'hidden', gap: null, hidden: true },
+      ],
+      summary: { unsettled: ['A1', 'A2', 'B1'], differing: ['A1'], incomplete: [], untouched: [] },
+      hiddenCount: 2,
+      canSettle: false, myTrack: 'TEAM', errorMessage: null, predatesTracks: false,
     }],
     // The same page for a mentor, who sees the gaps but cannot record what was
     // agreed — a different rendering, not a hidden button.
@@ -374,6 +392,7 @@ function templatesFor(lang) {
           agreedLevel: 3, settled: true, state: 'differ', gap: 2 },
       ],
       summary: { unsettled: [], differing: ['A1'], incomplete: [], untouched: [] },
+      hiddenCount: 0,
       canSettle: false, myTrack: 'TEAM', errorMessage: null, predatesTracks: true,
     }],
     ['school/accounts.ejs', {

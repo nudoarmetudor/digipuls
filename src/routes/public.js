@@ -7,6 +7,19 @@ const { renderWheel, itemsFromDomainScores, scoreToBandIndex } = require('../ser
 const router = express.Router();
 // No auth — this is the public/parent-facing tier (UC-PUB1/UC-PUB2).
 
+/**
+ * The id in the URL, or null when it is not one.
+ *
+ * `Number('abc')` is NaN, and a NaN reaches Prisma as an invalid argument and
+ * throws — so /public-view/schools/abc answered 500 with a stack trace in the
+ * host's log. On the one tier that needs no login at all, which is the tier a
+ * scanner reaches first, "not found" is both the true answer and the quiet one.
+ */
+function idParam(value) {
+  const n = Number(value);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
 // The public tier discloses a band ("Developing"), never a raw average —
 // the labels live in the shared dictionary so all three languages stay in
 // step, and scoreToBandIndex is the same function the public wheel uses, so
@@ -26,8 +39,14 @@ router.get('/schools', async (req, res) => {
 });
 
 router.get('/schools/:id', async (req, res) => {
+  const id = idParam(req.params.id);
+  if (id === null) {
+    return res.status(404).render('error', {
+      title: res.locals.t('err_not_found'), message: res.locals.t('err_school_not_found'),
+    });
+  }
   const school = await prisma.school.findUnique({
-    where: { id: Number(req.params.id) },
+    where: { id },
     // Published, not merely confirmed. Confirming settles what the school
     // found; publishing is the school deciding the public may read it.
     include: { cycles: { where: { status: 'CONFIRMED', publishedAt: { not: null } }, orderBy: { cycleNumber: 'desc' }, take: 1, include: { ratings: { where: { track: 'AGREED' } }, deviceInventory: true, networkChecklist: true, plan: true } } },

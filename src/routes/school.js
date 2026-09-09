@@ -12,7 +12,9 @@ const { computeStepStatuses, finalizeReviewStatus, overallProgress } = require('
 const { ValidationError, toLevel, toNonNegativeInt } = require('../utils/validate');
 const { mentorsForSchool } = require('../services/mentors');
 const { SCHOOL_ROLES, reachesEverySchool } = require('../services/capabilities');
-const { trackForRole, AGREED, reconciliation, outstanding } = require('../services/tracks');
+const {
+  trackForRole, AGREED, reconciliation, outstanding, maskForTrack,
+} = require('../services/tracks');
 const {
   ADVANCE, MAINTAIN, INTENTS, INITIATIVE_STATUSES,
   openPlan, requirementsFor, planRows, planSummary, targetChoices,
@@ -425,14 +427,25 @@ router.get('/cycles/:id/reconcile', loadCycleForSchool, async (req, res) => {
   // instead.
   const predatesTracks = rows.every((r) => r.state === 'empty') && rows.some((r) => r.settled);
 
+  // Masked after the summary is computed from the real rows, and after
+  // predatesTracks: the counts are about the school's progress and reveal no
+  // levels, while the columns are the thing that has to stay apart. See
+  // maskForTrack in services/tracks.js.
+  const summary = outstanding(rows);
+  const visible = maskForTrack(rows, req.track);
+
   return res.render('school/reconcile', {
     title: res.locals.t('reconcile_title'),
     wide: true,
     school: req.school,
     cycle,
-    rows,
+    rows: visible,
     predatesTracks,
-    summary: outstanding(rows),
+    summary,
+    // How many parameters this person is still hiding from themselves by not
+    // having answered. Said plainly, because a row of dashes with no
+    // explanation reads as a bug.
+    hiddenCount: visible.filter((r) => r.hidden).length,
     // Everyone in the school can see where the two readings differ; only the
     // principal and the deputy can record what was agreed.
     canSettle: res.locals.can('school.manage'),

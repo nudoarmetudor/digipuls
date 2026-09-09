@@ -88,6 +88,49 @@ function reconciliation(ratings, indicators) {
   });
 }
 
+/**
+ * Hides the other side's answer on any parameter the viewer's own side has
+ * not answered yet.
+ *
+ * The two-track design rests entirely on neither side seeing the other while
+ * they work — a level both sides reached separately means something a level
+ * copied from the other column does not. The reconciliation screen puts the
+ * two side by side, and nothing stopped a mentor opening it on day one and
+ * reading the administration's answers before writing their own. The
+ * documentation said the readings were kept apart; the software did not keep
+ * them apart.
+ *
+ * The rule is per parameter rather than per screen: answer A1 and you can see
+ * what the other side said about A1, whatever else is still blank. That is
+ * the same threshold compare() already calls 'incomplete', and it keeps the
+ * screen useful while a school works through the list.
+ *
+ * Someone who writes to no working track — an administrator acting inside the
+ * school — is not one of the two sides and is not masked.
+ *
+ * @param {Array} rows      from reconciliation()
+ * @param {string} myTrack  the track this viewer writes to
+ */
+function maskForTrack(rows, myTrack) {
+  if (!WORKING_TRACKS.includes(myTrack)) return rows;
+  const mine = myTrack === ADMINISTRATION ? 'administrationLevel' : 'teamLevel';
+  const theirs = myTrack === ADMINISTRATION ? 'teamLevel' : 'administrationLevel';
+
+  return rows.map((row) => {
+    if (row[mine] !== null && row[mine] !== undefined) return row;
+    return {
+      ...row,
+      [theirs]: null,
+      // The state and the gap disclose the same thing more quietly — "differ
+      // by 3" tells you what the other side wrote as surely as the number
+      // does — so they go with it.
+      state: 'hidden',
+      gap: null,
+      hidden: true,
+    };
+  });
+}
+
 /** What still stands between the school and a confirmable assessment. */
 function outstanding(rows) {
   return {
@@ -100,5 +143,5 @@ function outstanding(rows) {
 
 module.exports = {
   ADMINISTRATION, TEAM, AGREED, TRACKS, WORKING_TRACKS,
-  trackForRole, compare, reconciliation, outstanding,
+  trackForRole, compare, reconciliation, outstanding, maskForTrack,
 };

@@ -153,3 +153,88 @@ test('everything settled means nothing outstanding', () => {
   // says the two sides differed and what was agreed anyway.
   assert.deepStrictEqual(open.differing, ['A1']);
 });
+
+// --- the two readings stay apart --------------------------------------------
+//
+// This is the property the whole design rests on, and until now it was only
+// written down. The reconciliation screen put both columns side by side and
+// nothing stopped a mentor opening it on day one and copying the
+// administration's answers into their own — which is precisely the outcome
+// two tracks exist to prevent.
+
+const { maskForTrack } = require('../src/services/tracks');
+
+const IND = [{ code: 'A1' }, { code: 'A2' }, { code: 'A3' }];
+
+function rowsFrom(pairs) {
+  const ratings = [];
+  pairs.forEach(([code, admin, team]) => {
+    if (admin !== null) ratings.push({ indicatorCode: code, track: ADMINISTRATION, level: admin });
+    if (team !== null) ratings.push({ indicatorCode: code, track: TEAM, level: team });
+  });
+  return reconciliation(ratings, IND);
+}
+
+test('you cannot read the other side until you have answered yourself', () => {
+  // The administration has answered all three; the team has answered only A1.
+  const rows = rowsFrom([['A1', 4, 1], ['A2', 3, null], ['A3', 5, null]]);
+  const asTeam = maskForTrack(rows, TEAM);
+
+  // A1: both sides answered, so both are visible and the gap is the point.
+  assert.strictEqual(asTeam[0].administrationLevel, 4);
+  assert.strictEqual(asTeam[0].teamLevel, 1);
+  assert.strictEqual(asTeam[0].state, 'differ');
+  assert.strictEqual(asTeam[0].gap, 3);
+  assert.ok(!asTeam[0].hidden);
+
+  // A2 and A3: the team has not answered, so the administration's level is
+  // not theirs to read yet.
+  [1, 2].forEach((i) => {
+    assert.strictEqual(asTeam[i].administrationLevel, null, 'the other side is hidden');
+    assert.ok(asTeam[i].hidden);
+    // The state and the gap would say it just as loudly.
+    assert.strictEqual(asTeam[i].state, 'hidden');
+    assert.strictEqual(asTeam[i].gap, null);
+  });
+});
+
+test('the rule is symmetric — the principal is masked the same way', () => {
+  const rows = rowsFrom([['A1', null, 2], ['A2', 3, 3], ['A3', null, null]]);
+  const asAdministration = maskForTrack(rows, ADMINISTRATION);
+
+  assert.strictEqual(asAdministration[0].teamLevel, null, 'the team is hidden on A1');
+  assert.ok(asAdministration[0].hidden);
+  assert.strictEqual(asAdministration[1].teamLevel, 3, 'and visible on A2, which both answered');
+  // Nobody has answered A3, so there is nothing to hide and nothing to reveal.
+  assert.ok(asAdministration[2].hidden);
+});
+
+test('level 0 is an answer, and unmasks the other column', () => {
+  // The trap: `if (!row.teamLevel)` would treat a recorded 0 as no answer and
+  // keep the other side hidden from someone who has in fact answered.
+  const rows = rowsFrom([['A1', 4, 0]]);
+  assert.strictEqual(maskForTrack(rows, TEAM)[0].administrationLevel, 4);
+  assert.ok(!maskForTrack(rows, TEAM)[0].hidden);
+});
+
+test('someone who is not one of the two sides sees everything', () => {
+  // An administrator working inside the school writes the agreed record, not
+  // a side, and is outside the process the masking protects.
+  const rows = rowsFrom([['A1', 4, null]]);
+  assert.strictEqual(maskForTrack(rows, AGREED)[0].administrationLevel, 4);
+  assert.strictEqual(maskForTrack(rows, null)[0].administrationLevel, 4);
+});
+
+test('masking does not touch the agreed record or the counts', () => {
+  const ratings = [
+    { indicatorCode: 'A1', track: ADMINISTRATION, level: 4 },
+    { indicatorCode: 'A1', track: AGREED, level: 4 },
+  ];
+  const rows = reconciliation(ratings, IND);
+  const asTeam = maskForTrack(rows, TEAM);
+  assert.strictEqual(asTeam[0].agreedLevel, 4, 'what the school settled on is the record');
+  assert.ok(asTeam[0].settled);
+  // outstanding() is computed from the unmasked rows in the route; check it
+  // still describes the school rather than the viewer.
+  assert.deepStrictEqual(outstanding(rows).unsettled, ['A2', 'A3']);
+});

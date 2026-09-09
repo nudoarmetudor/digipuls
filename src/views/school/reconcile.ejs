@@ -23,6 +23,9 @@
       incomplete: summary.incomplete.length,
     }) %>
   </p>
+  <% if (hiddenCount) { %>
+    <p class="small"><%= t('reconcile_hidden_note', { n: hiddenCount }) %></p>
+  <% } %>
   <% if (summary.unsettled.length === 0) { %>
     <p class="small"><%= t('reconcile_all_settled') %></p>
   <% } else { %>
@@ -49,8 +52,16 @@
           <th scope="row" style="background:none;font-weight:400;color:inherit;">
             <b><%= row.indicator.code %></b> — <%= row.indicator.name %>
           </th>
-          <td class="num"><%= row.administrationLevel === null ? '—' : row.administrationLevel %></td>
-          <td class="num"><%= row.teamLevel === null ? '—' : row.teamLevel %></td>
+          <td class="num">
+            <% if (row.hidden && myTrack === 'TEAM') { %>
+              <span class="help" title="<%= t('reconcile_hidden_hint') %>"><%= t('reconcile_hidden') %></span>
+            <% } else { %><%= row.administrationLevel === null ? '—' : row.administrationLevel %><% } %>
+          </td>
+          <td class="num">
+            <% if (row.hidden && myTrack === 'ADMINISTRATION') { %>
+              <span class="help" title="<%= t('reconcile_hidden_hint') %>"><%= t('reconcile_hidden') %></span>
+            <% } else { %><%= row.teamLevel === null ? '—' : row.teamLevel %><% } %>
+          </td>
           <td>
             <% if (row.state === 'agree') { %>
               <span class="badge badge-confirmed"><%= t('reconcile_state_agree') %></span>
@@ -58,6 +69,8 @@
               <span class="badge badge-decayed"><%= t('reconcile_state_differ', { gap: row.gap }) %></span>
             <% } else if (row.state === 'incomplete') { %>
               <span class="badge badge-unvalidated"><%= t('reconcile_state_incomplete') %></span>
+            <% } else if (row.state === 'hidden') { %>
+              <span class="badge badge-draft"><%= t('reconcile_hidden') %></span>
             <% } else { %>
               <span class="badge badge-maintained"><%= t('reconcile_state_empty') %></span>
             <% } %>
