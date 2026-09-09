@@ -237,10 +237,18 @@ function templatesFor(lang) {
       school: { id: 1, name: 'LT „Boris Dînga” — Criuleni' },
       grantableRole: 'SCHOOL_MENTOR', body: {}, errorMessage: null,
     }],
+    // Both paths render this page. The create path forgot to pass wasReset,
+    // and EJS throws on an undefined variable rather than treating it as
+    // false — so a mentor was created and the page confirming it 500'd.
     ['school/account-created.ejs', {
       school: { id: 1, name: 'LT „Boris Dînga” — Criuleni' },
       user: { id: 3, name: 'Ion Băbălău', login: 'babalau.ion' },
       tempPassword: 'Qx7mKp2ntDvR', wasReset: false,
+    }],
+    ['school/account-created.ejs', {
+      school: { id: 1, name: 'LT „Boris Dînga” — Criuleni' },
+      user: { id: 3, name: 'Ion Băbălău', login: 'babalau.ion' },
+      tempPassword: 'Qx7mKp2ntDvR', wasReset: true,
     }],
     ['admin/school-new.ejs', {
       territories: [{ id: 1, name: 'Chișinău' }],

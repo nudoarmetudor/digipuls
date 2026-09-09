@@ -215,6 +215,9 @@ router.post('/', async (req, res) => {
     school: req.school,
     user,
     tempPassword,
+    // EJS throws on an undefined variable rather than treating it as false, so
+    // the create path has to say so explicitly — the reset path sets true.
+    wasReset: false,
   });
 });
 
