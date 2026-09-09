@@ -28,13 +28,23 @@ router.get('/schools', async (req, res) => {
 router.get('/schools/:id', async (req, res) => {
   const school = await prisma.school.findUnique({
     where: { id: Number(req.params.id) },
-    include: { cycles: { where: { status: 'CONFIRMED' }, orderBy: { cycleNumber: 'desc' }, take: 1, include: { ratings: { where: { track: 'AGREED' } }, deviceInventory: true, networkChecklist: true, plan: true } } },
+    // Published, not merely confirmed. Confirming settles what the school
+    // found; publishing is the school deciding the public may read it.
+    include: { cycles: { where: { status: 'CONFIRMED', publishedAt: { not: null } }, orderBy: { cycleNumber: 'desc' }, take: 1, include: { ratings: { where: { track: 'AGREED' } }, deviceInventory: true, networkChecklist: true, plan: true } } },
   });
   if (!school) return res.status(404).render('error', { title: res.locals.t('err_not_found'), message: res.locals.t('err_school_not_found') });
   const cycle = school.cycles[0];
 
   if (!cycle) {
-    return res.render('public/school-summary', { title: school.name, school, hasData: false});
+    // Deliberately two different answers. A school that has assessed itself and
+    // not published is not the same as one that has not started, and telling a
+    // parent the second when the first is true would be wrong.
+    const assessed = await prisma.assessmentCycle.count({
+      where: { schoolId: school.id, status: 'CONFIRMED' },
+    });
+    return res.render('public/school-summary', {
+      title: school.name, school, hasData: false, awaitingPublication: assessed > 0,
+    });
   }
 
   // Mandatory minimum (always shown, per the resolved disclosure policy):

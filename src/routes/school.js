@@ -17,6 +17,10 @@ const {
   ADVANCE, MAINTAIN, INTENTS, INITIATIVE_STATUSES,
   openPlan, requirementsFor, planRows, planSummary, targetChoices,
 } = require('../services/planService');
+const {
+  INTERIM, FINAL, REPORT_KINDS,
+  reportTiming, reportLines, reportProgress, buildSnapshot,
+} = require('../services/reportService');
 
 const router = express.Router();
 // Both must hold: the role because every route below reads the session's
@@ -794,6 +798,168 @@ router.get('/cycles/:id/plan/document', loadCycleForSchool, async (req, res) => 
   res.render('school/plan-document', {
     title: res.locals.t('plan_title'), layout: false,
     school, cycle, plan, rows, summary: planSummary(rows),
+  });
+});
+
+
+// -------------------- Publishing the assessment --------------------
+//
+// Confirming settles what the school found; publishing decides that the public
+// may read it. Two different acts, both the principal's. The Ministry, the
+// partners and the school's metamentor see a confirmed assessment either way —
+// this gate is only on the public tier.
+
+router.post('/cycles/:id/publish',
+  requireCapability('school.publish'), loadCycleForSchool, async (req, res) => {
+    const cycle = req.cycle;
+    if (cycle.status !== 'CONFIRMED') {
+      return res.status(409).render('error', {
+        title: res.locals.t('publish_err_not_confirmed_title'),
+        message: res.locals.t('publish_err_not_confirmed'),
+      });
+    }
+    const publish = req.body.publish !== 'false';
+    await prisma.assessmentCycle.update({
+      where: { id: cycle.id },
+      data: {
+        publishedAt: publish ? (cycle.publishedAt || new Date()) : null,
+        publishedById: publish ? req.session.user.id : null,
+      },
+    });
+    await logAction(req.session.user.id, publish ? 'PUBLISH_ASSESSMENT' : 'UNPUBLISH_ASSESSMENT',
+      'AssessmentCycle', cycle.id, null);
+    return res.redirect(res.locals.href(`/school/cycles/${cycle.id}`));
+  });
+
+// -------------------- What the measures actually reached --------------------
+
+router.post('/cycles/:id/plan/kpis/:kid/actual', loadCycleForSchool, async (req, res) => {
+  const id = Number(req.params.kid);
+  if (!Number.isInteger(id) || id <= 0) return notFoundInPlan(res);
+  const kpi = await prisma.planKpi.findUnique({
+    where: { id },
+    include: { initiative: { include: { priority: { include: { plan: true } } } } },
+  });
+  if (!kpi || kpi.initiative.priority.plan.cycleId !== req.cycle.id) return notFoundInPlan(res);
+
+  const actual = (req.body.actual || '').trim();
+  await prisma.planKpi.update({ where: { id }, data: { actual: actual || null } });
+  await logAction(req.session.user.id, 'RECORD_KPI_ACTUAL', 'PlanKpi', id,
+    `${kpi.measure}: ${actual || '(cleared)'}`);
+  return res.redirect(res.locals.href(
+    `/school/cycles/${req.cycle.id}/plan/report/${req.body.kind === FINAL ? FINAL : INTERIM}#k${id}`));
+});
+
+// -------------------- The interim and final reports --------------------
+
+async function loadReport(planId, kind) {
+  return prisma.planReport.findUnique({ where: { planId_kind: { planId, kind } } });
+}
+
+function reportKind(req) {
+  const kind = String(req.params.kind || '').toUpperCase();
+  return REPORT_KINDS.includes(kind) ? kind : null;
+}
+
+router.get('/cycles/:id/plan/report/:kind', loadCycleForSchool, async (req, res) => {
+  const kind = reportKind(req);
+  if (!kind) return notFoundInPlan(res);
+
+  const cycle = req.cycle;
+  const plan = await loadPlan(cycle.id);
+  if (!plan) return notFoundInPlan(res);
+
+  const rows = planRows(plan, getIndicatorData(req.lang).INDICATORS);
+  const report = await loadReport(plan.id, kind);
+  const lines = reportLines(rows);
+
+  return res.render('school/plan-report', {
+    title: res.locals.t(`report_title_${kind}`),
+    wide: true,
+    school: req.school,
+    cycle,
+    plan,
+    kind,
+    report,
+    lines,
+    progress: reportProgress(lines),
+    timing: reportTiming(plan, kind),
+    canManage: res.locals.can('school.manage'),
+    canPublish: res.locals.can('school.publish'),
+  });
+});
+
+// The narrative is the school's account of the year, so it is written by the
+// principal rather than accumulated from the initiatives.
+router.post('/cycles/:id/plan/report/:kind',
+  requireCapability('school.manage'), loadCycleForSchool, async (req, res) => {
+    const kind = reportKind(req);
+    if (!kind) return notFoundInPlan(res);
+    const plan = await loadPlan(req.cycle.id);
+    if (!plan) return notFoundInPlan(res);
+
+    const narrative = (req.body.narrative || '').trim() || null;
+    await prisma.planReport.upsert({
+      where: { planId_kind: { planId: plan.id, kind } },
+      create: { planId: plan.id, kind, narrative },
+      update: { narrative },
+    });
+    return res.redirect(res.locals.href(`/school/cycles/${req.cycle.id}/plan/report/${kind}`));
+  });
+
+router.post('/cycles/:id/plan/report/:kind/publish',
+  requireCapability('school.publish'), loadCycleForSchool, async (req, res) => {
+    const kind = reportKind(req);
+    if (!kind) return notFoundInPlan(res);
+    const plan = await loadPlan(req.cycle.id);
+    if (!plan) return notFoundInPlan(res);
+
+    const rows = planRows(plan, getIndicatorData(req.lang).INDICATORS);
+    const existing = await loadReport(plan.id, kind);
+    const publishedAt = new Date();
+    // Frozen here, not read live afterwards: implementation continues, and a
+    // report that kept reading the plan would end up describing a later year
+    // than the one it reports on.
+    const snapshot = buildSnapshot(rows, {
+      narrative: existing ? existing.narrative : null, kind, publishedAt,
+    });
+
+    await prisma.planReport.upsert({
+      where: { planId_kind: { planId: plan.id, kind } },
+      create: {
+        planId: plan.id, kind, narrative: null, snapshot,
+        publishedAt, publishedById: req.session.user.id,
+      },
+      update: { snapshot, publishedAt, publishedById: req.session.user.id },
+    });
+    await logAction(req.session.user.id, 'PUBLISH_REPORT', 'DevelopmentPlan', plan.id, kind);
+    return res.redirect(res.locals.href(
+      `/school/cycles/${req.cycle.id}/plan/report/${kind}/document`));
+  });
+
+router.get('/cycles/:id/plan/report/:kind/document', loadCycleForSchool, async (req, res) => {
+  const kind = reportKind(req);
+  if (!kind) return notFoundInPlan(res);
+  const plan = await loadPlan(req.cycle.id);
+  if (!plan) return notFoundInPlan(res);
+  const report = await loadReport(plan.id, kind);
+  if (!report || !report.publishedAt) {
+    return res.status(404).render('error', {
+      title: res.locals.t('report_err_unpublished_title'),
+      message: res.locals.t('report_err_unpublished'),
+    });
+  }
+
+  // Read from the snapshot, never from the live plan — that is the whole point
+  // of taking one.
+  return res.render('school/report-document', {
+    title: res.locals.t(`report_title_${kind}`),
+    layout: false,
+    school: req.school,
+    cycle: req.cycle,
+    plan,
+    report,
+    snapshot: report.snapshot,
   });
 });
 

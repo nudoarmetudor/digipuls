@@ -130,6 +130,20 @@ const planRowsFixture = [
   },
 ];
 
+// One initiative with a recorded measure and an unrecorded one — the
+// distinction the report rests on.
+const reportLinesFixture = [{
+  indicatorCode: 'A1', indicatorName: 'Viziune', intent: 'ADVANCE',
+  currentLevel: 2, targetLevel: 4, initiativeId: 21,
+  title: 'Formarea cadrelor didactice', status: 'IN_PROGRESS',
+  responsible: 'Elena Guriță', supervisor: 'Ion Popescu',
+  dueOn: new Date('2027-06-01'),
+  kpis: [
+    { id: 31, measure: 'Cadre formate', target: '80%', actual: '62%' },
+    { id: 32, measure: 'Sesiuni', target: '3', actual: null },
+  ],
+}];
+
 function templatesFor(lang) {
   const data = getIndicatorData(lang);
   const indicators = data.INDICATORS;
@@ -220,6 +234,35 @@ function templatesFor(lang) {
       people: [{ id: 2, name: 'Elena Guriță', role: 'SCHOOL_PRINCIPAL' }],
       statuses: ['NOT_STARTED', 'IN_PROGRESS', 'DONE', 'DROPPED'],
       canManage: true, errorMessage: null,
+    }],
+    ['school/plan-report.ejs', {
+      school, cycle: confirmedCycle, plan: samplePlan, kind: 'INTERIM',
+      report: { id: 1, kind: 'INTERIM', narrative: 'A fost un an bun', publishedAt: null },
+      lines: reportLinesFixture,
+      progress: { initiatives: 1, byStatus: { NOT_STARTED: 0, IN_PROGRESS: 1, DONE: 0, DROPPED: 0 },
+        kpis: 2, recorded: 1, unrecorded: 1 },
+      timing: { dueOn: new Date('2027-09-01'), due: false },
+      canManage: true, canPublish: true,
+    }],
+    // A mentor records what the measures reached but writes no narrative and
+    // publishes nothing.
+    ['school/plan-report.ejs', {
+      school, cycle: confirmedCycle, plan: samplePlan, kind: 'FINAL',
+      report: null, lines: [],
+      progress: { initiatives: 0, byStatus: { NOT_STARTED: 0, IN_PROGRESS: 0, DONE: 0, DROPPED: 0 },
+        kpis: 0, recorded: 0, unrecorded: 0 },
+      timing: { dueOn: null, due: false },
+      canManage: false, canPublish: false,
+    }],
+    ['school/report-document.ejs', {
+      school, cycle: confirmedCycle, plan: samplePlan, title: 'Report',
+      report: { kind: 'INTERIM', narrative: 'A fost un an bun', publishedAt: new Date('2027-09-15') },
+      snapshot: {
+        kind: 'INTERIM', publishedAt: '2027-09-15T00:00:00.000Z', narrative: 'A fost un an bun',
+        progress: { initiatives: 1, byStatus: { NOT_STARTED: 0, IN_PROGRESS: 1, DONE: 0, DROPPED: 0 },
+          kpis: 2, recorded: 1, unrecorded: 1 },
+        lines: reportLinesFixture.map((l) => ({ ...l, dueOn: '2027-06-01T00:00:00.000Z' })),
+      },
     }],
     ['school/plan-document.ejs', {
       school, cycle: confirmedCycle, plan: samplePlan, rows: planRowsFixture,

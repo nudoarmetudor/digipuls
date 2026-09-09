@@ -68,6 +68,8 @@ model User {
 
   auditEntries           AuditLogEntry[]
   confirmedCycles        AssessmentCycle[] @relation("CycleConfirmedBy")
+  publishedCycles        AssessmentCycle[] @relation("CyclePublishedBy")
+  publishedReports       PlanReport[]      @relation("ReportPublishedBy")
   initiativesResponsible PlanInitiative[]  @relation("InitiativeResponsible")
   initiativesSupervised  PlanInitiative[]  @relation("InitiativeSupervisor")
   capabilities           UserCapability[]
@@ -221,6 +223,14 @@ model AssessmentCycle {
   previousCycle   AssessmentCycle? @relation("CycleContinuation", fields: [previousCycleId], references: [id])
   nextCycle       AssessmentCycle? @relation("CycleContinuation")
 
+  // Publishing is a separate act from confirming. Confirming settles what the
+  // school found; publishing decides that the public may read it. The Ministry,
+  // the partners and the metamentor see a confirmed assessment either way —
+  // this gate is only on the public tier.
+  publishedAt   DateTime?
+  publishedById Int?
+  publishedBy   User?     @relation("CyclePublishedBy", fields: [publishedById], references: [id])
+
   ratings          IndicatorRating[]
   plan             DevelopmentPlan?
   deviceInventory  DeviceInventory?
@@ -336,6 +346,38 @@ model DevelopmentPlan {
   endsOn   DateTime?
 
   priorities PlanPriority[]
+  reports    PlanReport[]
+}
+
+// A report on how the plan is going.
+//
+// The DigiPlan runs two years with a report at the halfway point, and the report
+// is built from the initiatives that already exist — their status, and what
+// their measures actually reached against the targets the school set. None of
+// that is re-entered; the school updates the initiatives as it goes and the
+// report reads them.
+//
+// What it keeps of its own is the narrative, and a snapshot taken when it is
+// published. The snapshot matters: implementation continues after the report
+// goes out, so a report reading live data would quietly rewrite itself and a
+// year-one report would eventually describe year two. Frozen as JSON rather
+// than as a second set of tables because nothing queries inside a published
+// report — it is read as a document.
+model PlanReport {
+  id            Int             @id @default(autoincrement())
+  planId        Int
+  plan          DevelopmentPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  // INTERIM (after the first year) | FINAL (at the end of the plan)
+  kind          String
+  narrative     String?         @db.Text
+  snapshot      Json?
+  publishedAt   DateTime?
+  publishedById Int?
+  publishedBy   User?           @relation("ReportPublishedBy", fields: [publishedById], references: [id])
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@unique([planId, kind])
 }
 
 // One row per parameter per plan — all nineteen, not a shortlist.

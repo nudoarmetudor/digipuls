@@ -1,0 +1,132 @@
+<h1><%= t('report_title_' + kind) %></h1>
+<p class="subtitle">
+  <%= school.name %> ·
+  <a href="<%= href('/school/cycles/' + (cycle.id) + '/plan') %>"><%= t('plan_title') %></a>
+</p>
+
+<div class="card card-flat">
+  <p style="margin:0;">
+    <% if (report && report.publishedAt) { %>
+      <span class="badge badge-confirmed"><%= t('report_published') %> <%= new Date(report.publishedAt).toLocaleDateString(lang) %></span>
+    <% } else { %>
+      <span class="badge badge-draft"><%= t('report_unpublished') %></span>
+    <% } %>
+    <% if (timing.dueOn) { %>
+      · <%= t('report_due_on', { date: new Date(timing.dueOn).toLocaleDateString(lang) }) %>
+      <% if (!timing.due) { %> — <%= t('report_not_due_yet') %><% } %>
+    <% } %>
+  </p>
+  <p class="small" style="margin:.4rem 0 0;">
+    <%= t('report_counts', {
+      initiatives: progress.initiatives,
+      done: progress.byStatus.DONE,
+      inProgress: progress.byStatus.IN_PROGRESS,
+      recorded: progress.recorded,
+      kpis: progress.kpis,
+    }) %>
+  </p>
+  <% if (progress.unrecorded > 0) { %>
+    <p class="small"><%= t('report_unrecorded', { n: progress.unrecorded }) %></p>
+  <% } %>
+</div>
+
+<p><%= t('report_intro') %></p>
+
+<% if (lines.length === 0) { %>
+  <div class="card card-flat"><p style="margin:0;"><%= t('report_no_initiatives') %></p></div>
+<% } %>
+
+<% lines.forEach(function (line) { %>
+  <section class="card">
+    <h2 class="plain-heading">
+      <%= line.indicatorCode %> — <%= line.title %>
+    </h2>
+    <p class="small">
+      <%= line.indicatorName %> ·
+      <%= t('plan_now') %> <%= line.currentLevel %> <span aria-hidden="true">→</span> <%= line.targetLevel %> ·
+      <b><%= t('plan_ini_status') %>:</b> <%= t('plan_status_' + line.status) %>
+      <% if (line.responsible) { %> · <b><%= t('plan_ini_responsible') %>:</b> <%= line.responsible %><% } %>
+      <% if (line.dueOn) { %> · <b><%= t('plan_ini_due') %>:</b> <%= new Date(line.dueOn).toLocaleDateString(lang) %><% } %>
+    </p>
+
+    <% if (line.kpis.length === 0) { %>
+      <p class="help"><%= t('plan_no_kpis') %></p>
+    <% } else { %>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col"><%= t('plan_kpi_measure') %></th>
+              <th scope="col"><%= t('plan_kpi_target') %></th>
+              <th scope="col"><%= t('report_actual') %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% line.kpis.forEach(function (k) { %>
+              <tr id="k<%= k.id %>">
+                <td><%= k.measure %></td>
+                <td><%= k.target %></td>
+                <td>
+                  <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/plan/kpis/' + (k.id) + '/actual') %>">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <input type="hidden" name="kind" value="<%= kind %>">
+                    <div class="inline-fields">
+                      <div>
+                        <label class="visually-hidden" for="actual-<%= k.id %>"><%= t('report_actual') %> — <%= k.measure %></label>
+                        <input type="text" id="actual-<%= k.id %>" name="actual" value="<%= k.actual || '' %>"
+                               placeholder="<%= t('report_actual_placeholder') %>">
+                      </div>
+                      <div>
+                        <button class="btn btn-sm" type="submit" style="margin-top:.15rem;">
+                          <%= t('report_record') %><span class="visually-hidden"> — <%= k.measure %></span>
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </section>
+<% }) %>
+
+<% if (canManage) { %>
+  <div class="card">
+    <h2 class="plain-heading"><%= t('report_narrative') %></h2>
+    <p class="small"><%= t('report_narrative_help') %></p>
+    <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/plan/report/' + (kind)) %>">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label class="visually-hidden" for="narrative"><%= t('report_narrative') %></label>
+      <textarea id="narrative" name="narrative" rows="8"><%= report && report.narrative ? report.narrative : '' %></textarea>
+      <div class="btn-row" style="margin-top:.8rem;">
+        <button class="btn btn-sm" type="submit"><%= t('report_save_narrative') %></button>
+      </div>
+    </form>
+  </div>
+<% } else if (report && report.narrative) { %>
+  <div class="card">
+    <h2 class="plain-heading"><%= t('report_narrative') %></h2>
+    <p><%= report.narrative %></p>
+  </div>
+<% } %>
+
+<div class="btn-row" style="margin-top:1.2rem;">
+  <% if (report && report.publishedAt) { %>
+    <a class="btn btn-secondary" href="<%= href('/school/cycles/' + (cycle.id) + '/plan/report/' + (kind) + '/document') %>"><%= t('report_view_document') %></a>
+  <% } %>
+  <% if (canPublish) { %>
+    <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/plan/report/' + (kind) + '/publish') %>"
+          data-confirm="<%= t('report_publish_confirm') %>">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button class="btn" type="submit">
+        <%= report && report.publishedAt ? t('report_republish') : t('report_publish') %>
+      </button>
+    </form>
+  <% } %>
+</div>
+<% if (canPublish) { %>
+  <p class="help"><%= t('report_publish_help') %></p>
+<% } %>

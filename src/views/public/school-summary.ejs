@@ -3,7 +3,10 @@
 <p class="subtitle"><%= t('public_summary_subtitle') %></p>
 
 <% if (!hasData) { %>
-  <div class="card"><p><%= t('public_no_cycle') %></p></div>
+  <div class="card">
+    <p><%= (typeof awaitingPublication !== 'undefined' && awaitingPublication)
+      ? t('public_not_published') : t('public_no_cycle') %></p>
+  </div>
 <% } else { %>
   <div class="card card-centre">
     <figure>

@@ -12,6 +12,27 @@
 
 <% if (cycle.status === 'CONFIRMED') { %>
   <div class="card">
+    <h2 class="plain-heading"><%= t('public_view_summary') %></h2>
+    <p style="margin:0 0 .5rem;">
+      <% if (cycle.publishedAt) { %>
+        <span class="badge badge-confirmed"><%= t('publish_state_published') %></span>
+      <% } else { %>
+        <span class="badge badge-draft"><%= t('publish_state_unpublished') %></span>
+      <% } %>
+    </p>
+    <p class="small"><%= t('publish_note') %></p>
+    <% if (can('school.publish')) { %>
+      <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/publish') %>">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <input type="hidden" name="publish" value="<%= cycle.publishedAt ? 'false' : 'true' %>">
+        <button class="btn btn-sm" type="submit">
+          <%= cycle.publishedAt ? t('unpublish_assessment') : t('publish_assessment') %>
+        </button>
+      </form>
+    <% } %>
+  </div>
+
+  <div class="card">
     <h2 class="plain-heading"><%= t('plan_title') %></h2>
     <p class="small"><%= t('plan_overview_note') %></p>
     <div class="btn-row">

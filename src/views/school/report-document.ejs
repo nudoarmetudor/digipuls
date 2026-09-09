@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="<%= lang %>" <%- prefsAttrs %>>
+<head>
+<%- include('../partials/head') %>
+<style>
+  /* Same treatment as the plan: this is an official school document and prints
+     on white whatever theme the reader chose. */
+  body { background: #ffffff; color: #000000; }
+  .container { max-width: 50rem; }
+  @media print { .no-print { display: none; } }
+</style>
+</head>
+<body>
+<main id="main" class="container">
+  <div class="no-print" style="margin-bottom:1rem;">
+    <button class="btn btn-sm" type="button" data-print><%= t('print_save_pdf') %></button>
+  </div>
+
+  <h1><%= t('report_title_' + report.kind) %></h1>
+  <h2 class="plain-heading"><%= school.name %></h2>
+  <p class="small">
+    <%= t('cycle') %> <%= cycle.cycleNumber %> ·
+    <%= t('report_published') %> <%= new Date(report.publishedAt).toLocaleDateString(lang) %>
+    <% if (plan.startsOn && plan.endsOn) { %>
+      · <%= t('plan_period') %>
+      <%= new Date(plan.startsOn).toLocaleDateString(lang) %> — <%= new Date(plan.endsOn).toLocaleDateString(lang) %>
+    <% } %>
+  </p>
+  <p class="small"><%= t('report_frozen_note') %></p>
+
+  <% if (snapshot && snapshot.narrative) { %>
+    <h2><%= t('report_narrative') %></h2>
+    <p><%= snapshot.narrative %></p>
+  <% } %>
+
+  <h2><%= t('report_progress') %></h2>
+  <% const p = snapshot && snapshot.progress ? snapshot.progress : null; %>
+  <% if (p) { %>
+    <p>
+      <%= t('report_counts', {
+        initiatives: p.initiatives, done: p.byStatus.DONE, inProgress: p.byStatus.IN_PROGRESS,
+        recorded: p.recorded, kpis: p.kpis,
+      }) %>
+    </p>
+  <% } %>
+
+  <h2><%= t('plan_initiatives') %></h2>
+  <% const lines = snapshot && Array.isArray(snapshot.lines) ? snapshot.lines : []; %>
+  <% if (!lines.length) { %>
+    <p><%= t('report_no_initiatives') %></p>
+  <% } %>
+  <% lines.forEach(function (line) { %>
+    <div class="card">
+      <h3><%= line.indicatorCode %> — <%= line.title %></h3>
+      <p class="small">
+        <%= line.indicatorName %> ·
+        <%= t('plan_now') %> <%= line.currentLevel %> <span aria-hidden="true">→</span> <%= line.targetLevel %> ·
+        <b><%= t('plan_ini_status') %>:</b> <%= t('plan_status_' + line.status) %>
+        <% if (line.responsible) { %> · <b><%= t('plan_ini_responsible') %>:</b> <%= line.responsible %><% } %>
+        <% if (line.supervisor) { %> · <b><%= t('plan_ini_supervisor') %>:</b> <%= line.supervisor %><% } %>
+      </p>
+      <% if (line.kpis && line.kpis.length) { %>
+        <table>
+          <thead>
+            <tr>
+              <th scope="col"><%= t('plan_kpi_measure') %></th>
+              <th scope="col"><%= t('plan_kpi_target') %></th>
+              <th scope="col"><%= t('report_actual') %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% line.kpis.forEach(function (k) { %>
+              <tr>
+                <td><%= k.measure %></td>
+                <td><%= k.target %></td>
+                <td><%= k.actual || t('report_not_recorded') %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      <% } %>
+    </div>
+  <% }) %>
+
+  <p class="small" style="margin-top:2rem;"><%= t('doc_generated_note') %></p>
+</main>
+<script src="/static/js/ui.js" defer></script>
+</body>
+</html>

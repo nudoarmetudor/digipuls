@@ -121,6 +121,8 @@
 
   <div class="btn-row" style="margin-top:1.2rem;">
     <a class="btn btn-secondary" href="<%= href('/school/cycles/' + (cycle.id) + '/plan/document') %>"><%= t('plan_view_document') %></a>
+    <a class="btn btn-secondary" href="<%= href('/school/cycles/' + (cycle.id) + '/plan/report/INTERIM') %>"><%= t('report_title_INTERIM') %></a>
+    <a class="btn btn-secondary" href="<%= href('/school/cycles/' + (cycle.id) + '/plan/report/FINAL') %>"><%= t('report_title_FINAL') %></a>
     <% if (canPublish && !plan.publishedAt) { %>
       <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/plan/publish') %>">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
