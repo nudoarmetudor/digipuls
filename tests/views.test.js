@@ -301,6 +301,14 @@ function templatesFor(lang) {
       rows: [row], totalSchools: 8, filteredCount: 1, confirmedCount: 7, complianceCount: 2,
       avgA: '1.9', avgB: '2.0', avgC: '1.8', avgD: '1.4', bands: ENROLMENT_BANDS, territories,
       query: { band: '251-500', territoryId: '2' },
+      scopedToOneSchool: false, scopedSchoolName: null,
+    }],
+    // The same page read by a metamentor, whose post names one institution.
+    ['ministry/dashboard.ejs', {
+      rows: [row], totalSchools: 1, filteredCount: 1, confirmedCount: 1, complianceCount: 0,
+      avgA: '1.9', avgB: '2.0', avgC: '1.8', avgD: '1.4', bands: ENROLMENT_BANDS, territories,
+      query: {},
+      scopedToOneSchool: true, scopedSchoolName: 'LT Onisifor Ghibu — Orhei',
     }],
     ['ministry/compliance.ejs', { rows: [row], allCount: 7 }],
     ['ministry/compliance.ejs', { rows: [], allCount: 7 }],

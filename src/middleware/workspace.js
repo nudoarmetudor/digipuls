@@ -265,14 +265,51 @@ function territoryFilter(req) {
   return id === null ? {} : { territoryId: id };
 }
 
-/** Whether this request may read a school, given its district scope. */
+/**
+ * The one institution this post may read, or null when it is not limited to
+ * one.
+ *
+ * A metamentor supports exactly one lyceum, and their post names it. That is
+ * their scope: they read that school's record in full and no other school's.
+ * A metacoordinator names no institution because the position is about the
+ * mentor group rather than a school, so they are not narrowed — they see all
+ * twelve.
+ *
+ * The deliberate exception is an administrator working inside a school
+ * (middleware describeInSchool): their post names one because they chose it,
+ * not because they are bounded by it.
+ */
+function scopedSchoolId(req) {
+  if (!req.workspace) return null;
+  if (req.workspace.inEverySchool) return null;
+  return req.workspace.schoolId || null;
+}
+
+/**
+ * The `where` fragment for everything an oversight page lists.
+ *
+ * School beats district, because it is the narrower claim: a metamentor's post
+ * names a school *and* sits in that school's district, and reading the whole
+ * district would be a wider view than the position carries.
+ */
+function oversightFilter(req) {
+  const school = scopedSchoolId(req);
+  if (school !== null) return { id: school };
+  const territory = activeTerritoryId(req);
+  return territory === null ? {} : { territoryId: territory };
+}
+
+/** Whether this request may read a school, given its scope. */
 function coversSchool(req, school) {
   if (!school) return false;
+  const only = scopedSchoolId(req);
+  if (only !== null) return school.id === only;
   const id = activeTerritoryId(req);
   return id === null || school.territoryId === id;
 }
 
 module.exports = {
   extractWorkspace, loadWorkspace, makeHref, activeSchoolId, activeTerritoryId,
-  territoryFilter, coversSchool, describe, describeInSchool, WORKSPACE_PATH,
+  territoryFilter, oversightFilter, scopedSchoolId, coversSchool,
+  describe, describeInSchool, WORKSPACE_PATH,
 };

@@ -1,4 +1,6 @@
 const test = require('node:test');
+const fs = require('node:fs');
+const path = require('node:path');
 const assert = require('node:assert');
 
 const { describe: describeAssignment, activeTerritoryId, territoryFilter, coversSchool } = require('../src/middleware/workspace');
@@ -205,4 +207,82 @@ test('lowest capacity ranks first, and ties are stable', () => {
   const { ranked } = rankTrainingNeed(rows);
   assert.deepStrictEqual(ranked.map((r) => r.school.name), ['Alpha', 'Beta', 'Strong'],
     'equal totals order by name, so the page does not reshuffle between loads');
+});
+
+// --- one person, two posts, two scopes --------------------------------------
+//
+// Tudor Lapp and Victoria Calistru are each a metamentor for one lyceum —
+// Ghibu and Zadnipru — *and* a metacoordinator for the group of twelve those
+// metamentors form. Same person, two posts. So the scope cannot belong to the
+// person; it belongs to the post the tab is working in, which is exactly why
+// the active post lives in the URL.
+
+const { oversightFilter, scopedSchoolId } = require('../src/middleware/workspace');
+const describeWorkspace = describeAssignment;
+
+function onePost(role, { schoolId = null, territoryId = null, schoolTerritoryId = null } = {}) {
+  return {
+    workspace: describeWorkspace({
+      id: 1, role, label: null, schoolId, territoryId,
+      school: schoolId ? { id: schoolId, name: 'A school', territoryId: schoolTerritoryId } : null,
+      territory: territoryId ? { id: territoryId, name: 'A district' } : null,
+    }),
+  };
+}
+
+test('a metamentor reads their own institution and no other', () => {
+  const mentor = onePost('META_MENTOR', { schoolId: 3, schoolTerritoryId: 9 });
+  assert.strictEqual(scopedSchoolId(mentor), 3);
+  assert.deepStrictEqual(oversightFilter(mentor), { id: 3 });
+
+  assert.ok(coversSchool(mentor, { id: 3, territoryId: 9 }), 'their own');
+  assert.ok(!coversSchool(mentor, { id: 4, territoryId: 9 }),
+    'not a neighbour in the same district');
+  assert.ok(!coversSchool(mentor, { id: 7, territoryId: 2 }), 'and not one elsewhere');
+});
+
+test('a metacoordinator reads all twelve', () => {
+  // The position is about the mentor group, not an institution, so the post
+  // names none — and naming none is what makes it unscoped.
+  const coordinator = onePost('META_COORDINATOR');
+  assert.strictEqual(scopedSchoolId(coordinator), null);
+  assert.deepStrictEqual(oversightFilter(coordinator), {});
+  [3, 4, 7].forEach((id) => assert.ok(coversSchool(coordinator, { id, territoryId: 9 })));
+});
+
+test('the same person switching posts switches scope', () => {
+  // The failure this prevents: scoping by account instead of by post would
+  // give these two people either everything or one school in both tabs.
+  const asMentor = onePost('META_MENTOR', { schoolId: 3, schoolTerritoryId: 9 });
+  const asCoordinator = onePost('META_COORDINATOR');
+
+  assert.deepStrictEqual(oversightFilter(asMentor), { id: 3 });
+  assert.deepStrictEqual(oversightFilter(asCoordinator), {});
+  assert.ok(!coversSchool(asMentor, { id: 11, territoryId: 4 }));
+  assert.ok(coversSchool(asCoordinator, { id: 11, territoryId: 4 }));
+});
+
+test('school scope beats district scope, because it is the narrower claim', () => {
+  // A metamentor's post names a school and therefore also sits in that
+  // school's district. Reading the whole district would be wider than the
+  // position carries.
+  const mentor = onePost('META_MENTOR', { schoolId: 3, schoolTerritoryId: 9 });
+  assert.deepStrictEqual(oversightFilter(mentor), { id: 3 });
+
+  // A territorial agency names a district and no school, and keeps it.
+  const agency = onePost('TERRITORIAL', { territoryId: 9 });
+  assert.deepStrictEqual(oversightFilter(agency), { territoryId: 9 });
+});
+
+test('every oversight listing is scoped, downloads included', () => {
+  // A CSV that carried more rows than the page it came from would be the leak
+  // the page prevents.
+  const source = fs.readFileSync(
+    path.join(__dirname, '..', 'src', 'routes', 'ministry.js'), 'utf8');
+  const calls = source.match(/schoolsWithLatestCycle\([^)]*\)/g) || [];
+  assert.ok(calls.length >= 3, 'dashboard, export and compliance all list schools');
+  calls.forEach((c) => assert.match(c, /oversightFilter\(req\)/, `unscoped listing: ${c}`));
+
+  // And the detail page refuses a school outside the scope.
+  assert.match(source, /if \(!coversSchool\(req, school\)\)/);
 });

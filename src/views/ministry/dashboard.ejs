@@ -7,8 +7,14 @@ const sortOptions = [
 const domainKeys = ['A', 'B', 'C', 'D'];
 const avgByDomain = { A: avgA, B: avgB, C: avgC, D: avgD };
 %>
-<h1><%= t('ministry_dashboard_title') %></h1>
-<p class="subtitle"><%= t('ministry_dashboard_subtitle') %></p>
+<%# A metamentor supports one lyceum, so this page shows one. Saying so beats
+    a "national dashboard" heading over a single row. %>
+<h1><% if (scopedToOneSchool) { %><%= scopedSchoolName %><% } else { %><%= t('ministry_dashboard_title') %><% } %></h1>
+<% if (scopedToOneSchool) { %>
+  <p class="small"><%= t('ministry_scoped_to_school') %></p>
+<% } else { %>
+  <p class="subtitle"><%= t('ministry_dashboard_subtitle') %></p>
+<% } %>
 
 <div class="grid-3">
   <div class="card stat"><div class="num"><%= totalSchools %></div><div class="label"><%= t('stat_schools_provisioned') %></div></div>

@@ -181,7 +181,7 @@ to take and then implement — it is not the case today.
 
 | Position | Role | Scope |
 | --- | --- | --- |
-| Metamentor (DigCompEdu C1) | `META_MENTOR` | One school, plus the national picture — read-only |
+| Metamentor (DigCompEdu C1) | `META_MENTOR` | Their own school, and only theirs — read-only |
 | Metacoordinator (DigCompEdu C2) | `META_COORDINATOR` | The whole mentor group, plus account management |
 
 There are twelve metamentors, one per school. A metamentor **advises and
@@ -644,14 +644,21 @@ proves nothing.
 
 ### 12.1 The metamentor
 
-Sees their school's record live, drafts included, and the national picture
-alongside it, so they can tell that school where it stands among the twelve.
-They change nothing. Their work is conversation: the platform's job is to make
-sure the conversation happens before a mistake is confirmed rather than after.
+Sees **their own institution and no other** — its record live, drafts included.
+Not a neighbouring school in the same district, and not the other eleven. They
+change nothing. Their work is conversation: the platform's job is to make sure
+the conversation happens before a mistake is confirmed rather than after.
 
 ### 12.2 The metacoordinator
 
-Everything a metamentor sees, plus account management for the group.
+The whole group of twelve, plus account management for it.
+
+The two are usually the same person. A metacoordinator is drawn from among the
+twelve metamentors, so they hold **two posts**: metamentor at their own lyceum,
+and metacoordinator of the group. The scope belongs to the post, not to the
+person — their metamentor tab shows one school and their coordinator tab shows
+all twelve, and both can be open at once. That is the reason the active post is
+part of the address (see [§5.1](#51-workspaces)).
 
 ### 12.3 The Ministry
 

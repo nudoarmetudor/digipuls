@@ -1,6 +1,7 @@
 const express = require('express');
 const prisma = require('../config/db');
 const { requireCapability } = require('../middleware/auth');
+const { oversightFilter, scopedSchoolId, coversSchool } = require('../middleware/workspace');
 // The instrument in the reader's own language. Imported through the picker
 // rather than directly, because `data/indicators` is the *English* file: a
 // direct import renders the whole parameter list in English to a reader who
@@ -18,7 +19,10 @@ const router = express.Router();
 router.use(requireCapability('view.national', 'view.compliance'));
 
 router.get('/', async (req, res) => {
-  const allRows = await schoolsWithLatestCycle();
+  // Scoped, not national, for a post that names one institution: a metamentor
+  // supports one lyceum and reads that one. A metacoordinator names none and
+  // so is not narrowed — the whole group of twelve. See middleware/workspace.
+  const allRows = await schoolsWithLatestCycle(oversightFilter(req));
   const rows = filterRows(allRows, req.query);
   const confirmedRows = allRows.filter((r) => r.confirmed);
   const avg = (key) => {
@@ -36,8 +40,12 @@ router.get('/', async (req, res) => {
     orderBy: { name: 'asc' },
   });
 
+  const onlySchool = scopedSchoolId(req);
   res.render('ministry/dashboard', {
     title: res.locals.t('ministry_dashboard_title'), wide: true,
+    // A page headed "national" that lists one school is lying about itself.
+    scopedToOneSchool: onlySchool !== null,
+    scopedSchoolName: onlySchool !== null && req.workspace ? req.workspace.schoolName : null,
     rows, totalSchools: allRows.length, filteredCount: rows.length, confirmedCount: confirmedRows.length,
     avgA: avg('A'), avgB: avg('B'), avgC: avg('C'), avgD: avg('D'),
     complianceCount, territories, bands: ENROLMENT_BANDS, query: req.query,
@@ -50,7 +58,9 @@ router.get('/', async (req, res) => {
 // The file the browser saves is still named by Content-Disposition, so nothing
 // changes for the person clicking it.
 router.get('/export', async (req, res) => {
-  const allRows = await schoolsWithLatestCycle();
+  // The same scope as the page it is exported from. A download that quietly
+  // carried more rows than the screen would be the leak the screen prevents.
+  const allRows = await schoolsWithLatestCycle(oversightFilter(req));
   const rows = filterRows(allRows, req.query);
   await logAction(req.session.user.id, 'EXPORT_CSV', 'School', null, `${rows.length} rows`);
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -80,6 +90,17 @@ router.get('/schools/:id', async (req, res) => {
     },
   });
   if (!school) return res.status(404).render('error', { title: res.locals.t('err_not_found'), message: res.locals.t('err_school_not_found') });
+  // The scope check this page never had. Holding view.national used to mean
+  // every school's full per-parameter record was one URL away, which is more
+  // than a metamentor's position carries: they support one lyceum. A post that
+  // names no institution — the Ministry, a metacoordinator — is not narrowed,
+  // and the same person's coordinator post therefore still reads all twelve.
+  if (!coversSchool(req, school)) {
+    return res.status(403).render('error', {
+      title: res.locals.t('err_access_denied'),
+      message: res.locals.t('err_outside_school_scope'),
+    });
+  }
   // The official record shown here (wheel, compliance, validations) must
   // come from the latest CONFIRMED cycle — never from a newer draft, which
   // would otherwise make an already-confirmed assessment vanish the moment
@@ -108,7 +129,7 @@ router.get('/schools/:id', async (req, res) => {
 });
 
 router.get('/compliance', async (req, res) => {
-  const rows = await schoolsWithLatestCycle();
+  const rows = await schoolsWithLatestCycle(oversightFilter(req));
   const nonCompliant = rows.filter((r) => r.confirmed && (!r.deviceCompliance?.compliant || !r.networkCompliance?.compliant));
   res.render('ministry/compliance', { title: res.locals.t('compliance_title'), wide: true, rows: nonCompliant, allCount: rows.filter(r => r.confirmed).length });
 });

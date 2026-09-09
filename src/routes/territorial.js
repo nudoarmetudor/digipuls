@@ -1,7 +1,9 @@
 const express = require('express');
 const prisma = require('../config/db');
 const { requireCapability } = require('../middleware/auth');
-const { activeTerritoryId, territoryFilter, coversSchool } = require('../middleware/workspace');
+const {
+  activeTerritoryId, oversightFilter, scopedSchoolId, coversSchool,
+} = require('../middleware/workspace');
 const { progressSummary } = require('../services/stepStatus');
 const { flagsForSchool } = require('../services/flags');
 // The instrument in the reader's own language. Imported through the picker
@@ -21,7 +23,7 @@ router.get('/', async (req, res) => {
   // an unscoped post sees every district instead of the empty list that
   // `{ territoryId: null }` used to produce. See middleware/workspace.js.
   const territoryId = activeTerritoryId(req);
-  const rows = await schoolsWithLatestCycle(territoryFilter(req));
+  const rows = await schoolsWithLatestCycle(oversightFilter(req));
   const confirmedRows = rows.filter((r) => r.confirmed);
   res.render('territorial/dashboard', {
     title: res.locals.t('territorial_title'), wide: true, rows,
