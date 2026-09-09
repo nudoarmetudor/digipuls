@@ -28,7 +28,7 @@ router.get('/schools', async (req, res) => {
 router.get('/schools/:id', async (req, res) => {
   const school = await prisma.school.findUnique({
     where: { id: Number(req.params.id) },
-    include: { cycles: { where: { status: 'CONFIRMED' }, orderBy: { cycleNumber: 'desc' }, take: 1, include: { ratings: true, deviceInventory: true, networkChecklist: true, plan: true } } },
+    include: { cycles: { where: { status: 'CONFIRMED' }, orderBy: { cycleNumber: 'desc' }, take: 1, include: { ratings: { where: { track: 'AGREED' } }, deviceInventory: true, networkChecklist: true, plan: true } } },
   });
   if (!school) return res.status(404).render('error', { title: res.locals.t('err_not_found'), message: res.locals.t('err_school_not_found') });
   const cycle = school.cycles[0];

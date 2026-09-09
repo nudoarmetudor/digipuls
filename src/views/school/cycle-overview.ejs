@@ -11,6 +11,14 @@
 <%- include('_step-nav', { activeStep: null }) %>
 
 <div class="card">
+  <h2 class="plain-heading"><%= t('reconcile_title') %></h2>
+  <p class="small"><%= t('reconcile_overview_note') %></p>
+  <div class="btn-row">
+    <a class="btn btn-sm" href="<%= href('/school/cycles/' + (cycle.id) + '/reconcile') %>"><%= t('nav_reconcile') %></a>
+  </div>
+</div>
+
+<div class="card">
   <h2 class="plain-heading"><%= t('overall_progress') %></h2>
   <%
     const pct = progress.total ? Math.round((100 * progress.rated) / progress.total) : 0;

@@ -26,15 +26,15 @@ generator client {
 // ---------------------------------------------------------------------------
 
 model Territory {
-  id     Int      @id @default(autoincrement())
-  name   String   @unique
-  schools School[]
-  users   User[]
+  id          Int          @id @default(autoincrement())
+  name        String       @unique
+  schools     School[]
+  users       User[]
   assignments Assignment[]
 }
 
 model User {
-  id           Int      @id @default(autoincrement())
+  id                 Int        @id @default(autoincrement())
   // The login identifier, not an address. The pilot's meta-mentors have no
   // institutional mailbox — there is no @digipuls.md mail domain — so an
   // email field would have been a form that asks for something nobody has.
@@ -42,21 +42,21 @@ model User {
   // accounts happen to look like addresses, which is fine because nothing
   // here treats the value as one. Renamed from `email` by migration, so the
   // existing values were preserved.
-  login        String   @unique
-  passwordHash String
-  name         String
+  login              String     @unique
+  passwordHash       String
+  name               String
   // See ROLES in src/services/capabilities.js — the school positions, the
   // meta-mentor line, the oversight readers, and the platform administrator.
-  role         String
-  schoolId     Int?
-  school       School?  @relation(fields: [schoolId], references: [id])
-  territoryId  Int?
-  territory    Territory? @relation(fields: [territoryId], references: [id])
-  createdAt    DateTime @default(now())
+  role               String
+  schoolId           Int?
+  school             School?    @relation(fields: [schoolId], references: [id])
+  territoryId        Int?
+  territory          Territory? @relation(fields: [territoryId], references: [id])
+  createdAt          DateTime   @default(now())
   // Forces a password-change screen before anything else is reachable —
   // set true whenever an account is provisioned with a system-generated
   // one-time password (see admin.js), never true for the demo seed logins.
-  mustChangePassword Boolean @default(false)
+  mustChangePassword Boolean    @default(false)
 
   // Deactivation rather than deletion is the default way to remove someone's
   // access: a user is referenced by audit entries and by the cycles they
@@ -64,14 +64,14 @@ model User {
   // them to delete a row would damage the audit trail this system exists to
   // keep. Checked on every request, not just at login, so revoking access
   // takes effect immediately instead of at the person's next sign-in.
-  isActive     Boolean  @default(true)
+  isActive Boolean @default(true)
 
-  auditEntries AuditLogEntry[]
+  auditEntries    AuditLogEntry[]
   confirmedCycles AssessmentCycle[] @relation("CycleConfirmedBy")
-  capabilities UserCapability[]
-  assignments  Assignment[]
-  feedbackTickets FeedbackTicket[] @relation("TicketAuthor")
-  triagedTickets  FeedbackTicket[] @relation("TicketTriager")
+  capabilities    UserCapability[]
+  assignments     Assignment[]
+  feedbackTickets FeedbackTicket[]  @relation("TicketAuthor")
+  triagedTickets  FeedbackTicket[]  @relation("TicketTriager")
 }
 
 // One post a person holds: a role, at one institution.
@@ -146,24 +146,24 @@ model UserCapability {
 // pilot-cohort school will necessarily have been matched to a SIME record
 // yet — see the SIME integration note in README.md.
 model School {
-  id                   Int      @id @default(autoincrement())
-  name                 String
-  simeId               String?  @unique
-  territoryId          Int?
-  territory            Territory? @relation(fields: [territoryId], references: [id])
-  address              String?
-  enrolmentTotal        Int      @default(0)
-  studentsGrades7to12   Int      @default(0)
-  classroomsTotal        Int      @default(0)
+  id                    Int        @id @default(autoincrement())
+  name                  String
+  simeId                String?    @unique
+  territoryId           Int?
+  territory             Territory? @relation(fields: [territoryId], references: [id])
+  address               String?
+  enrolmentTotal        Int        @default(0)
+  studentsGrades7to12   Int        @default(0)
+  classroomsTotal       Int        @default(0)
   // computed at read-time from enrolmentTotal via src/services/order675.js;
   // stored too for simple querying/filtering in dashboards
-  enrolmentBand         String   @default("0-250")
-  publicDisclosureOptIn Boolean  @default(false)
-  createdAt            DateTime @default(now())
+  enrolmentBand         String     @default("0-250")
+  publicDisclosureOptIn Boolean    @default(false)
+  createdAt             DateTime   @default(now())
 
-  users               User[]
-  assignments         Assignment[]
-  cycles              AssessmentCycle[]
+  users       User[]
+  assignments Assignment[]
+  cycles      AssessmentCycle[]
 }
 
 // ---------------------------------------------------------------------------
@@ -173,27 +173,27 @@ model School {
 // ---------------------------------------------------------------------------
 
 model Indicator {
-  code        String   @id // e.g. "A1", "B5", "D2"
-  domain      String   // "A" | "B" | "C" | "D"
+  code        String @id // e.g. "A1", "B5", "D2"
+  domain      String // "A" | "B" | "C" | "D"
   name        String
-  description String   @db.Text
+  description String @db.Text
   sortOrder   Int
 
-  levels  IndicatorLevel[]
-  ratings IndicatorRating[]
+  levels     IndicatorLevel[]
+  ratings    IndicatorRating[]
   priorities PlanPriority[]
 }
 
 model IndicatorLevel {
-  id                  Int    @id @default(autoincrement())
+  id                  Int       @id @default(autoincrement())
   indicatorCode       String
   indicator           Indicator @relation(fields: [indicatorCode], references: [code])
-  level               Int    // 0-5
+  level               Int // 0-5
   levelName           String // "Below floor" | "Accidental" | ... | "Continuous innovation"
-  description         String  @db.Text
-  engagementBenchmark String? @db.Text
-  frequencyBenchmark  String? @db.Text
-  evidenceBenchmark   String? @db.Text
+  description         String    @db.Text
+  engagementBenchmark String?   @db.Text
+  frequencyBenchmark  String?   @db.Text
+  evidenceBenchmark   String?   @db.Text
 
   @@unique([indicatorCode, level])
 }
@@ -203,21 +203,21 @@ model IndicatorLevel {
 // ---------------------------------------------------------------------------
 
 model AssessmentCycle {
-  id               Int       @id @default(autoincrement())
-  schoolId         Int
-  school           School    @relation(fields: [schoolId], references: [id])
-  cycleNumber      Int       // 1, 2, 3... per school
-  startedAt        DateTime  @default(now())
-  confirmedAt      DateTime?
-  confirmedById    Int?
-  confirmedBy      User?     @relation("CycleConfirmedBy", fields: [confirmedById], references: [id])
+  id              Int              @id @default(autoincrement())
+  schoolId        Int
+  school          School           @relation(fields: [schoolId], references: [id])
+  cycleNumber     Int // 1, 2, 3... per school
+  startedAt       DateTime         @default(now())
+  confirmedAt     DateTime?
+  confirmedById   Int?
+  confirmedBy     User?            @relation("CycleConfirmedBy", fields: [confirmedById], references: [id])
   // DRAFT | CONFIRMED — once CONFIRMED, ratings/evidence/device/network
   // become immutable (enforced in routes/school.js, not just the UI); the
   // only way to change anything further is to start a continuation cycle.
-  status           String    @default("DRAFT")
-  previousCycleId  Int?      @unique
-  previousCycle    AssessmentCycle? @relation("CycleContinuation", fields: [previousCycleId], references: [id])
-  nextCycle        AssessmentCycle? @relation("CycleContinuation")
+  status          String           @default("DRAFT")
+  previousCycleId Int?             @unique
+  previousCycle   AssessmentCycle? @relation("CycleContinuation", fields: [previousCycleId], references: [id])
+  nextCycle       AssessmentCycle? @relation("CycleContinuation")
 
   ratings          IndicatorRating[]
   plan             DevelopmentPlan?
@@ -229,61 +229,74 @@ model AssessmentCycle {
 
 // Order 675 Annex 2 numeric device counts — feeds the D2 compliance check.
 model DeviceInventory {
-  id                    Int    @id @default(autoincrement())
-  cycleId               Int    @unique
+  id                    Int             @id @default(autoincrement())
+  cycleId               Int             @unique
   cycle                 AssessmentCycle @relation(fields: [cycleId], references: [id])
-  classroomPCs          Int    @default(0)
-  interactivePanels     Int    @default(0)
-  itRoomPCs             Int    @default(0)
-  managementPCs         Int    @default(0)
-  methodicalCentrePCs   Int    @default(0)
-  libraryPCs            Int    @default(0)
-  printers              Int    @default(0)
-  multifunctionPrinters Int    @default(0)
+  classroomPCs          Int             @default(0)
+  interactivePanels     Int             @default(0)
+  itRoomPCs             Int             @default(0)
+  managementPCs         Int             @default(0)
+  methodicalCentrePCs   Int             @default(0)
+  libraryPCs            Int             @default(0)
+  printers              Int             @default(0)
+  multifunctionPrinters Int             @default(0)
 }
 
 // Order 675 Annex 5 network/security checklist — feeds the D1 compliance check.
 model NetworkChecklist {
-  id                Int    @id @default(autoincrement())
-  cycleId           Int    @unique
-  cycle             AssessmentCycle @relation(fields: [cycleId], references: [id])
-  wifiWholeSchool   Boolean @default(false)
-  subnetsSeparated  Boolean @default(false)
-  wifi80211n        Boolean @default(false)
-  wifi80211ac       Boolean @default(false)
-  firewallActive    Boolean @default(false)
-  contentFiltering  Boolean @default(false)
+  id               Int             @id @default(autoincrement())
+  cycleId          Int             @unique
+  cycle            AssessmentCycle @relation(fields: [cycleId], references: [id])
+  wifiWholeSchool  Boolean         @default(false)
+  subnetsSeparated Boolean         @default(false)
+  wifi80211n       Boolean         @default(false)
+  wifi80211ac      Boolean         @default(false)
+  firewallActive   Boolean         @default(false)
+  contentFiltering Boolean         @default(false)
 }
 
 model IndicatorRating {
-  id            Int      @id @default(autoincrement())
+  id            Int             @id @default(autoincrement())
   cycleId       Int
   cycle         AssessmentCycle @relation(fields: [cycleId], references: [id])
   indicatorCode String
-  indicator     Indicator @relation(fields: [indicatorCode], references: [code])
+  indicator     Indicator       @relation(fields: [indicatorCode], references: [code])
+  // ADMINISTRATION | TEAM | AGREED.
+  //
+  // The school's administration and its team rate every parameter
+  // independently and neither sees the other while doing it; the principal
+  // then records what the two sides settled on. The agreed value is a third
+  // reading, not a copy of either — the point of discussing a gap is that the
+  // answer can be neither number.
+  //
+  // AGREED is the official record: it is what the wheel, the dashboards, the
+  // exports and the public pages read, and what confirmation checks. Defaulted
+  // so that anything written by code unaware of tracks lands on the official
+  // record rather than in a working draft.
+  track         String          @default("AGREED")
   // 0-5, or null if not yet rated in this cycle (a first-cycle draft starts
   // every indicator as an unrated placeholder row, not a missing row — see
   // cycleService.startFirstCycle).
   level         Int?
   // MAINTAINED | GREW | DECAYED | null (first cycle, no prior state to compare)
   changeState   String?
-  comment       String?  @db.Text // Digipeegel-style justification/exception field (UC-S3)
-  updatedAt     DateTime @updatedAt
+  comment       String?         @db.Text // Digipeegel-style justification/exception field (UC-S3)
+  updatedAt     DateTime        @updatedAt
 
   evidences Evidence[]
 
-  @@unique([cycleId, indicatorCode])
+  @@unique([cycleId, indicatorCode, track])
 }
 
 model Evidence {
-  id          Int      @id @default(autoincrement())
+  id          Int             @id @default(autoincrement())
   ratingId    Int
   rating      IndicatorRating @relation(fields: [ratingId], references: [id])
-  type        String   // document | observation_log | survey | usage_data | it_audit | photo | minutes | certification | external_validation
-  description String   @db.Text
+  type        String // document | observation_log | survey | usage_data | it_audit | photo | minutes | certification | external_validation
+  description String          @db.Text
   source      String?
   filePath    String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime        @default(now())
   // set true once a peer/meta-mentor validation record exists for this
   // indicator/cycle — this is the flag the donation-matching eligibility
   // gate (Process 5, step 3) checks. See ValidationRecord below.
@@ -293,10 +306,10 @@ model ValidationRecord {
   id              Int      @id @default(autoincrement())
   cycleId         Int
   reviewerName    String
-  reviewerType    String   // peer_school | meta_mentor | external_evaluator
-  indicatorCode   String?  // null = validates the whole cycle
-  verdict         String   // agree | disagree
-  reliabilityNote String?  // broadly_reliable | optimistic | conservative
+  reviewerType    String // peer_school | meta_mentor | external_evaluator
+  indicatorCode   String? // null = validates the whole cycle
+  verdict         String // agree | disagree
+  reliabilityNote String? // broadly_reliable | optimistic | conservative
   notes           String?  @db.Text
   createdAt       DateTime @default(now())
 }
@@ -306,27 +319,27 @@ model ValidationRecord {
 // ---------------------------------------------------------------------------
 
 model DevelopmentPlan {
-  id           Int       @id @default(autoincrement())
-  cycleId      Int       @unique
-  cycle        AssessmentCycle @relation(fields: [cycleId], references: [id])
-  publishedAt  DateTime?
-  fundingSource String?
-  approvingAuthority String?
-  stakeholderConsultationNotes String? @db.Text
+  id                           Int             @id @default(autoincrement())
+  cycleId                      Int             @unique
+  cycle                        AssessmentCycle @relation(fields: [cycleId], references: [id])
+  publishedAt                  DateTime?
+  fundingSource                String?
+  approvingAuthority           String?
+  stakeholderConsultationNotes String?         @db.Text
 
   priorities PlanPriority[]
 }
 
 model PlanPriority {
-  id            Int      @id @default(autoincrement())
+  id            Int             @id @default(autoincrement())
   planId        Int
   plan          DevelopmentPlan @relation(fields: [planId], references: [id])
   indicatorCode String
-  indicator     Indicator @relation(fields: [indicatorCode], references: [code])
+  indicator     Indicator       @relation(fields: [indicatorCode], references: [code])
   currentLevel  Int
   targetLevel   Int
-  rationale     String   @db.Text
-  actions       String   @db.Text
+  rationale     String          @db.Text
+  actions       String          @db.Text
   responsible   String?
   timeline      String?
   // achieved | partial | dropped | in_progress (set at the START of the
@@ -360,9 +373,9 @@ model PlanPriority {
 // ---------------------------------------------------------------------------
 
 model FeedbackTicket {
-  id       Int    @id @default(autoincrement())
+  id       Int  @id @default(autoincrement())
   authorId Int
-  author   User   @relation("TicketAuthor", fields: [authorId], references: [id])
+  author   User @relation("TicketAuthor", fields: [authorId], references: [id])
 
   // OPEN | ACKNOWLEDGED | IN_PROGRESS | FIXED | WONT_FIX | DUPLICATE
   status   String @default("OPEN")
@@ -387,8 +400,8 @@ model FeedbackTicket {
   viewport       String?
   userAgent      String? @db.Text
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
   resolvedAt DateTime?
 
   triagedById   Int?

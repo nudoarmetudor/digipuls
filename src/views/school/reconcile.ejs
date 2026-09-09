@@ -1,0 +1,106 @@
+<h1><%= t('reconcile_title') %></h1>
+<p class="subtitle"><%= school.name %> · <%= t('cycle') %> <%= cycle.cycleNumber %></p>
+
+<% if (errorMessage) { %>
+  <div class="flash flash-error" role="alert"><%= errorMessage %></div>
+<% } %>
+
+<% if (predatesTracks) { %>
+  <div class="card card-flat">
+    <p style="margin:0;"><%= t('reconcile_predates') %></p>
+  </div>
+<% } else { %>
+  <p><%= t('reconcile_intro') %></p>
+<% } %>
+
+<% if (!predatesTracks) { %>
+<div class="card card-flat">
+  <p>
+    <b><%= t('reconcile_outstanding') %></b>
+    <%= t('reconcile_counts', {
+      unsettled: summary.unsettled.length,
+      differing: summary.differing.length,
+      incomplete: summary.incomplete.length,
+    }) %>
+  </p>
+  <% if (summary.unsettled.length === 0) { %>
+    <p class="small"><%= t('reconcile_all_settled') %></p>
+  <% } else { %>
+    <p class="small"><%= t('reconcile_blocks_confirm') %></p>
+  <% } %>
+</div>
+<% } %>
+
+<div class="table-scroll">
+  <table>
+    <caption><%= t('reconcile_caption') %></caption>
+    <thead>
+      <tr>
+        <th scope="col"><%= t('indicator') %></th>
+        <th scope="col"><%= t('reconcile_administration') %></th>
+        <th scope="col"><%= t('reconcile_team') %></th>
+        <th scope="col"><%= t('reconcile_state') %></th>
+        <th scope="col"><%= t('reconcile_agreed') %></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% rows.forEach(function (row) { %>
+        <tr id="ind-<%= row.indicator.code %>">
+          <th scope="row" style="background:none;font-weight:400;color:inherit;">
+            <b><%= row.indicator.code %></b> — <%= row.indicator.name %>
+          </th>
+          <td class="num"><%= row.administrationLevel === null ? '—' : row.administrationLevel %></td>
+          <td class="num"><%= row.teamLevel === null ? '—' : row.teamLevel %></td>
+          <td>
+            <% if (row.state === 'agree') { %>
+              <span class="badge badge-confirmed"><%= t('reconcile_state_agree') %></span>
+            <% } else if (row.state === 'differ') { %>
+              <span class="badge badge-decayed"><%= t('reconcile_state_differ', { gap: row.gap }) %></span>
+            <% } else if (row.state === 'incomplete') { %>
+              <span class="badge badge-unvalidated"><%= t('reconcile_state_incomplete') %></span>
+            <% } else { %>
+              <span class="badge badge-maintained"><%= t('reconcile_state_empty') %></span>
+            <% } %>
+          </td>
+          <td>
+            <% if (canSettle) { %>
+              <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/reconcile/' + (row.indicator.code)) %>">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <div class="inline-fields">
+                  <div>
+                    <label class="visually-hidden" for="agreed-<%= row.indicator.code %>">
+                      <%= t('reconcile_agreed') %> — <%= row.indicator.code %>
+                    </label>
+                    <select id="agreed-<%= row.indicator.code %>" name="level">
+                      <% for (var lv = 0; lv <= 5; lv++) { %>
+                        <option value="<%= lv %>" <%- row.agreedLevel === lv ? 'selected' : '' %>><%= lv %></option>
+                      <% } %>
+                    </select>
+                  </div>
+                  <div>
+                    <button class="btn btn-sm" type="submit" style="margin-top:.15rem;">
+                      <%= t('reconcile_save') %><span class="visually-hidden"> — <%= row.indicator.code %></span>
+                    </button>
+                  </div>
+                </div>
+              </form>
+              <% if (!row.settled) { %>
+                <p class="help"><%= t('reconcile_not_settled') %></p>
+              <% } %>
+            <% } else { %>
+              <span class="num"><%= row.agreedLevel === null ? t('reconcile_not_settled') : row.agreedLevel %></span>
+            <% } %>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<% if (!canSettle) { %>
+  <p class="help" style="margin-top:1rem;"><%= t('reconcile_read_only', { track: t('reconcile_track_' + myTrack) }) %></p>
+<% } %>
+
+<div class="btn-row" style="margin-top:1.4rem;">
+  <a class="btn btn-secondary" href="<%= href('/school/cycles/' + (cycle.id)) %>"><%= t('reconcile_back') %></a>
+</div>

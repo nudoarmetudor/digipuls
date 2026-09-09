@@ -1,5 +1,6 @@
 const prisma = require('../config/db');
 const { INDICATORS } = require('../data/indicators');
+const { TRACKS, AGREED } = require('./tracks');
 
 /**
  * Starts a school's first assessment cycle: one draft IndicatorRating per
@@ -16,18 +17,20 @@ async function startFirstCycle(schoolId) {
       networkChecklist: { create: {} },
     },
   });
-  // Create a placeholder (unrated, level: null) row for every indicator up
-  // front. Without this, a brand-new school's very first cycle would have
-  // no IndicatorRating rows at all, and the rating-save route (which looks
-  // up an existing row by indicatorCode) would have nothing to find —
-  // silently blocking the single most important use case in the app.
-  await Promise.all(
-    INDICATORS.map((ind) =>
-      prisma.indicatorRating.create({
-        data: { cycleId: cycle.id, indicatorCode: ind.code, level: null, changeState: null },
-      })
-    )
-  );
+  // A placeholder (unrated, level: null) row for every indicator on every
+  // track, up front. Two reasons, and the first is older than tracks: without
+  // rows, a brand-new school's first cycle has nothing for the rating-save
+  // route to find, silently blocking the most important use case in the app.
+  //
+  // The second is that a missing row and an unrated row mean different things
+  // on the reconciliation screen — "nobody has looked at this" versus "this
+  // side has not answered" — and only actually creating them keeps the two
+  // distinguishable without inventing a third state.
+  await prisma.indicatorRating.createMany({
+    data: INDICATORS.flatMap((ind) => TRACKS.map((track) => ({
+      cycleId: cycle.id, indicatorCode: ind.code, track, level: null, changeState: null,
+    }))),
+  });
   return cycle;
 }
 
@@ -43,7 +46,13 @@ async function startContinuationCycle(schoolId) {
   const priorCycle = await prisma.assessmentCycle.findFirst({
     where: { schoolId, status: 'CONFIRMED' },
     orderBy: { cycleNumber: 'desc' },
-    include: { ratings: true, deviceInventory: true, networkChecklist: true },
+    // The agreed track only: a continuation cycle starts from what the school
+    // officially recorded last time, not from either side's working draft.
+    include: {
+      ratings: { where: { track: AGREED } },
+      deviceInventory: true,
+      networkChecklist: true,
+    },
   });
   if (!priorCycle) {
     throw new Error('No confirmed prior cycle to continue from — use startFirstCycle instead.');
@@ -90,20 +99,21 @@ async function startContinuationCycle(schoolId) {
   // Pre-populate each indicator's rating with the prior level as the
   // starting point. changeState stays null until the team actively
   // confirms maintained/grew/decayed for it (see routes/assessment.js).
+  // Every track starts from last cycle's agreed level, so both sides are
+  // adjusting a shared baseline rather than re-deriving one from nothing.
   const priorByIndicator = new Map(priorCycle.ratings.map((r) => [r.indicatorCode, r]));
-  await Promise.all(
-    INDICATORS.map((ind) => {
+  await prisma.indicatorRating.createMany({
+    data: INDICATORS.flatMap((ind) => {
       const prior = priorByIndicator.get(ind.code);
-      return prisma.indicatorRating.create({
-        data: {
-          cycleId: newCycle.id,
-          indicatorCode: ind.code,
-          level: prior ? prior.level : 0,
-          changeState: null,
-        },
-      });
-    })
-  );
+      return TRACKS.map((track) => ({
+        cycleId: newCycle.id,
+        indicatorCode: ind.code,
+        track,
+        level: prior ? prior.level : 0,
+        changeState: null,
+      }));
+    }),
+  });
 
   return newCycle;
 }
@@ -115,7 +125,7 @@ async function startContinuationCycle(schoolId) {
 async function setContinuationRating(ratingId, newLevel, comment) {
   const rating = await prisma.indicatorRating.findUnique({
     where: { id: ratingId },
-    include: { cycle: { include: { previousCycle: { include: { ratings: true } } } } },
+    include: { cycle: { include: { previousCycle: { include: { ratings: { where: { track: AGREED } } } } } } },
   });
   if (!rating) throw new Error('Rating not found');
 

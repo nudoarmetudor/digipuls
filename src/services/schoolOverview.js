@@ -50,7 +50,14 @@ async function schoolsWithLatestCycle(where = {}) {
       territory: true,
       cycles: {
         orderBy: { cycleNumber: 'desc' },
-        include: { ratings: true, deviceInventory: true, networkChecklist: true, plan: true },
+        // AGREED only. Everything built on this — the national dashboard, the
+        // compliance monitor, the partner and training views, the CSV export,
+        // the public bands — reads the school's official record and never a
+        // working track.
+        include: {
+          ratings: { where: { track: 'AGREED' } },
+          deviceInventory: true, networkChecklist: true, plan: true,
+        },
       },
     },
   });

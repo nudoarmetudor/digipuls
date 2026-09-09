@@ -223,6 +223,34 @@ function templatesFor(lang) {
     }],
     ['public/school-summary.ejs', { school, hasData: false }],
 
+    ['school/reconcile.ejs', {
+      school: { id: 1, name: 'LT „Boris Dînga” — Criuleni' },
+      cycle: { id: 4, cycleNumber: 1, status: 'DRAFT' },
+      rows: [
+        { indicator: { code: 'A1', name: 'Viziune' }, administrationLevel: 4, teamLevel: 2,
+          agreedLevel: 3, settled: true, state: 'differ', gap: 2 },
+        { indicator: { code: 'A2', name: 'Conducere' }, administrationLevel: 1, teamLevel: 1,
+          agreedLevel: null, settled: false, state: 'agree', gap: 0 },
+        { indicator: { code: 'B1', name: 'Infrastructură' }, administrationLevel: null, teamLevel: 5,
+          agreedLevel: null, settled: false, state: 'incomplete', gap: null },
+        { indicator: { code: 'B2', name: 'Rețea' }, administrationLevel: null, teamLevel: null,
+          agreedLevel: null, settled: false, state: 'empty', gap: null },
+      ],
+      summary: { unsettled: ['A2', 'B1', 'B2'], differing: ['A1'], incomplete: ['B1'], untouched: ['B2'] },
+      canSettle: true, myTrack: 'ADMINISTRATION', errorMessage: null, predatesTracks: false,
+    }],
+    // The same page for a mentor, who sees the gaps but cannot record what was
+    // agreed — a different rendering, not a hidden button.
+    ['school/reconcile.ejs', {
+      school: { id: 1, name: 'LT „Boris Dînga” — Criuleni' },
+      cycle: { id: 4, cycleNumber: 1, status: 'DRAFT' },
+      rows: [
+        { indicator: { code: 'A1', name: 'Viziune' }, administrationLevel: 4, teamLevel: 2,
+          agreedLevel: 3, settled: true, state: 'differ', gap: 2 },
+      ],
+      summary: { unsettled: [], differing: ['A1'], incomplete: [], untouched: [] },
+      canSettle: false, myTrack: 'TEAM', errorMessage: null, predatesTracks: true,
+    }],
     ['school/accounts.ejs', {
       school: { id: 1, name: 'LT „Boris Dînga” — Criuleni' },
       people: [

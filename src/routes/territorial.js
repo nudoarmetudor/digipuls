@@ -47,7 +47,7 @@ router.get('/schools/:id', async (req, res) => {
         // what is actually blocking confirmation rather than only counting
         // ratings.
         include: {
-          ratings: { include: { evidences: true } },
+          ratings: { where: { track: 'AGREED' }, include: { evidences: true } },
           deviceInventory: true,
           networkChecklist: true,
         },

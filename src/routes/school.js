@@ -12,6 +12,7 @@ const { computeStepStatuses, finalizeReviewStatus, overallProgress } = require('
 const { ValidationError, toLevel, toNonNegativeInt } = require('../utils/validate');
 const { mentorsForSchool } = require('../services/mentors');
 const { SCHOOL_ROLES } = require('../services/capabilities');
+const { trackForRole, AGREED, reconciliation, outstanding } = require('../services/tracks');
 
 const router = express.Router();
 // Both must hold: the role because every route below reads the session's
@@ -54,7 +55,7 @@ router.get('/', async (req, res) => {
     prisma.assessmentCycle.findMany({
       where: { schoolId: school.id },
       orderBy: { cycleNumber: 'desc' },
-      include: { ratings: true, plan: true },
+      include: { ratings: { where: { track: 'AGREED' } }, plan: true },
     }),
     // "Who do I ask when we get stuck" is the first question a school team
     // has, and the answer was already in the database — recorded on the
@@ -87,18 +88,38 @@ async function loadCycleForSchool(req, res, next) {
   const cycle = await prisma.assessmentCycle.findUnique({
     where: { id: Number(req.params.id) },
     include: {
+      // Every track. Which of them a given page means is decided below, not
+      // by the query, because one page needs all three.
       ratings: { include: { evidences: true } },
       deviceInventory: true,
       networkChecklist: true,
       plan: { include: { priorities: true } },
-      previousCycle: { include: { ratings: true } },
+      previousCycle: { include: { ratings: { where: { track: AGREED } } } },
     },
   });
   if (!cycle || cycle.schoolId !== activeSchoolId(req)) {
     return res.status(404).render('error', { title: res.locals.t('err_not_found'), message: res.locals.t('err_cycle_not_found') });
   }
+
+  // Three views of the same cycle, named so no route has to remember which
+  // filter it wanted:
+  //
+  //   allRatings     every track — the reconciliation screen
+  //   agreedRatings  the official record — confirmation, and anything a
+  //                  reader outside the school would see
+  //   ratings        this person's own working track, which is what the
+  //                  assessment pages show and edit. Everywhere else in the
+  //                  app `ratings` means the agreed record; inside the
+  //                  school's own workspace it means your own work, because
+  //                  showing someone the agreed column while they fill in
+  //                  theirs would be answering a question nobody asked.
+  const track = trackForRole(req.workspace ? req.workspace.role : null) || AGREED;
+  cycle.allRatings = cycle.ratings;
+  cycle.agreedRatings = cycle.ratings.filter((r) => r.track === AGREED);
+  cycle.ratings = cycle.ratings.filter((r) => r.track === track);
+  req.track = track;
   req.cycle = cycle;
-  next();
+  return next();
 }
 
 // A confirmed cycle is the school's official, on-the-record declaration —
@@ -250,7 +271,11 @@ router.post('/cycles/:id/ratings/:code', loadCycleForSchool, requireDraftCycle, 
 router.post('/cycles/:id/ratings/:code/evidence', loadCycleForSchool, requireDraftCycle, async (req, res) => {
   const cycle = req.cycle;
   const { code } = req.params;
-  const rating = cycle.ratings.find((r) => r.indicatorCode === code);
+  // Evidence hangs off the agreed row, not off the track of whoever uploaded
+  // it. Evidence supports the school's claim about itself; it is not one
+  // side's argument for their own number, and it has to survive reconciliation
+  // settling on a level neither side proposed.
+  const rating = cycle.agreedRatings.find((r) => r.indicatorCode === code);
   if (!rating) return res.status(400).send(res.locals.t('err_unknown_indicator'));
 
   const { type, description, source } = req.body;
@@ -302,13 +327,24 @@ router.post('/cycles/:id/confirm', requireCapability('school.manage'), loadCycle
   const cycle = req.cycle;
   if (cycle.status === 'CONFIRMED') return res.redirect(res.locals.href(`/school/cycles/${cycle.id}/plan`));
   const school = req.school;
-  const unrated = cycle.ratings.filter((r) => r.level === null || r.level === undefined);
+  // Confirmation is about the agreed record. A cycle cannot close while any
+  // parameter still lacks a level the two sides settled on — an unreconciled
+  // disagreement quietly becoming the official record is the failure the
+  // two-track design exists to prevent.
+  const unrated = cycle.agreedRatings.filter((r) => r.level === null || r.level === undefined);
   if (unrated.length > 0) {
-    const msg = encodeURIComponent(`${unrated.length} indicator(s) still need a rating before this cycle can be confirmed: ${unrated.map((r) => r.indicatorCode).join(', ')}.`);
-    return res.redirect(res.locals.href(`/school/cycles/${cycle.id}/step/review?error=${msg}`));
+    // Sent to the reconciliation screen rather than the review step, because
+    // that is where an unreconciled parameter is actually resolved.
+    //
+    // A key and a list of codes rather than a rendered sentence: the message
+    // is built on the other side from the translator, so nothing that arrives
+    // in the query string is ever printed as prose.
+    const codes = unrated.map((r) => r.indicatorCode).join(',');
+    return res.redirect(res.locals.href(
+      `/school/cycles/${cycle.id}/reconcile?error=agreed_missing&codes=${encodeURIComponent(codes)}`));
   }
   // Enforce the evidence threshold: Level 2+ requires at least one evidence item.
-  const missingEvidence = cycle.ratings.filter((r) => r.level >= 2 && r.evidences.length === 0);
+  const missingEvidence = cycle.agreedRatings.filter((r) => r.level >= 2 && r.evidences.length === 0);
   if (missingEvidence.length > 0) {
     const msg = encodeURIComponent(
       `${missingEvidence.length} indicator(s) are rated Level 2 or above without any evidence attached: ` +
@@ -324,6 +360,99 @@ router.post('/cycles/:id/confirm', requireCapability('school.manage'), loadCycle
   await logAction(req.session.user.id, 'CONFIRM_CYCLE', 'AssessmentCycle', cycle.id, null);
   res.redirect(res.locals.href(`/school/cycles/${cycle.id}/plan`));
 });
+
+// -------------------- Reconciliation --------------------
+//
+/**
+ * The only two things the reconciliation screen will say about a failed
+ * action, both built here from a key rather than from text that arrived in the
+ * URL. Indicator codes are checked against the instrument before being shown,
+ * so the list cannot become a channel for someone else's words.
+ */
+function reconcileError(req, res, indicators) {
+  const { error, codes } = req.query;
+  if (error === 'level') return res.locals.t('err_invalid_level');
+  if (error !== 'agreed_missing') return null;
+
+  const known = new Set(indicators.map((i) => i.code));
+  const named = String(codes || '').split(',').map((c) => c.trim()).filter((c) => known.has(c));
+  if (!named.length) return res.locals.t('reconcile_blocks_confirm');
+  return res.locals.t('err_agreed_missing', { n: named.length, codes: named.join(', ') });
+}
+
+//
+// One screen, nineteen rows: what administration said, what the team said, and
+// the gap. Rows where the two agree are quiet; rows where they differ are the
+// agenda for the conversation. The discussion happens in the room — the
+// software's job is to say precisely what there is to discuss, and then to
+// record what was settled.
+
+router.get('/cycles/:id/reconcile', loadCycleForSchool, async (req, res) => {
+  const cycle = req.cycle;
+  const localeData = getIndicatorData(req.lang);
+  const rows = reconciliation(cycle.allRatings, localeData.INDICATORS);
+
+  // A cycle assessed before the two tracks existed has an agreed level and
+  // two empty working columns. Saying "nobody has rated this" beside a real
+  // recorded level would be untrue; the page says what actually happened
+  // instead.
+  const predatesTracks = rows.every((r) => r.state === 'empty') && rows.some((r) => r.settled);
+
+  return res.render('school/reconcile', {
+    title: res.locals.t('reconcile_title'),
+    wide: true,
+    school: req.school,
+    cycle,
+    rows,
+    predatesTracks,
+    summary: outstanding(rows),
+    // Everyone in the school can see where the two readings differ; only the
+    // principal and the deputy can record what was agreed.
+    canSettle: res.locals.can('school.manage'),
+    myTrack: req.track,
+    errorMessage: reconcileError(req, res, localeData.INDICATORS),
+  });
+});
+
+router.post('/cycles/:id/reconcile/:code',
+  requireCapability('school.manage'), loadCycleForSchool, requireDraftCycle,
+  async (req, res) => {
+    const cycle = req.cycle;
+    const { code } = req.params;
+    const agreed = cycle.agreedRatings.find((r) => r.indicatorCode === code);
+    if (!agreed) return res.status(400).send(res.locals.t('err_unknown_indicator'));
+
+    let level;
+    try {
+      level = toLevel(req.body.level);
+    } catch (e) {
+      if (!(e instanceof ValidationError)) throw e;
+      return res.redirect(res.locals.href(`/school/cycles/${cycle.id}/reconcile?error=level#ind-${code}`));
+    }
+
+    // The same compliance floor the assessment enforces. It is a fact derived
+    // from the school's own equipment and network data, so agreeing on a
+    // higher number does not make it true.
+    if ((code === 'D1' || code === 'D2') && level > 0) {
+      const compliant = code === 'D1'
+        ? checkNetworkCompliance(cycle.networkChecklist).compliant
+        : (cycle.deviceInventory
+          ? checkDeviceCompliance(req.school, cycle.deviceInventory).compliant : false);
+      if (!compliant) level = 0;
+    }
+
+    if (cycle.previousCycleId) {
+      await cycleService.setContinuationRating(agreed.id, level, req.body.comment || null);
+    } else {
+      await prisma.indicatorRating.update({
+        where: { id: agreed.id },
+        data: { level, comment: req.body.comment || null },
+      });
+    }
+    await logAction(req.session.user.id, 'SET_AGREED_RATING', 'IndicatorRating', agreed.id,
+      `${code} -> level ${level}`);
+    return res.redirect(res.locals.href(`/school/cycles/${cycle.id}/reconcile#ind-${code}`));
+  });
 
 // -------------------- Development plan (Annex C) --------------------
 
@@ -405,7 +534,9 @@ router.get('/history', async (req, res) => {
   const cycles = await prisma.assessmentCycle.findMany({
     where: { schoolId: school.id, status: 'CONFIRMED' },
     orderBy: { cycleNumber: 'asc' },
-    include: { ratings: true },
+    // Progress over time is a history of what the school agreed, not of what
+    // either side proposed along the way.
+    include: { ratings: { where: { track: 'AGREED' } } },
   });
   const localeIndicators = getIndicatorData(req.lang).INDICATORS;
   const history = localeIndicators.map((ind) => ({

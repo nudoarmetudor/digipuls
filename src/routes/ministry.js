@@ -59,7 +59,9 @@ router.get('/schools/:id', async (req, res) => {
           // evidences so progressSummary can say which indicators are rated
           // Level 2+ with nothing attached — one of the two things that
           // actually blocks a school from confirming.
-          ratings: { include: { evidences: true } },
+          // The agreed track: the official record, not either side's working
+          // draft. Every reader outside the school sees only this.
+          ratings: { where: { track: 'AGREED' }, include: { evidences: true } },
           deviceInventory: true,
           networkChecklist: true,
           plan: { include: { priorities: true } },
