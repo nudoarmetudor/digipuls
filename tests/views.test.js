@@ -15,6 +15,7 @@ const {
   capabilityIsUsableBy, CAPABILITY_REQUIRES_ROLE,
 } = require('../src/services/capabilities');
 const { developerBlock, SEVERITIES, STATUSES } = require('../src/services/feedbackContext');
+const { buildTour } = require('../src/services/tour');
 
 const VIEWS = path.join(__dirname, '..', 'src', 'views');
 
@@ -502,6 +503,9 @@ function baseLocals(lang) {
     cspNonce: 'test-nonce',
     cspMeta: "default-src 'self'; script-src 'self' 'nonce-test-nonce'",
     demoMode: true,
+    // Set in app.js for every render; the layout builds the guided tutorial
+    // from it. See src/services/tour.js.
+    buildTour,
     title: 'Page',
     wide: false,
   };

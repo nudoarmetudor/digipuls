@@ -11,6 +11,7 @@
 %>
 <a class="feedback-toggle" href="<%= href('/feedback/new') %>?route=<%= encodeURIComponent(currentPath) %>"
    data-feedback-toggle
+   data-tour="feedback-toggle"
    data-endpoint="<%= href('/feedback/tickets') %>"
    data-route="<%= currentPath %>"
    data-view="<%= typeof viewName !== 'undefined' ? viewName : '' %>"

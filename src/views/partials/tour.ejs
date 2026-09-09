@@ -1,0 +1,45 @@
+<%
+/* The guided tutorial's payload and its side panel.
+
+   Everything the client script needs arrives here, already translated and
+   already filtered by what this person's position allows — see
+   services/tour.js. The script itself contains no text and no rules about who
+   may see what, which is what keeps the two from drifting apart.
+
+   Rendered only for the school positions. A metamentor or a ministry reader
+   gets nothing at all, not an empty panel: buildTour() returns no chapters for
+   them, and the toggle is not drawn.
+
+   The JSON sits in a <script type="application/json"> block rather than in a
+   data- attribute because it is several kilobytes of prose, and because a
+   parse failure there is loud instead of silent. It carries a nonce so it is
+   allowed by the page's content-security policy. */
+const tourChapters = buildTour(lang, function (need) {
+  if (need === 'ctx.multiWorkspace') return workspaces && workspaces.length > 1;
+  return can(need);
+});
+const tourUi = {
+  title: t('tour_title'),
+  subtitle: t('tour_subtitle'),
+  close: t('tour_close'),
+  next: t('tour_next'),
+  back: t('tour_back'),
+  finish: t('tour_finish'),
+  restart: t('tour_restart'),
+  stepOf: t('tour_step_of', { n: '{n}', total: '{total}' }),
+  chapters: t('tour_chapters'),
+  highlight: t('tour_highlight'),
+  notHere: t('tour_not_here'),
+  notHereYet: t('tour_not_here_yet'),
+  go: t('tour_go'),
+  here: t('tour_here'),
+  progressLabel: t('tour_progress_label'),
+};
+%>
+<% if (tourChapters.length) { %>
+  <script type="application/json" id="tour-data" nonce="<%= cspNonce %>"><%-
+    JSON.stringify({ chapters: tourChapters, ui: tourUi, prefix: href('/').replace(/\/$/, '') })
+      .replace(/</g, '\\u003c')
+  %></script>
+  <script src="/static/js/tour.js" defer></script>
+<% } %>

@@ -1233,3 +1233,203 @@ footer a { color: var(--primary-text); }
   border-radius: 3px;
   padding: 0 0.3rem;
 }
+
+/* --- The guided tutorial --------------------------------------------------
+   A panel on the right listing the chapters, plus a spotlight around whatever
+   control the current step is about.
+
+   The spotlight is a ring with an enormous shadow rather than a full-screen
+   cover with a hole cut in it: it dims the page without intercepting a single
+   click, so the reader can actually do the thing being pointed at while it is
+   still highlighted. Everything the tutorial adds is pointer-events:none apart
+   from the panel and the bubble's own buttons. */
+
+.tour-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: var(--tap);
+  padding: 0 0.7rem;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.tour-toggle:hover { background: rgba(255, 255, 255, 0.12); }
+.tour-toggle.is-on {
+  background: var(--signal);
+  border-color: var(--signal);
+  color: var(--teal-900);
+  font-weight: 700;
+}
+
+.tour-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 60;
+  width: min(360px, 100vw);
+  height: 100vh;
+  overflow-y: auto;
+  padding: 1rem 1.1rem 2rem;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  box-shadow: -4px 0 18px rgba(12, 35, 44, 0.12);
+}
+
+/* On a wide screen the page is pushed aside rather than covered, so the
+   control being highlighted does not end up underneath the panel. */
+@media (min-width: 901px) {
+  html.tour-open body { padding-right: min(360px, 100vw); }
+}
+
+.tour-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.6rem;
+}
+.tour-head h2 { margin: 0; font-size: 1.05rem; }
+.tour-sub { margin: 0.2rem 0 0; font-size: 0.82rem; color: var(--text-muted); }
+.tour-close {
+  min-width: var(--tap);
+  min-height: var(--tap);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.tour-current { margin: 0.9rem 0 0; }
+.tour-current-chapter {
+  margin: 0;
+  font-size: 0.74rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.tour-current h3 { margin: 0.15rem 0 0.4rem; font-size: 1rem; }
+.tour-current-body { margin: 0; font-size: 0.9rem; }
+.tour-where {
+  margin: 0.6rem 0 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.tour-where-here { color: var(--signal-text); font-weight: 600; }
+.tour-go { margin-top: 0.5rem; }
+.tour-count { font-size: 0.78rem; color: var(--text-muted); }
+.tour-current .tour-count { display: block; margin-top: 0.6rem; }
+
+.tour-nav { display: flex; gap: 0.5rem; margin: 0.4rem 0 0.9rem; }
+.tour-nav .btn { flex: 1; }
+
+.tour-spot-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  padding: 0.4rem 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.tour-list { margin-top: 0.9rem; }
+.tour-chapter { border-bottom: 1px solid var(--border); }
+.tour-chapter > summary {
+  cursor: pointer;
+  padding: 0.55rem 0;
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+.tour-chapter-intro {
+  margin: 0 0 0.4rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.tour-chapter ol { margin: 0 0 0.6rem; padding-left: 1.2rem; }
+.tour-chapter li { margin: 0.1rem 0; }
+.tour-step-btn {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.86rem;
+  text-align: left;
+  padding: 0.3rem 0.2rem;
+  cursor: pointer;
+  width: 100%;
+  border-radius: var(--radius-sm);
+}
+.tour-step-btn:hover { background: var(--surface-alt); }
+.tour-step-btn.is-current {
+  background: var(--primary-soft);
+  color: var(--primary-text);
+  font-weight: 700;
+}
+
+.tour-restart {
+  margin-top: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.84rem;
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+}
+
+.tour-spot {
+  position: fixed;
+  z-index: 55;
+  pointer-events: none;
+  border: 3px solid var(--signal);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 0 0 9999px rgba(12, 35, 44, 0.55);
+  transition: top var(--motion) linear, left var(--motion) linear,
+              width var(--motion) linear, height var(--motion) linear;
+}
+
+.tour-bubble {
+  position: fixed;
+  z-index: 58;
+  padding: 0.8rem 0.9rem;
+  background: var(--surface);
+  border: 2px solid var(--signal);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 6px 20px rgba(12, 35, 44, 0.28);
+}
+.tour-bubble h3 { margin: 0 0 0.3rem; font-size: 0.95rem; }
+.tour-bubble p { margin: 0; font-size: 0.86rem; }
+.tour-bubble-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.7rem;
+}
+.tour-bubble-nav .tour-count { margin-right: auto; }
+
+/* The bubble repeats the panel's words for someone reading the page rather
+   than the panel. On a narrow screen there is no room for both, so the panel
+   is the one that survives. */
+@media (max-width: 900px) {
+  html.tour-open .tour-bubble { display: none; }
+  .tour-panel { width: 100vw; height: 62vh; top: auto; bottom: 0; border-top: 1px solid var(--border); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-spot { transition: none; }
+}
+[data-motion="reduced"] .tour-spot { transition: none; }
+
+@media print {
+  .tour-panel, .tour-spot, .tour-bubble, .tour-toggle { display: none !important; }
+}

@@ -8,12 +8,12 @@
 <p><%= t('school_acct_intro') %></p>
 
 <div class="btn-row" style="margin:1rem 0;">
-  <a class="btn btn-sm" href="<%= href('/school/accounts/new') %>"><%= t('school_acct_new') %></a>
+  <a class="btn btn-sm" data-tour="accounts-new" href="<%= href('/school/accounts/new') %>"><%= t('school_acct_new') %></a>
 </div>
 
 <div class="card">
   <div class="table-scroll">
-    <table>
+    <table data-tour="accounts-table">
       <caption><%= t('school_acct_people', { n: people.length }) %></caption>
       <thead>
         <tr>

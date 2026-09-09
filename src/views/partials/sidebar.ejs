@@ -70,7 +70,7 @@ const ICONS = {
   globe: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M3 12h18M12 3c2.5 2.5 3.5 6 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-6-3.5-9s1-6.5 3.5-9',
 };
 %>
-<nav id="sidebar" class="sidebar" aria-label="<%= t('nav_primary_label') %>">
+<nav id="sidebar" class="sidebar" data-tour="sidebar" aria-label="<%= t('nav_primary_label') %>">
   <form method="POST" action="/preferences" class="sidebar-toggle-form">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <%

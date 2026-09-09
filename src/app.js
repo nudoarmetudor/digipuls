@@ -8,6 +8,7 @@ const prefs = require('./utils/prefs');
 const { loadAccount } = require('./middleware/auth');
 const { extractWorkspace, loadWorkspace } = require('./middleware/workspace');
 const { homeFor } = require('./services/capabilities');
+const { buildTour } = require('./services/tour');
 const { csrf } = require('./middleware/csrf');
 const { securityHeaders } = require('./middleware/securityHeaders');
 const { throttle } = require('./middleware/rateLimit');
@@ -93,6 +94,10 @@ app.use((req, res, next) => {
 // explicitly from every route.
 app.use((req, res, next) => {
   res.locals.currentUser = req.session.user || null;
+  // The guided tutorial builds itself in the view, from the translator and
+  // the capability set that are already locals there. See
+  // src/services/tour.js and views/partials/tour.ejs.
+  res.locals.buildTour = buildTour;
   // Unprefixed: used for aria-current comparisons against route paths.
   res.locals.currentPath = req.path;
   // Gates the login page's demo-accounts panel — off by default once real

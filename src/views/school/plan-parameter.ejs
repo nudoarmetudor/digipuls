@@ -25,7 +25,7 @@
 </div>
 
 <!-- What the school is committing to ------------------------------------- -->
-<div class="card">
+<div class="card" data-tour="param-requirements">
   <h2 class="plain-heading">
     <%= row.advancing ? t('plan_req_advance_title') : t('plan_req_maintain_title') %>
   </h2>
@@ -74,7 +74,7 @@
 
       <% if (targetChoices.length) { %>
         <label for="target-level"><%= t('plan_target') %></label>
-        <select id="target-level" name="targetLevel">
+        <select id="target-level" name="targetLevel" data-tour="param-target">
           <% targetChoices.forEach(function (lv) { %>
             <option value="<%= lv %>" <%- row.targetLevel === lv ? 'selected' : '' %>><%= lv %></option>
           <% }) %>
@@ -94,7 +94,7 @@
 <% } %>
 
 <!-- Initiatives ----------------------------------------------------------- -->
-<h2><%= t('plan_initiatives') %></h2>
+<h2 data-tour="param-initiatives"><%= t('plan_initiatives') %></h2>
 <p><%= t('plan_initiatives_intro') %></p>
 
 <% if (row.initiatives.length === 0) { %>
@@ -168,7 +168,7 @@
       </div>
     </form>
 
-    <h4 class="plain-heading" style="margin-top:1rem;"><%= t('plan_kpis') %></h4>
+    <h4 class="plain-heading" style="margin-top:1rem;" data-tour="param-kpis"><%= t('plan_kpis') %></h4>
     <% if (ini.kpis.length === 0) { %>
       <p class="help"><%= t('plan_no_kpis') %></p>
     <% } else { %>

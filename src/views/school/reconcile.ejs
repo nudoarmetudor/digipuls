@@ -14,7 +14,7 @@
 <% } %>
 
 <% if (!predatesTracks) { %>
-<div class="card card-flat">
+<div class="card card-flat" data-tour="reconcile-summary">
   <p>
     <b><%= t('reconcile_outstanding') %></b>
     <%= t('reconcile_counts', {
@@ -32,7 +32,7 @@
 <% } %>
 
 <div class="table-scroll">
-  <table>
+  <table data-tour="reconcile-table">
     <caption><%= t('reconcile_caption') %></caption>
     <thead>
       <tr>
@@ -71,7 +71,7 @@
                     <label class="visually-hidden" for="agreed-<%= row.indicator.code %>">
                       <%= t('reconcile_agreed') %> — <%= row.indicator.code %>
                     </label>
-                    <select id="agreed-<%= row.indicator.code %>" name="level">
+                    <select id="agreed-<%= row.indicator.code %>" name="level" data-tour="reconcile-agreed">
                       <% for (var lv = 0; lv <= 5; lv++) { %>
                         <option value="<%= lv %>" <%- row.agreedLevel === lv ? 'selected' : '' %>><%= lv %></option>
                       <% } %>

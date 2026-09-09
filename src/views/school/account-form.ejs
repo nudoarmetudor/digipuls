@@ -10,7 +10,7 @@
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
     <label for="acct-name"><%= t('school_acct_person') %></label>
-    <input type="text" id="acct-name" name="name" required autofocus
+    <input type="text" id="acct-name" name="name" data-tour="account-name" required autofocus
            value="<%= (body && body.name) || '' %>">
     <p class="help"><%= t('school_acct_name_help') %></p>
 

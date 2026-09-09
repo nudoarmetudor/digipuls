@@ -11,7 +11,7 @@ const nc = cycle.networkChecklist || {};
 
 <% if (errorMessage) { %><div class="flash flash-error" role="alert"><%= errorMessage %></div><% } %>
 
-<div class="card">
+<div class="card" data-tour="infra">
   <h2 class="plain-heading"><%= t('order675_data_title') %></h2>
   <p class="small"><%= t('order675_data_caption') %></p>
   <p class="small"><%= t('order675_scope_note') %></p>

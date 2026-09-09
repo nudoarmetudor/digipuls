@@ -22,7 +22,7 @@
     </p>
     <p class="small"><%= t('publish_note') %></p>
     <% if (can('school.publish')) { %>
-      <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/publish') %>">
+      <form method="POST" data-tour="publish-assessment" action="<%= href('/school/cycles/' + (cycle.id) + '/publish') %>">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <input type="hidden" name="publish" value="<%= cycle.publishedAt ? 'false' : 'true' %>">
         <button class="btn btn-sm" type="submit">
@@ -45,7 +45,7 @@
   <h2 class="plain-heading"><%= t('reconcile_title') %></h2>
   <p class="small"><%= t('reconcile_overview_note') %></p>
   <div class="btn-row">
-    <a class="btn btn-sm" href="<%= href('/school/cycles/' + (cycle.id) + '/reconcile') %>"><%= t('nav_reconcile') %></a>
+    <a class="btn btn-sm" data-tour="reconcile-link" href="<%= href('/school/cycles/' + (cycle.id) + '/reconcile') %>"><%= t('nav_reconcile') %></a>
   </div>
 </div>
 

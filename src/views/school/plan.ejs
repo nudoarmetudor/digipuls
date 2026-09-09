@@ -8,7 +8,7 @@
       <p><%= t('plan_needs_confirmed') %></p>
     <% } else if (canManage) { %>
       <p><%= t('plan_open_intro') %></p>
-      <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/plan/open') %>">
+      <form method="POST" data-tour="plan-open" action="<%= href('/school/cycles/' + (cycle.id) + '/plan/open') %>">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <button class="btn" type="submit"><%= t('plan_open') %></button>
       </form>
@@ -45,7 +45,7 @@
   <p><%= t('plan_intro') %></p>
 
   <div class="table-scroll">
-    <table>
+    <table data-tour="plan-table">
       <caption><%= t('plan_parameters_caption') %></caption>
       <thead>
         <tr>
@@ -86,7 +86,7 @@
   </div>
 
   <% if (canManage) { %>
-    <div class="card">
+    <div class="card" data-tour="plan-details">
       <h2 class="plain-heading"><%= t('plan_details') %></h2>
       <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/plan/details') %>">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
@@ -121,10 +121,10 @@
 
   <div class="btn-row" style="margin-top:1.2rem;">
     <a class="btn btn-secondary" href="<%= href('/school/cycles/' + (cycle.id) + '/plan/document') %>"><%= t('plan_view_document') %></a>
-    <a class="btn btn-secondary" href="<%= href('/school/cycles/' + (cycle.id) + '/plan/report/INTERIM') %>"><%= t('report_title_INTERIM') %></a>
+    <a class="btn btn-secondary" data-tour="plan-report-link" href="<%= href('/school/cycles/' + (cycle.id) + '/plan/report/INTERIM') %>"><%= t('report_title_INTERIM') %></a>
     <a class="btn btn-secondary" href="<%= href('/school/cycles/' + (cycle.id) + '/plan/report/FINAL') %>"><%= t('report_title_FINAL') %></a>
     <% if (canPublish && !plan.publishedAt) { %>
-      <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/plan/publish') %>">
+      <form method="POST" data-tour="plan-publish" action="<%= href('/school/cycles/' + (cycle.id) + '/plan/publish') %>">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <button class="btn" type="submit"><%= t('plan_publish_button') %></button>
       </form>

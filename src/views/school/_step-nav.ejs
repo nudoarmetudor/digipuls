@@ -8,7 +8,7 @@
 const stepLabels = { A: t('step_A'), B: t('step_B'), C: t('step_C'), D: t('step_D'), infra: t('step_infra'), review: t('step_review') };
 const stateLabels = { grey: t('step_state_grey'), blue: t('step_state_blue'), red: t('step_state_red'), green: t('step_state_green') };
 %>
-<nav class="step-nav" aria-label="<%= t('steps_label') %>">
+<nav class="step-nav" data-tour="step-nav" aria-label="<%= t('steps_label') %>">
   <% stepStatuses.forEach(s => {
        let status = s.status;
        if (s.kind === 'review' && cycle.status === 'CONFIRMED') status = 'green';

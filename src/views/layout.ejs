@@ -20,5 +20,8 @@
   <% if (currentUser && can('feedback.submit')) { %>
     <script src="/static/js/feedback.js" defer></script>
   <% } %>
+  <% if (currentUser && can('view.school')) { %>
+    <%- include('partials/tour') %>
+  <% } %>
 </body>
 </html>

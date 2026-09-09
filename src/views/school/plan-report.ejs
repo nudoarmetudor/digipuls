@@ -16,7 +16,7 @@
       <% if (!timing.due) { %> — <%= t('report_not_due_yet') %><% } %>
     <% } %>
   </p>
-  <p class="small" style="margin:.4rem 0 0;">
+  <p class="small" style="margin:.4rem 0 0;" data-tour="report-progress">
     <%= t('report_counts', {
       initiatives: progress.initiatives,
       done: progress.byStatus.DONE,
@@ -73,7 +73,7 @@
                     <div class="inline-fields">
                       <div>
                         <label class="visually-hidden" for="actual-<%= k.id %>"><%= t('report_actual') %> — <%= k.measure %></label>
-                        <input type="text" id="actual-<%= k.id %>" name="actual" value="<%= k.actual || '' %>"
+                        <input type="text" id="actual-<%= k.id %>" name="actual" data-tour="report-actual" value="<%= k.actual || '' %>"
                                placeholder="<%= t('report_actual_placeholder') %>">
                       </div>
                       <div>
@@ -100,7 +100,7 @@
     <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/plan/report/' + (kind)) %>">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <label class="visually-hidden" for="narrative"><%= t('report_narrative') %></label>
-      <textarea id="narrative" name="narrative" rows="8"><%= report && report.narrative ? report.narrative : '' %></textarea>
+      <textarea id="narrative" name="narrative" rows="8" data-tour="report-narrative"><%= report && report.narrative ? report.narrative : '' %></textarea>
       <div class="btn-row" style="margin-top:.8rem;">
         <button class="btn btn-sm" type="submit"><%= t('report_save_narrative') %></button>
       </div>
@@ -118,7 +118,7 @@
     <a class="btn btn-secondary" href="<%= href('/school/cycles/' + (cycle.id) + '/plan/report/' + (kind) + '/document') %>"><%= t('report_view_document') %></a>
   <% } %>
   <% if (canPublish) { %>
-    <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/plan/report/' + (kind) + '/publish') %>"
+    <form method="POST" data-tour="report-publish" action="<%= href('/school/cycles/' + (cycle.id) + '/plan/report/' + (kind) + '/publish') %>"
           data-confirm="<%= t('report_publish_confirm') %>">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <button class="btn" type="submit">
