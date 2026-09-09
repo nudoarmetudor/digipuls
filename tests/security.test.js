@@ -664,3 +664,29 @@ test('an address is normalised before it is stored', () => {
   assert.match(audit, /replace\(\/\^::ffff:\//, 'the IPv4-mapped prefix is stripped');
   assert.match(audit, /slice\(0, 45\)/, 'and the value is bounded to the column width');
 });
+
+test('password spraying is bounded once addresses can be seen', () => {
+  // The attack the per-account rule cannot touch: one password against five
+  // hundred logins never gives any single account more than one failure. It
+  // needs a counter on the source, which needed a deployment that can see one.
+  const { MAX_PER_ADDRESS, MAX_PER_ACCOUNT, COHORT } = require('../src/middleware/loginRateLimit');
+  const source = fs.readFileSync(
+    path.join(__dirname, '..', 'src', 'middleware', 'loginRateLimit.js'), 'utf8');
+
+  assert.ok(MAX_PER_ADDRESS > MAX_PER_ACCOUNT,
+    'one address may hold several fumbling people, so it gets more room than one account');
+  assert.ok(MAX_PER_ADDRESS < COHORT * 3,
+    'but far less than the global ceiling, or it would never bite');
+
+  // Dormant while clientId() cannot distinguish anyone: a counter keyed on the
+  // constant "all" is the global counter in disguise, and having two of those
+  // silently doubles a limit somebody sized on purpose.
+  assert.match(source, /if \(limitsAreGlobal\) return null;/,
+    'the address rule must switch itself off when addresses are not real');
+  assert.match(source, /id && id !== 'all' \? id : null/);
+
+  // A success clears the account, never the address or the global budget.
+  const clear = source.slice(source.indexOf('function clearAttempts'));
+  assert.ok(!/perAddress\.clear/.test(clear) && !/overall\.clear/.test(clear),
+    'guessing one password must not refund the budget spent on the others');
+});

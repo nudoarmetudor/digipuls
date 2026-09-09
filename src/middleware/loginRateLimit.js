@@ -32,7 +32,7 @@
 // see utils/clientId.js.
 
 const { createLimiter } = require('./rateLimit');
-const { limitsAreGlobal } = require('../utils/clientId');
+const { clientId, limitsAreGlobal } = require('../utils/clientId');
 
 const WINDOW_MS = 15 * 60 * 1000;
 
@@ -60,8 +60,28 @@ const MAX_PER_ACCOUNT = 10;
 const COHORT = 70;
 const MAX_OVERALL = 1000;
 
+// Per source address. Dormant until this deployment can actually see one:
+// clientId() returns the constant "all" while TRUST_CLIENT_IP is off, and a
+// counter keyed on a constant is the global counter wearing a disguise — so
+// it is skipped entirely rather than quietly duplicating the ceiling.
+//
+// Sized for the attack it exists to stop. Password spraying — one password
+// against five hundred logins — never trips the per-account rule, because no
+// single account sees more than one failure. Thirty failures from one address
+// in fifteen minutes is far past anyone typing badly and far short of a run
+// worth making.
+const MAX_PER_ADDRESS = 30;
+
 const perAccount = createLimiter({ windowMs: WINDOW_MS, max: MAX_PER_ACCOUNT });
+const perAddress = createLimiter({ windowMs: WINDOW_MS, max: MAX_PER_ADDRESS });
 const overall = createLimiter({ windowMs: WINDOW_MS, max: MAX_OVERALL });
+
+/** The address key, or null when this deployment cannot tell visitors apart. */
+function addressKey(req) {
+  if (limitsAreGlobal) return null;
+  const id = clientId(req);
+  return id && id !== 'all' ? id : null;
+}
 
 function accountKey(req) {
   return ((req.body && req.body.login) || '').toLowerCase().trim();
@@ -69,7 +89,9 @@ function accountKey(req) {
 
 function loginRateLimit(req, res, next) {
   const login = accountKey(req);
-  if (perAccount.exceeded(login) || overall.exceeded('all')) {
+  const address = addressKey(req);
+  if (perAccount.exceeded(login) || (address && perAddress.exceeded(address))
+      || overall.exceeded('all')) {
     const t = res.locals.t || ((k) => k);
     res.setHeader('Retry-After', Math.ceil(WINDOW_MS / 1000));
     return res.status(429).render('auth/login', {
@@ -83,18 +105,22 @@ function loginRateLimit(req, res, next) {
 
 function recordFailedAttempt(req) {
   perAccount.record(accountKey(req));
+  const address = addressKey(req);
+  if (address) perAddress.record(address);
   overall.record('all');
 }
 
 function clearAttempts(req) {
-  // Only this account's counter is cleared. The overall counter deliberately
-  // survives a success: an attacker who guesses one password should not
-  // thereby reset the budget they were spending on everything else.
+  // Only this account's counter is cleared. The overall and per-address
+  // counters deliberately survive a success: an attacker who guesses one
+  // password should not thereby reset the budget they were spending on
+  // everything else.
   perAccount.clear(accountKey(req));
 }
 
 module.exports = {
   loginRateLimit, recordFailedAttempt, clearAttempts,
-  WINDOW_MS, MAX_PER_ACCOUNT, MAX_OVERALL, COHORT, limitsAreGlobal,
+  WINDOW_MS, MAX_PER_ACCOUNT, MAX_PER_ADDRESS, MAX_OVERALL, COHORT, limitsAreGlobal,
+  _limiterForTests: { perAddress },
   _limiters: { perAccount, overall },
 };
