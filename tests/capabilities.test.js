@@ -346,3 +346,32 @@ test('the three posts a coordinator holds are nested, not identical', () => {
   [...mentor].forEach((c) => assert.ok(coordinator.has(c),
     `a coordinator should also be able to ${c}`));
 });
+
+test('provisioning a post with its role defaults stores no overrides at all', () => {
+  // The trap this guards: ROLE_DEFAULTS is a role's *own* list and omits the
+  // baseline every role carries, so passing it as the desired set asks for the
+  // baseline to be revoked — and overridesFrom dutifully records that. It was
+  // live for sixteen posts, every one of the twelve schools included, and the
+  // symptom was silent: nobody could report a problem, and the control simply
+  // was not there to notice.
+  ROLES.forEach((role) => {
+    const fromDefaults = overridesFrom(role, [...defaultsFor(role)]);
+    assert.deepStrictEqual(fromDefaults, [], `${role}: provisioning stored an override`);
+
+    const effective = capabilitiesFor(role, fromDefaults);
+    assert.ok(effective.has('feedback.submit'),
+      `${role}: every role can report a problem`);
+  });
+});
+
+test('the role list alone is not a complete capability set', () => {
+  // Stated as a test rather than a comment, because the two look
+  // interchangeable at a call site and are not.
+  ROLES.forEach((role) => {
+    const own = new Set(ROLE_DEFAULTS[role] || []);
+    if (own.has('feedback.submit')) return; // ADMIN holds everything explicitly
+    assert.deepStrictEqual(overridesFrom(role, ROLE_DEFAULTS[role] || []),
+      [{ capability: 'feedback.submit', granted: false }],
+      `${role}: passing ROLE_DEFAULTS revokes the baseline — use defaultsFor()`);
+  });
+});

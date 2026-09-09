@@ -27,12 +27,14 @@ review's own priority tiers, kept here so none of it gets silently dropped.
   live on `School`, not the cycle — so Order 675 compliance for a 2026 cycle
   can be recalculated against 2028's enrolment if the school record is
   refreshed later. Every cycle needs its own frozen baseline snapshot.
-- **Real per-person actor identity.** Today's `SCHOOL_TEAM` role is one
-  shared login per school. A genuine multi-actor process (principal, deputy
-  principal, teacher contributors, ICT coordinator, external validator,
-  meta-mentor) needs individual accounts and per-rating attribution
-  (`createdBy`/`updatedBy`/`confirmedBy` already exists at the cycle level;
-  extend to individual ratings/evidence).
+- **Per-rating attribution.** The larger half of this is done: `SCHOOL_TEAM`
+  became three real positions, the shared per-school logins have been retired,
+  and a school-level account must now be named after a person — an unclaimed
+  credential reaches nothing but a screen asking who holds it
+  (`src/services/personalAccount.js`). What is left is attribution below the
+  cycle: `confirmedBy` and `publishedBy` exist on the cycle, but an individual
+  rating and its evidence still do not record who entered them. The two-track
+  split records which *side* wrote a rating, not which person.
 - **External validation workflow.** `ValidationRecord` currently has no
   enforced relationship integrity (free-text reviewer name, no route-level
   workflow tying it to submission → review → resolution). Either build the

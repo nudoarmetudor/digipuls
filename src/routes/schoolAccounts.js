@@ -29,7 +29,7 @@ const { activeSchoolId } = require('../middleware/workspace');
 const { logAction } = require('../services/audit');
 const { generateTempPassword } = require('../utils/password');
 const {
-  SCHOOL_ROLES, ROLE_DEFAULTS, overridesFrom, capabilitiesFor,
+  SCHOOL_ROLES, defaultsFor, overridesFrom, capabilitiesFor,
 } = require('../services/capabilities');
 const { nameProblem, normaliseName } = require('../services/personalAccount');
 
@@ -215,7 +215,14 @@ router.post('/', async (req, res) => {
         create: [{
           role: GRANTABLE_ROLE,
           schoolId: school,
-          capabilities: { create: overridesFrom(GRANTABLE_ROLE, ROLE_DEFAULTS[GRANTABLE_ROLE]) },
+          // defaultsFor(), not ROLE_DEFAULTS: the latter is the role's own
+          // list and excludes the baseline every role carries, so passing it
+          // here asks for the baseline to be *revoked* — which is exactly what
+          // happened, and every mentor a school created was quietly left
+          // unable to report a problem. This stores no override rows at all,
+          // which is the honest description of an account provisioned with its
+          // role's defaults.
+          capabilities: { create: overridesFrom(GRANTABLE_ROLE, [...defaultsFor(GRANTABLE_ROLE)]) },
         }],
       },
     },

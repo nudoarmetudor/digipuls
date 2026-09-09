@@ -178,3 +178,17 @@ test('the payload is served in a way a strict policy allows', () => {
   assert.match(partial, /replace\(\/</,
     'the JSON must not be able to close its own script element');
 });
+
+test('the elements the script hides are actually hidden', () => {
+  // Both of these carry a display rule of their own, and an author display
+  // rule beats the browser's [hidden] { display: none }. Without the override
+  // the toggle appears for someone with JavaScript switched off — a button
+  // that does nothing — and the "open that screen" link shows on every step,
+  // including the ones whose control is on the page in front of you. It looked
+  // right in a screenshot; only reading the computed style showed it.
+  const css = fs.readFileSync(
+    path.join(__dirname, '..', 'public', 'css', 'style.css'), 'utf8');
+  ['.tour-toggle[hidden]', '.tour-go[hidden]'].forEach(function (rule) {
+    assert.ok(css.includes(rule), rule + ' needs an explicit display:none');
+  });
+});

@@ -1244,6 +1244,14 @@ footer a { color: var(--primary-text); }
    still highlighted. Everything the tutorial adds is pointer-events:none apart
    from the panel and the bubble's own buttons. */
 
+/* The UA rule for [hidden] is display:none, and any author rule that sets
+   display beats it. Both of these do — so without this, the toggle is visible
+   before the script claims it (a button that does nothing for anyone with
+   JavaScript off) and the "open that screen" link shows on every step,
+   including the ones whose control is right there on the page. */
+.tour-toggle[hidden],
+.tour-go[hidden] { display: none !important; }
+
 .tour-toggle {
   display: inline-flex;
   align-items: center;

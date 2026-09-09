@@ -388,7 +388,9 @@ router.post('/:id/assignments', requireGrant, async (req, res) => {
       role,
       ...scope,
       label,
-      capabilities: { create: overridesFrom(role, ROLE_DEFAULTS[role] || []) },
+      // See the note in routes/schoolAccounts.js: ROLE_DEFAULTS omits the
+      // baseline, so using it as the desired set stores a revocation of it.
+      capabilities: { create: overridesFrom(role, [...defaultsFor(role)]) },
     },
   });
   await logAction(req.session.user.id, 'ADD_ASSIGNMENT', 'Assignment', assignment.id, `user ${userId}: ${role}`);
