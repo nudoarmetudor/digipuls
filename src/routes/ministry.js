@@ -44,7 +44,12 @@ router.get('/', async (req, res) => {
   });
 });
 
-router.get('/export.csv', async (req, res) => {
+// Deliberately not /export.csv. The extension is what made the CDN treat this
+// as a static asset and serve one Ministry download to the whole internet; a
+// path with no extension is not offered to that heuristic in the first place.
+// The file the browser saves is still named by Content-Disposition, so nothing
+// changes for the person clicking it.
+router.get('/export', async (req, res) => {
   const allRows = await schoolsWithLatestCycle();
   const rows = filterRows(allRows, req.query);
   await logAction(req.session.user.id, 'EXPORT_CSV', 'School', null, `${rows.length} rows`);

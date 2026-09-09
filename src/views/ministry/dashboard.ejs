@@ -82,7 +82,7 @@ const avgByDomain = { A: avgA, B: avgB, C: avgC, D: avgD };
     <div class="btn-row" style="margin-top:0.8rem;">
       <button class="btn btn-sm" type="submit"><%= t('apply') %></button>
       <a class="btn btn-sm btn-secondary" href="<%= href('/ministry') %>"><%= t('reset') %></a>
-      <a class="btn btn-sm btn-secondary" href="<%= href('/ministry/export.csv?' + (new URLSearchParams(query).toString())) %>"><%= t('export_csv') %></a>
+      <a class="btn btn-sm btn-secondary" href="<%= href('/ministry/export?' + (new URLSearchParams(query).toString())) %>"><%= t('export_csv') %></a>
     </div>
   </form>
 </div>

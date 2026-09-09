@@ -67,6 +67,24 @@ function securityHeaders(req, res, next) {
   // buttons clicked by someone who thinks they are clicking something else.
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-Content-Type-Options', 'nosniff');
+
+  // Never store a response from this app in a shared cache.
+  //
+  // This is not theoretical. The production host puts a CDN in front of the
+  // app, the app said nothing about caching, and the CDN decided for itself:
+  // it treated /ministry/export.csv as a static file because of the
+  // extension, cached the signed-in Ministry's download, and then served that
+  // copy — the whole national dataset, every school's domain averages — to
+  // anonymous visitors. It was found by asking for the URL with no session and
+  // getting 200 with an `age` header on it.
+  //
+  // Every other route escaped only because the CDN happened not to cache HTML.
+  // That is luck, not a policy, and it has to be stated by the origin instead.
+  // /static is exempt: those files are public by definition and caching them
+  // is the reason they are on a separate path.
+  if (!String(req.path || '').startsWith('/static/')) {
+    res.setHeader('Cache-Control', 'private, no-store, max-age=0');
+  }
   // URLs here name a workspace and a school. Sending those to another origin
   // in a Referer header would disclose which institution someone is working
   // on, so cross-origin navigations get the bare origin only.

@@ -440,7 +440,7 @@ test('a post editor is not drawn for someone who cannot save it', () => {
 test('the policy is also delivered in the document, since the host strips the header', () => {
   const { securityHeaders, META_IGNORED } = require('../src/middleware/securityHeaders');
   const res = { locals: {}, headers: {}, setHeader(k, v) { this.headers[k] = v; } };
-  securityHeaders({}, res, () => {});
+  securityHeaders({ path: '/ministry' }, res, () => {});
 
   const header = res.headers['Content-Security-Policy'];
   const meta = res.locals.cspMeta;
@@ -538,4 +538,51 @@ test('limits are honestly labelled as global on this deployment', () => {
   assert.strictEqual(limitsAreGlobal, true);
   assert.strictEqual(clientId({ ip: '203.0.113.9' }), 'all',
     'every visitor counts against the same bucket, and the code says so');
+});
+
+test('no response from this app may be stored in a shared cache', () => {
+  // Found on the live site, not here: the host runs a CDN in front of the app,
+  // the app said nothing about caching, and the CDN decided for itself. It
+  // treated /ministry/export.csv as a static file because of the extension,
+  // kept the signed-in Ministry's download, and served that copy — every
+  // school's name, district and domain averages — to anyone who asked for the
+  // URL with no session at all. The give-away was a 200 with an `age` header
+  // on an unauthenticated request.
+  //
+  // Every other route escaped only because that CDN happens not to cache HTML,
+  // which is luck rather than a policy. The origin now says so itself.
+  const { securityHeaders } = require('../src/middleware/securityHeaders');
+
+  const headersFor = (path) => {
+    const res = { locals: {}, headers: {}, setHeader(k, v) { this.headers[k] = v; } };
+    securityHeaders({ path }, res, () => {});
+    return res.headers;
+  };
+
+  ['/', '/ministry', '/ministry/export', '/school/cycles/1/plan/document', '/admin/audit-log']
+    .forEach((path) => {
+      const value = headersFor(path)['Cache-Control'] || '';
+      assert.match(value, /no-store/, `${path} may not be stored`);
+      assert.match(value, /private/, `${path} may not be stored by a shared cache`);
+    });
+
+  // The one exemption, and the reason /static exists as its own path.
+  assert.strictEqual(headersFor('/static/css/style.css')['Cache-Control'], undefined);
+});
+
+test('the download is not shaped like a static file', () => {
+  // The header above is the rule; this is the belt to its braces. A CDN that
+  // caches by file extension never gets the chance to make that judgement
+  // about a URL that has no extension.
+  const source = fs.readFileSync(
+    path.join(__dirname, '..', 'src', 'routes', 'ministry.js'), 'utf8');
+  assert.ok(!/router\.get\('\/export\.csv'/.test(source),
+    'the export must not sit on a path ending in .csv');
+  assert.match(source, /router\.get\('\/export'/);
+  // The saved file is still named, so nothing changes for the person clicking.
+  assert.match(source, /filename="digipuls-schools\.csv"/);
+
+  const view = fs.readFileSync(
+    path.join(__dirname, '..', 'src', 'views', 'ministry', 'dashboard.ejs'), 'utf8');
+  assert.ok(!view.includes('/ministry/export.csv'), 'and no link may point at the old one');
 });
