@@ -10,6 +10,16 @@
 
 <%- include('_step-nav', { activeStep: null }) %>
 
+<% if (cycle.status === 'CONFIRMED') { %>
+  <div class="card">
+    <h2 class="plain-heading"><%= t('plan_title') %></h2>
+    <p class="small"><%= t('plan_overview_note') %></p>
+    <div class="btn-row">
+      <a class="btn btn-sm" href="<%= href('/school/cycles/' + (cycle.id) + '/plan') %>"><%= t('school_view_plan') %></a>
+    </div>
+  </div>
+<% } %>
+
 <div class="card">
   <h2 class="plain-heading"><%= t('reconcile_title') %></h2>
   <p class="small"><%= t('reconcile_overview_note') %></p>

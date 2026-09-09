@@ -1,0 +1,282 @@
+<h1><%= row.indicator.code %> — <%= row.indicator.name %></h1>
+<p class="subtitle">
+  <%= school.name %> ·
+  <a href="<%= href('/school/cycles/' + (cycle.id) + '/plan') %>"><%= t('plan_title') %></a>
+</p>
+
+<% if (errorMessage) { %>
+  <div class="flash flash-error" role="alert"><%= errorMessage %></div>
+<% } %>
+
+<div class="card card-flat">
+  <p style="margin:0;">
+    <b><%= t('plan_now') %>:</b> <%= row.currentLevel %>
+    <% if (currentRequirements) { %> — <%= currentRequirements.levelName %><% } %>
+    ·
+    <b><%= t('plan_target') %>:</b> <%= row.targetLevel %>
+    <% if (row.requirements) { %> — <%= row.requirements.levelName %><% } %>
+    ·
+    <% if (row.advancing) { %>
+      <span class="badge badge-grew"><%= t('plan_intent_advance') %></span>
+    <% } else { %>
+      <span class="badge badge-maintained"><%= t('plan_intent_maintain') %></span>
+    <% } %>
+  </p>
+</div>
+
+<!-- What the school is committing to ------------------------------------- -->
+<div class="card">
+  <h2 class="plain-heading">
+    <%= row.advancing ? t('plan_req_advance_title') : t('plan_req_maintain_title') %>
+  </h2>
+  <p class="small"><%= t('plan_req_general') %></p>
+
+  <% if (row.requirements) { %>
+    <p><b><%= t('level') %> <%= row.requirements.level %> — <%= row.requirements.levelName %></b></p>
+    <p><%= row.requirements.description %></p>
+    <% if (row.requirements.benchmarks.length) { %>
+      <dl>
+        <% row.requirements.benchmarks.forEach(function (b) { %>
+          <dt><%= t('plan_benchmark_' + b.key) %></dt>
+          <dd><%= b.value %></dd>
+        <% }) %>
+      </dl>
+    <% } %>
+  <% } else { %>
+    <p class="help"><%= t('plan_req_none') %></p>
+  <% } %>
+
+  <% if (row.advancing && currentRequirements) { %>
+    <details style="margin-top:.8rem;">
+      <summary><%= t('plan_req_current_summary', { level: row.currentLevel }) %></summary>
+      <p><%= currentRequirements.description %></p>
+    </details>
+  <% } %>
+</div>
+
+<!-- The choice ------------------------------------------------------------ -->
+<% if (canManage) { %>
+  <div class="card">
+    <h2 class="plain-heading"><%= t('plan_choice_title') %></h2>
+    <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/plan/parameter/' + (row.indicator.code)) %>">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <fieldset style="border:none;padding:0;margin:0;">
+        <legend class="visually-hidden"><%= t('plan_intent') %></legend>
+        <label class="checkbox" for="intent-maintain">
+          <input type="radio" id="intent-maintain" name="intent" value="MAINTAIN" <%- row.advancing ? '' : 'checked' %>>
+          <span><%= t('plan_intent_maintain_label', { level: row.currentLevel }) %></span>
+        </label>
+        <label class="checkbox" for="intent-advance">
+          <input type="radio" id="intent-advance" name="intent" value="ADVANCE" <%- row.advancing ? 'checked' : '' %>>
+          <span><%= t('plan_intent_advance_label') %></span>
+        </label>
+      </fieldset>
+
+      <% if (targetChoices.length) { %>
+        <label for="target-level"><%= t('plan_target') %></label>
+        <select id="target-level" name="targetLevel">
+          <% targetChoices.forEach(function (lv) { %>
+            <option value="<%= lv %>" <%- row.targetLevel === lv ? 'selected' : '' %>><%= lv %></option>
+          <% }) %>
+        </select>
+      <% } else { %>
+        <p class="help"><%= t('plan_at_top') %></p>
+      <% } %>
+
+      <label for="rationale"><%= t('plan_rationale') %></label>
+      <textarea id="rationale" name="rationale"><%= row.priority.rationale || '' %></textarea>
+
+      <div class="btn-row" style="margin-top:.8rem;">
+        <button class="btn" type="submit"><%= t('plan_save_choice') %></button>
+      </div>
+    </form>
+  </div>
+<% } %>
+
+<!-- Initiatives ----------------------------------------------------------- -->
+<h2><%= t('plan_initiatives') %></h2>
+<p><%= t('plan_initiatives_intro') %></p>
+
+<% if (row.initiatives.length === 0) { %>
+  <div class="card card-flat"><p style="margin:0;"><%= t('plan_no_initiatives') %></p></div>
+<% } %>
+
+<% row.initiatives.forEach(function (ini) { %>
+  <section class="card" id="i<%= ini.id %>" aria-labelledby="i<%= ini.id %>-h">
+    <h3 id="i<%= ini.id %>-h"><%= ini.title %></h3>
+
+    <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/plan/initiatives/' + (ini.id)) %>">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+      <label for="title-<%= ini.id %>"><%= t('plan_ini_title') %></label>
+      <input type="text" id="title-<%= ini.id %>" name="title" value="<%= ini.title %>" required>
+
+      <label for="desc-<%= ini.id %>"><%= t('plan_ini_description') %></label>
+      <textarea id="desc-<%= ini.id %>" name="description"><%= ini.description || '' %></textarea>
+
+      <div class="inline-fields">
+        <div>
+          <label for="resp-<%= ini.id %>"><%= t('plan_ini_responsible') %></label>
+          <select id="resp-<%= ini.id %>" name="responsibleUserId">
+            <option value=""><%= t('plan_ini_person_none') %></option>
+            <% people.forEach(function (p) { %>
+              <option value="<%= p.id %>" <%- ini.responsibleUserId === p.id ? 'selected' : '' %>><%= p.name %></option>
+            <% }) %>
+          </select>
+          <label class="visually-hidden" for="respname-<%= ini.id %>"><%= t('plan_ini_person_name') %></label>
+          <input type="text" id="respname-<%= ini.id %>" name="responsibleName"
+                 placeholder="<%= t('plan_ini_person_name') %>" value="<%= ini.responsibleName || '' %>">
+        </div>
+        <div>
+          <label for="sup-<%= ini.id %>"><%= t('plan_ini_supervisor') %></label>
+          <select id="sup-<%= ini.id %>" name="supervisorUserId">
+            <option value=""><%= t('plan_ini_person_none') %></option>
+            <% people.forEach(function (p) { %>
+              <option value="<%= p.id %>" <%- ini.supervisorUserId === p.id ? 'selected' : '' %>><%= p.name %></option>
+            <% }) %>
+          </select>
+          <label class="visually-hidden" for="supname-<%= ini.id %>"><%= t('plan_ini_person_name') %></label>
+          <input type="text" id="supname-<%= ini.id %>" name="supervisorName"
+                 placeholder="<%= t('plan_ini_person_name') %>" value="<%= ini.supervisorName || '' %>">
+        </div>
+      </div>
+      <p class="help"><%= t('plan_ini_person_help') %></p>
+
+      <div class="inline-fields">
+        <div>
+          <label for="starts-<%= ini.id %>"><%= t('plan_ini_starts') %></label>
+          <input type="date" id="starts-<%= ini.id %>" name="startsOn"
+                 value="<%= ini.startsOn ? new Date(ini.startsOn).toISOString().slice(0, 10) : '' %>">
+        </div>
+        <div>
+          <label for="due-<%= ini.id %>"><%= t('plan_ini_due') %></label>
+          <input type="date" id="due-<%= ini.id %>" name="dueOn"
+                 value="<%= ini.dueOn ? new Date(ini.dueOn).toISOString().slice(0, 10) : '' %>">
+        </div>
+        <div>
+          <label for="status-<%= ini.id %>"><%= t('plan_ini_status') %></label>
+          <select id="status-<%= ini.id %>" name="status">
+            <% statuses.forEach(function (st) { %>
+              <option value="<%= st %>" <%- ini.status === st ? 'selected' : '' %>><%= t('plan_status_' + st) %></option>
+            <% }) %>
+          </select>
+        </div>
+      </div>
+
+      <div class="btn-row" style="margin-top:.8rem;">
+        <button class="btn btn-sm" type="submit"><%= t('plan_ini_save') %></button>
+      </div>
+    </form>
+
+    <h4 class="plain-heading" style="margin-top:1rem;"><%= t('plan_kpis') %></h4>
+    <% if (ini.kpis.length === 0) { %>
+      <p class="help"><%= t('plan_no_kpis') %></p>
+    <% } else { %>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col"><%= t('plan_kpi_measure') %></th>
+              <th scope="col"><%= t('plan_kpi_target') %></th>
+              <th scope="col"><span class="visually-hidden"><%= t('school_acct_actions') %></span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% ini.kpis.forEach(function (k) { %>
+              <tr>
+                <td><%= k.measure %></td>
+                <td><%= k.target %></td>
+                <td>
+                  <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/plan/kpis/' + (k.id) + '/delete') %>">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <button class="btn btn-sm btn-secondary" type="submit">
+                      <%= t('plan_kpi_remove') %><span class="visually-hidden"> — <%= k.measure %></span>
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+
+    <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/plan/initiatives/' + (ini.id) + '/kpis') %>">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="inline-fields">
+        <div>
+          <label for="kpim-<%= ini.id %>"><%= t('plan_kpi_measure') %></label>
+          <input type="text" id="kpim-<%= ini.id %>" name="measure">
+        </div>
+        <div>
+          <label for="kpit-<%= ini.id %>"><%= t('plan_kpi_target') %></label>
+          <input type="text" id="kpit-<%= ini.id %>" name="target">
+        </div>
+        <div>
+          <button class="btn btn-sm" type="submit" style="margin-top:1.7rem;"><%= t('plan_kpi_add') %></button>
+        </div>
+      </div>
+    </form>
+
+    <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/plan/initiatives/' + (ini.id) + '/delete') %>"
+          data-confirm="<%= t('plan_ini_remove_confirm') %>" style="margin-top:.8rem;">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button class="btn btn-sm btn-danger" type="submit">
+        <%= t('plan_ini_remove') %><span class="visually-hidden"> — <%= ini.title %></span>
+      </button>
+    </form>
+  </section>
+<% }) %>
+
+<div class="card">
+  <h3 class="plain-heading"><%= t('plan_ini_add') %></h3>
+  <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/plan/parameter/' + (row.indicator.code) + '/initiatives') %>">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+    <label for="new-title"><%= t('plan_ini_title') %></label>
+    <input type="text" id="new-title" name="title" required>
+
+    <label for="new-desc"><%= t('plan_ini_description') %></label>
+    <textarea id="new-desc" name="description"></textarea>
+
+    <div class="inline-fields">
+      <div>
+        <label for="new-resp"><%= t('plan_ini_responsible') %></label>
+        <select id="new-resp" name="responsibleUserId">
+          <option value=""><%= t('plan_ini_person_none') %></option>
+          <% people.forEach(function (p) { %>
+            <option value="<%= p.id %>"><%= p.name %></option>
+          <% }) %>
+        </select>
+        <label class="visually-hidden" for="new-respname"><%= t('plan_ini_person_name') %></label>
+        <input type="text" id="new-respname" name="responsibleName" placeholder="<%= t('plan_ini_person_name') %>">
+      </div>
+      <div>
+        <label for="new-sup"><%= t('plan_ini_supervisor') %></label>
+        <select id="new-sup" name="supervisorUserId">
+          <option value=""><%= t('plan_ini_person_none') %></option>
+          <% people.forEach(function (p) { %>
+            <option value="<%= p.id %>"><%= p.name %></option>
+          <% }) %>
+        </select>
+        <label class="visually-hidden" for="new-supname"><%= t('plan_ini_person_name') %></label>
+        <input type="text" id="new-supname" name="supervisorName" placeholder="<%= t('plan_ini_person_name') %>">
+      </div>
+    </div>
+
+    <div class="inline-fields">
+      <div>
+        <label for="new-starts"><%= t('plan_ini_starts') %></label>
+        <input type="date" id="new-starts" name="startsOn">
+      </div>
+      <div>
+        <label for="new-due"><%= t('plan_ini_due') %></label>
+        <input type="date" id="new-due" name="dueOn">
+      </div>
+    </div>
+
+    <div class="btn-row" style="margin-top:.8rem;">
+      <button class="btn" type="submit"><%= t('plan_ini_add') %></button>
+    </div>
+  </form>
+</div>

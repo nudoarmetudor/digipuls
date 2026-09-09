@@ -66,12 +66,14 @@ model User {
   // takes effect immediately instead of at the person's next sign-in.
   isActive Boolean @default(true)
 
-  auditEntries    AuditLogEntry[]
-  confirmedCycles AssessmentCycle[] @relation("CycleConfirmedBy")
-  capabilities    UserCapability[]
-  assignments     Assignment[]
-  feedbackTickets FeedbackTicket[]  @relation("TicketAuthor")
-  triagedTickets  FeedbackTicket[]  @relation("TicketTriager")
+  auditEntries           AuditLogEntry[]
+  confirmedCycles        AssessmentCycle[] @relation("CycleConfirmedBy")
+  initiativesResponsible PlanInitiative[]  @relation("InitiativeResponsible")
+  initiativesSupervised  PlanInitiative[]  @relation("InitiativeSupervisor")
+  capabilities           UserCapability[]
+  assignments            Assignment[]
+  feedbackTickets        FeedbackTicket[]  @relation("TicketAuthor")
+  triagedTickets         FeedbackTicket[]  @relation("TicketTriager")
 }
 
 // One post a person holds: a role, at one institution.
@@ -327,24 +329,103 @@ model DevelopmentPlan {
   approvingAuthority           String?
   stakeholderConsultationNotes String?         @db.Text
 
+  // A DigiPlan runs two years, with a report at the halfway point. The dates
+  // bound every initiative underneath it: a deadline outside the plan's own
+  // life is a plan for somebody else's cycle.
+  startsOn DateTime?
+  endsOn   DateTime?
+
   priorities PlanPriority[]
 }
 
+// One row per parameter per plan — all nineteen, not a shortlist.
+//
+// A school that advances three parameters is also committing to hold sixteen
+// where they are, and holding a level is work with its own requirements. Making
+// every parameter a row is what stops "the plan" meaning only the exciting part.
 model PlanPriority {
   id            Int             @id @default(autoincrement())
   planId        Int
   plan          DevelopmentPlan @relation(fields: [planId], references: [id])
   indicatorCode String
   indicator     Indicator       @relation(fields: [indicatorCode], references: [code])
+  // ADVANCE | MAINTAIN. Maintain is the default, because staying where you are
+  // is the commitment a school makes by not choosing otherwise.
+  intent        String          @default("MAINTAIN")
+  // Where the parameter stood when the plan was opened, copied from the agreed
+  // level of the confirmed assessment — so the plan does not shift under the
+  // school if a later cycle moves it.
   currentLevel  Int
+  // Equal to currentLevel when the intent is MAINTAIN.
   targetLevel   Int
-  rationale     String          @db.Text
-  actions       String          @db.Text
+  rationale     String?         @db.Text
+  // Legacy free text from the five-priority plan this replaced. Kept so an
+  // older plan still renders; nothing writes them now — the work lives in
+  // initiatives.
+  actions       String?         @db.Text
   responsible   String?
   timeline      String?
   // achieved | partial | dropped | in_progress (set at the START of the
   // *next* cycle, when reviewing this priority's outcome)
   outcomeStatus String?
+
+  initiatives PlanInitiative[]
+
+  @@unique([planId, indicatorCode])
+}
+
+// What the school will actually do about one parameter.
+//
+// The requirements for reaching a level are general by design: they say what
+// level 4 means, not what this school must do on Tuesday. Closing that gap is
+// the school's own work, and this is where it is written down. A parameter
+// carries as many initiatives as it needs; an initiative belongs to exactly one
+// parameter.
+model PlanInitiative {
+  id          Int          @id @default(autoincrement())
+  priorityId  Int
+  priority    PlanPriority @relation(fields: [priorityId], references: [id], onDelete: Cascade)
+  title       String
+  description String?      @db.Text
+
+  // Who does it, and who oversees it. Linked to an account where the person has
+  // one — a school of fifty teachers has about seven — and otherwise simply
+  // written down, because a name without a login is still the answer to "who is
+  // responsible".
+  responsibleUserId Int?
+  responsibleUser   User?   @relation("InitiativeResponsible", fields: [responsibleUserId], references: [id])
+  responsibleName   String?
+  supervisorUserId  Int?
+  supervisorUser    User?   @relation("InitiativeSupervisor", fields: [supervisorUserId], references: [id])
+  supervisorName    String?
+
+  startsOn  DateTime?
+  dueOn     DateTime?
+  // NOT_STARTED | IN_PROGRESS | DONE | DROPPED
+  status    String    @default("NOT_STARTED")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  kpis PlanKpi[]
+
+  @@index([priorityId])
+}
+
+// How the school will know the initiative worked.
+//
+// The measure and the target that counts as success, kept apart so the interim
+// report can put what actually happened beside what was promised, rather than
+// asking a reader to re-read a sentence and decide.
+model PlanKpi {
+  id           Int            @id @default(autoincrement())
+  initiativeId Int
+  initiative   PlanInitiative @relation(fields: [initiativeId], references: [id], onDelete: Cascade)
+  measure      String
+  target       String
+  // Filled in at the interim report, and again at the end of the plan.
+  actual       String?
+
+  @@index([initiativeId])
 }
 
 // NOTE: an earlier version of this schema had a DonationQuery /

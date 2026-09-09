@@ -13,6 +13,10 @@ const { ValidationError, toLevel, toNonNegativeInt } = require('../utils/validat
 const { mentorsForSchool } = require('../services/mentors');
 const { SCHOOL_ROLES } = require('../services/capabilities');
 const { trackForRole, AGREED, reconciliation, outstanding } = require('../services/tracks');
+const {
+  ADVANCE, MAINTAIN, INTENTS, INITIATIVE_STATUSES,
+  openPlan, requirementsFor, planRows, planSummary, targetChoices,
+} = require('../services/planService');
 
 const router = express.Router();
 // Both must hold: the role because every route below reads the session's
@@ -460,77 +464,337 @@ router.post('/cycles/:id/reconcile/:code',
     return res.redirect(res.locals.href(`/school/cycles/${cycle.id}/reconcile#ind-${code}`));
   });
 
-// -------------------- Development plan (Annex C) --------------------
+// -------------------- Development plan (the DigiPlan) --------------------
+//
+// Every parameter is in the plan, either advancing to a named level or being
+// held where it is. What the plan aims at is the principal's decision; writing
+// the initiatives that get there is the whole team's work, and is not gated.
+
+/** The plan, with everything hanging off it, for one cycle. */
+function planInclude() {
+  return {
+    priorities: {
+      include: {
+        initiatives: {
+          include: {
+            kpis: true,
+            responsibleUser: { select: { id: true, name: true } },
+            supervisorUser: { select: { id: true, name: true } },
+          },
+          orderBy: { id: 'asc' },
+        },
+      },
+    },
+  };
+}
+
+async function loadPlan(cycleId) {
+  return prisma.developmentPlan.findUnique({ where: { cycleId }, include: planInclude() });
+}
+
+/** The school's own people, for the responsible/supervisor pickers. */
+async function schoolPeople(schoolId) {
+  const posts = await prisma.assignment.findMany({
+    where: { schoolId, isActive: true, role: { in: SCHOOL_ROLES } },
+    include: { user: { select: { id: true, name: true } } },
+    orderBy: [{ role: 'asc' }, { id: 'asc' }],
+  });
+  const seen = new Set();
+  return posts.filter((p) => {
+    if (seen.has(p.user.id)) return false;
+    seen.add(p.user.id);
+    return true;
+  }).map((p) => ({ id: p.user.id, name: p.user.name, role: p.role }));
+}
+
+/**
+ * Finds one initiative and proves it belongs to this cycle's plan. Without the
+ * second half, an id typed into the URL would reach another school's plan.
+ */
+async function loadInitiative(req, res) {
+  const id = Number(req.params.iid);
+  if (!Number.isInteger(id) || id <= 0) return notFoundInPlan(res);
+  const initiative = await prisma.planInitiative.findUnique({
+    where: { id },
+    include: { priority: { include: { plan: true } }, kpis: true },
+  });
+  if (!initiative || initiative.priority.plan.cycleId !== req.cycle.id) return notFoundInPlan(res);
+  return initiative;
+}
+
+function notFoundInPlan(res) {
+  res.status(404).render('error', {
+    title: res.locals.t('err_not_found'),
+    message: res.locals.t('plan_err_not_found'),
+  });
+  return null;
+}
+
+function planPath(cycleId, code) {
+  return code ? `/school/cycles/${cycleId}/plan/parameter/${code}` : `/school/cycles/${cycleId}/plan`;
+}
 
 router.get('/cycles/:id/plan', loadCycleForSchool, async (req, res) => {
   const cycle = req.cycle;
-  const priorPlan = cycle.previousCycleId
-    ? await prisma.developmentPlan.findUnique({
-        where: { cycleId: cycle.previousCycleId },
-        include: { priorities: true },
-      })
-    : null;
-  res.render('school/plan', {
-    title: res.locals.t('plan_title'), wide: true,
-    cycle, plan: cycle.plan, priorPlan, indicators: getIndicatorData(req.lang).INDICATORS,
+  const indicators = getIndicatorData(req.lang).INDICATORS;
+  const plan = await loadPlan(cycle.id);
+  const rows = plan ? planRows(plan, indicators) : [];
+
+  return res.render('school/plan', {
+    title: res.locals.t('plan_title'),
+    wide: true,
+    school: req.school,
+    cycle,
+    plan,
+    rows,
+    summary: plan ? planSummary(rows) : null,
+    canManage: res.locals.can('school.manage'),
+    canPublish: res.locals.can('school.publish'),
+    // A plan is written against a confirmed assessment. Opening one before the
+    // school has agreed where it stands would be planning from a draft.
+    cycleConfirmed: cycle.status === 'CONFIRMED',
   });
 });
 
-// What the plan aims at — which parameters advance, and to what level — is
-// the principal's decision. Writing the initiatives that get there is the
-// whole team's work, and is not gated.
-router.post('/cycles/:id/plan/priorities', requireCapability('school.manage'), loadCycleForSchool, async (req, res) => {
+router.post('/cycles/:id/plan/open',
+  requireCapability('school.manage'), loadCycleForSchool, async (req, res) => {
+    const cycle = req.cycle;
+    if (cycle.status !== 'CONFIRMED') {
+      return res.status(409).render('error', {
+        title: res.locals.t('plan_err_not_confirmed_title'),
+        message: res.locals.t('plan_err_not_confirmed'),
+      });
+    }
+    const plan = await openPlan(cycle);
+    await logAction(req.session.user.id, 'OPEN_PLAN', 'DevelopmentPlan', plan.id,
+      `cycle ${cycle.cycleNumber}`);
+    return res.redirect(res.locals.href(planPath(cycle.id)));
+  });
+
+// --- one parameter ---------------------------------------------------------
+
+router.get('/cycles/:id/plan/parameter/:code', loadCycleForSchool, async (req, res) => {
   const cycle = req.cycle;
-  let plan = cycle.plan;
-  if (!plan) {
-    plan = await prisma.developmentPlan.create({ data: { cycleId: cycle.id } });
-  }
-  const { indicatorCode, currentLevel, targetLevel, rationale, actions, responsible, timeline } = req.body;
-  const existingCount = await prisma.planPriority.count({ where: { planId: plan.id } });
-  if (existingCount >= 5) {
-    return res.status(400).render('error', { title: res.locals.t('err_priority_limit'), message: res.locals.t('err_priority_limit_body') });
-  }
-  await prisma.planPriority.create({
+  const indicators = getIndicatorData(req.lang).INDICATORS;
+  const indicator = indicators.find((i) => i.code === req.params.code);
+  const plan = await loadPlan(cycle.id);
+  if (!indicator || !plan) return notFoundInPlan(res);
+
+  const row = planRows(plan, indicators).find((r) => r.indicator.code === indicator.code);
+  if (!row || !row.priority) return notFoundInPlan(res);
+
+  return res.render('school/plan-parameter', {
+    title: `${indicator.code} — ${indicator.name}`,
+    wide: true,
+    school: req.school,
+    cycle,
+    plan,
+    row,
+    // Both readings: what holding the line asks of the school, and what the
+    // chosen target would. Shown side by side so the choice is informed.
+    currentRequirements: requirementsFor(indicator, row.currentLevel),
+    targetChoices: targetChoices(row.currentLevel),
+    people: await schoolPeople(req.school.id),
+    statuses: INITIATIVE_STATUSES,
+    canManage: res.locals.can('school.manage'),
+    errorMessage: null,
+  });
+});
+
+// What the plan aims at is the principal's decision.
+router.post('/cycles/:id/plan/parameter/:code',
+  requireCapability('school.manage'), loadCycleForSchool, async (req, res) => {
+    const cycle = req.cycle;
+    const plan = await loadPlan(cycle.id);
+    if (!plan) return notFoundInPlan(res);
+    const priority = plan.priorities.find((p) => p.indicatorCode === req.params.code);
+    if (!priority) return notFoundInPlan(res);
+
+    const intent = INTENTS.includes(req.body.intent) ? req.body.intent : MAINTAIN;
+    let targetLevel = priority.currentLevel;
+    if (intent === ADVANCE) {
+      const wanted = Number(req.body.targetLevel);
+      // A target at or below where the school already stands is not advancing,
+      // whatever the radio button says.
+      targetLevel = Number.isInteger(wanted) && wanted > priority.currentLevel && wanted <= 5
+        ? wanted : priority.currentLevel;
+    }
+    const settledIntent = targetLevel > priority.currentLevel ? ADVANCE : MAINTAIN;
+
+    await prisma.planPriority.update({
+      where: { id: priority.id },
+      data: {
+        intent: settledIntent,
+        targetLevel,
+        rationale: (req.body.rationale || '').trim() || null,
+      },
+    });
+    await logAction(req.session.user.id, 'SET_PLAN_TARGET', 'PlanPriority', priority.id,
+      `${req.params.code}: ${settledIntent} -> level ${targetLevel}`);
+    return res.redirect(res.locals.href(planPath(cycle.id, req.params.code)));
+  });
+
+// --- initiatives: the whole team's work ------------------------------------
+
+router.post('/cycles/:id/plan/parameter/:code/initiatives',
+  loadCycleForSchool, async (req, res) => {
+    const cycle = req.cycle;
+    const plan = await loadPlan(cycle.id);
+    if (!plan) return notFoundInPlan(res);
+    const priority = plan.priorities.find((p) => p.indicatorCode === req.params.code);
+    if (!priority) return notFoundInPlan(res);
+
+    const title = (req.body.title || '').trim();
+    if (!title) {
+      return res.redirect(res.locals.href(`${planPath(cycle.id, req.params.code)}?error=title`));
+    }
+
+    const initiative = await prisma.planInitiative.create({
+      data: {
+        priorityId: priority.id,
+        title,
+        description: (req.body.description || '').trim() || null,
+        ...personFields(req.body, 'responsible'),
+        ...personFields(req.body, 'supervisor'),
+        startsOn: toDate(req.body.startsOn),
+        dueOn: toDate(req.body.dueOn),
+      },
+    });
+    await logAction(req.session.user.id, 'ADD_INITIATIVE', 'PlanInitiative', initiative.id,
+      `${req.params.code}: ${title}`);
+    return res.redirect(res.locals.href(`${planPath(cycle.id, req.params.code)}#i${initiative.id}`));
+  });
+
+router.post('/cycles/:id/plan/initiatives/:iid', loadCycleForSchool, async (req, res) => {
+  const initiative = await loadInitiative(req, res);
+  if (!initiative) return undefined;
+
+  const title = (req.body.title || '').trim();
+  const status = INITIATIVE_STATUSES.includes(req.body.status) ? req.body.status : initiative.status;
+
+  await prisma.planInitiative.update({
+    where: { id: initiative.id },
     data: {
-      planId: plan.id, indicatorCode, currentLevel: Number(currentLevel), targetLevel: Number(targetLevel),
-      rationale, actions, responsible: responsible || null, timeline: timeline || null,
+      title: title || initiative.title,
+      description: (req.body.description || '').trim() || null,
+      status,
+      ...personFields(req.body, 'responsible'),
+      ...personFields(req.body, 'supervisor'),
+      startsOn: toDate(req.body.startsOn),
+      dueOn: toDate(req.body.dueOn),
     },
   });
-  await logAction(req.session.user.id, 'ADD_PLAN_PRIORITY', 'DevelopmentPlan', plan.id, indicatorCode);
-  res.redirect(res.locals.href(`/school/cycles/${cycle.id}/plan`));
+  await logAction(req.session.user.id, 'UPDATE_INITIATIVE', 'PlanInitiative', initiative.id, status);
+  return res.redirect(res.locals.href(
+    `${planPath(req.cycle.id, initiative.priority.indicatorCode)}#i${initiative.id}`));
 });
+
+router.post('/cycles/:id/plan/initiatives/:iid/delete', loadCycleForSchool, async (req, res) => {
+  const initiative = await loadInitiative(req, res);
+  if (!initiative) return undefined;
+  // KPIs cascade with it, which is right: a measure of an initiative that no
+  // longer exists measures nothing.
+  await prisma.planInitiative.delete({ where: { id: initiative.id } });
+  await logAction(req.session.user.id, 'REMOVE_INITIATIVE', 'PlanInitiative', initiative.id,
+    initiative.title);
+  return res.redirect(res.locals.href(planPath(req.cycle.id, initiative.priority.indicatorCode)));
+});
+
+router.post('/cycles/:id/plan/initiatives/:iid/kpis', loadCycleForSchool, async (req, res) => {
+  const initiative = await loadInitiative(req, res);
+  if (!initiative) return undefined;
+
+  const measure = (req.body.measure || '').trim();
+  const target = (req.body.target || '').trim();
+  const back = planPath(req.cycle.id, initiative.priority.indicatorCode);
+  if (!measure || !target) {
+    return res.redirect(res.locals.href(`${back}?error=kpi#i${initiative.id}`));
+  }
+
+  await prisma.planKpi.create({ data: { initiativeId: initiative.id, measure, target } });
+  await logAction(req.session.user.id, 'ADD_KPI', 'PlanInitiative', initiative.id,
+    `${measure} -> ${target}`);
+  return res.redirect(res.locals.href(`${back}#i${initiative.id}`));
+});
+
+router.post('/cycles/:id/plan/kpis/:kid/delete', loadCycleForSchool, async (req, res) => {
+  const id = Number(req.params.kid);
+  if (!Number.isInteger(id) || id <= 0) return notFoundInPlan(res);
+  const kpi = await prisma.planKpi.findUnique({
+    where: { id },
+    include: { initiative: { include: { priority: { include: { plan: true } } } } },
+  });
+  if (!kpi || kpi.initiative.priority.plan.cycleId !== req.cycle.id) return notFoundInPlan(res);
+
+  await prisma.planKpi.delete({ where: { id } });
+  return res.redirect(res.locals.href(
+    `${planPath(req.cycle.id, kpi.initiative.priority.indicatorCode)}#i${kpi.initiativeId}`));
+});
+
+/**
+ * A person on an initiative: an account where they have one, a written name
+ * where they do not. The form sends both; only one is kept, so a stale typed
+ * name cannot sit behind a chosen account and contradict it.
+ */
+function personFields(body, prefix) {
+  const rawId = body[`${prefix}UserId`];
+  const id = Number(rawId);
+  if (rawId && Number.isInteger(id) && id > 0) {
+    return { [`${prefix}UserId`]: id, [`${prefix}Name`]: null };
+  }
+  return { [`${prefix}UserId`]: null, [`${prefix}Name`]: (body[`${prefix}Name`] || '').trim() || null };
+}
+
+/** A date input, or null. An unparseable date is no date, not today. */
+function toDate(value) {
+  if (!value) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
 
 router.post('/cycles/:id/plan/details', requireCapability('school.manage'), loadCycleForSchool, async (req, res) => {
   const cycle = req.cycle;
-  let plan = cycle.plan;
-  if (!plan) plan = await prisma.developmentPlan.create({ data: { cycleId: cycle.id } });
+  const plan = await loadPlan(cycle.id);
+  if (!plan) return notFoundInPlan(res);
   const { fundingSource, approvingAuthority, stakeholderConsultationNotes } = req.body;
   await prisma.developmentPlan.update({
     where: { id: plan.id },
-    data: { fundingSource, approvingAuthority, stakeholderConsultationNotes },
+    data: {
+      fundingSource: fundingSource || null,
+      approvingAuthority: approvingAuthority || null,
+      stakeholderConsultationNotes: stakeholderConsultationNotes || null,
+      startsOn: toDate(req.body.startsOn) || plan.startsOn,
+      endsOn: toDate(req.body.endsOn) || plan.endsOn,
+    },
   });
-  res.redirect(res.locals.href(`/school/cycles/${cycle.id}/plan`));
+  return res.redirect(res.locals.href(planPath(cycle.id)));
 });
 
 // Publishing is a decision about what the school says in public, so it sits
 // with the person accountable for saying it.
 router.post('/cycles/:id/plan/publish', requireCapability('school.publish'), loadCycleForSchool, async (req, res) => {
   const cycle = req.cycle;
-  if (!cycle.plan) return res.status(400).render('error', { title: res.locals.t('err_no_plan'), message: res.locals.t('err_no_plan_body') });
-  await prisma.developmentPlan.update({ where: { id: cycle.plan.id }, data: { publishedAt: new Date() } });
-  await logAction(req.session.user.id, 'PUBLISH_PLAN', 'DevelopmentPlan', cycle.plan.id, null);
-  res.redirect(res.locals.href(`/school/cycles/${cycle.id}/plan/document`));
+  const plan = await loadPlan(cycle.id);
+  if (!plan) return res.status(400).render('error', { title: res.locals.t('err_no_plan'), message: res.locals.t('err_no_plan_body') });
+  await prisma.developmentPlan.update({ where: { id: plan.id }, data: { publishedAt: new Date() } });
+  await logAction(req.session.user.id, 'PUBLISH_PLAN', 'DevelopmentPlan', plan.id, null);
+  return res.redirect(res.locals.href(`/school/cycles/${cycle.id}/plan/document`));
 });
 
 router.get('/cycles/:id/plan/document', loadCycleForSchool, async (req, res) => {
   const cycle = req.cycle;
   const school = req.school;
-  const plan = await prisma.developmentPlan.findUnique({
-    where: { cycleId: cycle.id },
-    include: { priorities: { include: { indicator: true } } },
-  });
+  const plan = await loadPlan(cycle.id);
   if (!plan) return res.status(404).render('error', { title: res.locals.t('err_no_plan'), message: res.locals.t('err_no_plan_yet') });
-  res.render('school/plan-document', { title: res.locals.t('plan_title'), layout: false, school, cycle, plan });
+
+  // The printable document is the plan as the school wrote it, in the reader's
+  // language, with the initiatives under each parameter rather than a list of
+  // levels nobody can act on.
+  const rows = planRows(plan, getIndicatorData(req.lang).INDICATORS);
+  res.render('school/plan-document', {
+    title: res.locals.t('plan_title'), layout: false,
+    school, cycle, plan, rows, summary: planSummary(rows),
+  });
 });
 
 // -------------------- Progress over time --------------------

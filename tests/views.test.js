@@ -95,6 +95,41 @@ function overviewRow(school, cycle) {
 // ---------------------------------------------------------------------------
 // The template list: [file, extra locals], built per language.
 // ---------------------------------------------------------------------------
+// One advancing parameter with an initiative and a measure, and one being
+// held. Enough for every branch the plan pages take.
+const samplePlan = {
+  id: 1, cycleId: 4, publishedAt: null,
+  startsOn: new Date('2026-09-01'), endsOn: new Date('2028-09-01'),
+  fundingSource: null, approvingAuthority: null, stakeholderConsultationNotes: null,
+};
+
+const planRowsFixture = [
+  {
+    indicator: { code: 'A1', name: 'Viziune' },
+    priority: { id: 11, rationale: 'Consiliul a cerut acest lucru' },
+    intent: 'ADVANCE', currentLevel: 2, targetLevel: 4, advancing: true,
+    requirements: {
+      level: 4, levelName: 'Integrare', description: 'Descrierea nivelului',
+      benchmarks: [{ key: 'engagement', value: '≥50%' }],
+    },
+    initiatives: [{
+      id: 21, title: 'Formarea cadrelor didactice', description: 'Trei sesiuni pe an',
+      responsibleUserId: 2, responsibleUser: { id: 2, name: 'Elena Guriță' }, responsibleName: null,
+      supervisorUserId: null, supervisorUser: null, supervisorName: 'Ion Popescu',
+      startsOn: new Date('2026-10-01'), dueOn: new Date('2027-06-01'), status: 'IN_PROGRESS',
+      kpis: [{ id: 31, measure: 'Cadre formate', target: '80%', actual: null }],
+    }],
+    initiativeCount: 1, needsInitiatives: false,
+  },
+  {
+    indicator: { code: 'A2', name: 'Conducere' },
+    priority: { id: 12, rationale: null },
+    intent: 'MAINTAIN', currentLevel: 3, targetLevel: 3, advancing: false,
+    requirements: { level: 3, levelName: 'Coordonare', description: 'Descriere', benchmarks: [] },
+    initiatives: [], initiativeCount: 0, needsInitiatives: false,
+  },
+];
+
 function templatesFor(lang) {
   const data = getIndicatorData(lang);
   const indicators = data.INDICATORS;
@@ -161,8 +196,36 @@ function templatesFor(lang) {
         })),
       })),
     }],
-    ['school/plan.ejs', { school, cycle: confirmedCycle, plan: confirmedCycle.plan, priorPlan: confirmedCycle.plan, indicators }],
-    ['school/plan-document.ejs', { school, cycle: confirmedCycle, plan: confirmedCycle.plan, title: 'Plan' }],
+    // The plan before anyone opens it, and after — two genuinely different
+    // pages, both of which a principal will see.
+    ['school/plan.ejs', {
+      school, cycle: confirmedCycle, plan: null, rows: [], summary: null,
+      canManage: true, canPublish: true, cycleConfirmed: true,
+    }],
+    ['school/plan.ejs', {
+      school, cycle: confirmedCycle, plan: samplePlan, rows: planRowsFixture,
+      summary: { total: 2, advancing: 1, maintaining: 1, initiatives: 1, withoutInitiatives: [] },
+      canManage: true, canPublish: true, cycleConfirmed: true,
+    }],
+    // And for a mentor, who writes initiatives but sets no targets.
+    ['school/plan.ejs', {
+      school, cycle: confirmedCycle, plan: samplePlan, rows: planRowsFixture,
+      summary: { total: 2, advancing: 1, maintaining: 1, initiatives: 1, withoutInitiatives: ['A2'] },
+      canManage: false, canPublish: false, cycleConfirmed: true,
+    }],
+    ['school/plan-parameter.ejs', {
+      school, cycle: confirmedCycle, plan: samplePlan, row: planRowsFixture[0],
+      currentRequirements: { level: 2, levelName: 'Coordonare', description: 'Descriere', benchmarks: [] },
+      targetChoices: [3, 4, 5],
+      people: [{ id: 2, name: 'Elena Guriță', role: 'SCHOOL_PRINCIPAL' }],
+      statuses: ['NOT_STARTED', 'IN_PROGRESS', 'DONE', 'DROPPED'],
+      canManage: true, errorMessage: null,
+    }],
+    ['school/plan-document.ejs', {
+      school, cycle: confirmedCycle, plan: samplePlan, rows: planRowsFixture,
+      summary: { total: 2, advancing: 1, maintaining: 1, initiatives: 1, withoutInitiatives: [] },
+      title: 'Plan',
+    }],
     ['school/history.ejs', {
       school, cycles: [confirmedCycle],
       cycleWheels: [{ cycleNumber: 1, svg: wheelSvg }],

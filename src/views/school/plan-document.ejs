@@ -25,16 +25,74 @@
     <%= t('doc_two_year_plan') %>
   </p>
 
-  <h2><%= t('plan_priorities') %></h2>
-  <% plan.priorities.forEach(p => { %>
+  <p class="small">
+    <%= t('plan_summary', {
+      advancing: summary.advancing, maintaining: summary.maintaining, initiatives: summary.initiatives,
+    }) %>
+  </p>
+
+  <h2><%= t('plan_advancing_heading') %></h2>
+  <% const advancing = rows.filter(r => r.advancing); %>
+  <% if (!advancing.length) { %>
+    <p><%= t('plan_none_advancing') %></p>
+  <% } %>
+  <% advancing.forEach(function (row) { %>
     <div class="card">
-      <h3><%= p.indicatorCode %> — <%= p.indicator.name %></h3>
-      <p><b><%= t('current_level_label') %>:</b> <%= p.currentLevel %> <span aria-hidden="true">→</span> <b><%= t('target_level_label') %>:</b> <%= p.targetLevel %></p>
-      <p><b><%= t('rationale_label') %>:</b> <%= p.rationale %></p>
-      <p><b><%= t('actions_label') %>:</b> <%= p.actions %></p>
-      <p><b><%= t('responsible_label') %>:</b> <%= p.responsible || '—' %> &nbsp; <b><%= t('timeline_label') %>:</b> <%= p.timeline || '—' %></p>
+      <h3><%= row.indicator.code %> — <%= row.indicator.name %></h3>
+      <p>
+        <b><%= t('current_level_label') %>:</b> <%= row.currentLevel %>
+        <span aria-hidden="true">→</span>
+        <b><%= t('target_level_label') %>:</b> <%= row.targetLevel %>
+        <% if (row.requirements) { %> — <%= row.requirements.levelName %><% } %>
+      </p>
+      <% if (row.priority.rationale) { %>
+        <p><b><%= t('rationale_label') %>:</b> <%= row.priority.rationale %></p>
+      <% } %>
+
+      <% if (row.initiatives.length === 0) { %>
+        <p><%= t('plan_no_initiatives') %></p>
+      <% } %>
+      <% row.initiatives.forEach(function (ini) { %>
+        <div class="card card-flat">
+          <h4 class="plain-heading"><%= ini.title %></h4>
+          <% if (ini.description) { %><p><%= ini.description %></p><% } %>
+          <p class="small">
+            <b><%= t('plan_ini_responsible') %>:</b>
+            <%= ini.responsibleUser ? ini.responsibleUser.name : (ini.responsibleName || '—') %>
+            &nbsp; <b><%= t('plan_ini_supervisor') %>:</b>
+            <%= ini.supervisorUser ? ini.supervisorUser.name : (ini.supervisorName || '—') %>
+          </p>
+          <p class="small">
+            <b><%= t('plan_ini_starts') %>:</b>
+            <%= ini.startsOn ? new Date(ini.startsOn).toLocaleDateString(lang) : '—' %>
+            &nbsp; <b><%= t('plan_ini_due') %>:</b>
+            <%= ini.dueOn ? new Date(ini.dueOn).toLocaleDateString(lang) : '—' %>
+            &nbsp; <b><%= t('plan_ini_status') %>:</b> <%= t('plan_status_' + ini.status) %>
+          </p>
+          <% if (ini.kpis.length) { %>
+            <table>
+              <thead>
+                <tr><th scope="col"><%= t('plan_kpi_measure') %></th><th scope="col"><%= t('plan_kpi_target') %></th></tr>
+              </thead>
+              <tbody>
+                <% ini.kpis.forEach(function (k) { %>
+                  <tr><td><%= k.measure %></td><td><%= k.target %></td></tr>
+                <% }) %>
+              </tbody>
+            </table>
+          <% } %>
+        </div>
+      <% }) %>
     </div>
   <% }) %>
+
+  <h2><%= t('plan_maintaining_heading') %></h2>
+  <p class="small"><%= t('plan_maintaining_note') %></p>
+  <ul>
+    <% rows.filter(r => !r.advancing).forEach(function (row) { %>
+      <li><b><%= row.indicator.code %></b> — <%= row.indicator.name %> · <%= t('level') %> <%= row.currentLevel %></li>
+    <% }) %>
+  </ul>
 
   <h2><%= t('doc_funding_approval') %></h2>
   <p><b><%= t('funding_source') %>:</b> <%= plan.fundingSource || '—' %></p>
