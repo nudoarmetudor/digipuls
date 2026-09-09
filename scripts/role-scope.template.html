@@ -1,0 +1,668 @@
+<title>DigiPuls Role Scope</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+
+<style>
+  /* ---- tokens: light is the base, both themes redefined below ---------- */
+  :root {
+    --teal-500:#266a82; --teal-700:#184759;
+    --purple-500:#5b1f6f;
+    --turquoise-500:#01cbbe;
+
+    /* neutrals carry a slight teal bias so they read as chosen, not default */
+    --ground:#fbfcfd;
+    --surface:#ffffff;
+    --surface-sunk:#f2f6f8;
+    --line:#dae4e8;
+    --line-strong:#b9cbd2;
+    --text:#0c232c;
+    --text-soft:#4e646d;
+    --text-faint:#7d919a;
+
+    --accent:var(--teal-500);
+    --accent-soft:#dceaef;
+    --second:var(--purple-500);
+
+    /* semantic, kept away from the accent hue */
+    --ok:#2f6b4f;        --ok-bg:#e8f2ec;
+    --partial:#96601a;   --partial-bg:#f7efdf;
+    --broken:#a33b32;    --broken-bg:#f8e9e7;
+
+    --shadow:0 1px 2px rgba(12,35,44,.06), 0 8px 24px -16px rgba(12,35,44,.28);
+
+    --display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+    --body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,"Cascadia Mono",monospace;
+
+    --measure:68ch;
+    --pad:clamp(1.1rem,4vw,2.5rem);
+    color-scheme:light dark;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#08171d;
+      --surface:#0e2530;
+      --surface-sunk:#0a1d25;
+      --line:#1e3d49;
+      --line-strong:#2f5a69;
+      --text:#e6f0f3;
+      --text-soft:#a7bfc7;
+      --text-faint:#7794a0;
+      --accent:#5fa8c1;
+      --accent-soft:#12313d;
+      --second:#c79ad3;
+      --ok:#79c39c;        --ok-bg:#102b20;
+      --partial:#dfae62;   --partial-bg:#2e2210;
+      --broken:#e79289;    --broken-bg:#331613;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:#08171d;
+    --surface:#0e2530;
+    --surface-sunk:#0a1d25;
+    --line:#1e3d49;
+    --line-strong:#2f5a69;
+    --text:#e6f0f3;
+    --text-soft:#a7bfc7;
+    --text-faint:#7794a0;
+    --accent:#5fa8c1;
+    --accent-soft:#12313d;
+    --second:#c79ad3;
+    --ok:#79c39c;        --ok-bg:#102b20;
+    --partial:#dfae62;   --partial-bg:#2e2210;
+    --broken:#e79289;    --broken-bg:#331613;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  /* ---- base ------------------------------------------------------------ */
+  *,*::before,*::after{box-sizing:border-box}
+  body{
+    background:var(--ground);
+    color:var(--text);
+    font-family:var(--body);
+    font-size:16px;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1120px;margin:0 auto;padding:0 var(--pad) 6rem}
+  p,li{max-width:var(--measure)}
+  h1,h2,h3,h4{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.12}
+  a{color:var(--accent)}
+  a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:3px}
+  code,.mono{font-family:var(--mono);font-size:.86em;font-variant-ligatures:none}
+  code{background:var(--surface-sunk);border:1px solid var(--line);border-radius:4px;padding:.06em .34em;white-space:nowrap}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* ---- masthead -------------------------------------------------------- */
+  header.top{padding:3.5rem 0 2rem;border-bottom:1px solid var(--line)}
+  header.top h1{font-size:clamp(2.1rem,5.5vw,3.4rem);font-weight:800;letter-spacing:-.022em;margin:.5rem 0 .7rem}
+  header.top .lede{font-size:1.12rem;color:var(--text-soft);max-width:60ch}
+  .stamp{
+    display:inline-flex;gap:.5rem;align-items:baseline;font-family:var(--mono);font-size:.74rem;
+    color:var(--text-faint);border:1px solid var(--line);border-radius:999px;padding:.3rem .7rem
+  }
+
+  .banner{
+    margin:2.2rem 0 0;padding:1rem 1.2rem;border-radius:10px;
+    background:var(--ok-bg);border:1px solid var(--ok);color:var(--text)
+  }
+  .banner b{color:var(--ok)}
+
+  .shape{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:0;margin:2.2rem 0 0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)
+  }
+  .shape div{padding:1rem 1.15rem;border-right:1px solid var(--line)}
+  .shape div:last-child{border-right:0}
+  .shape b{display:block;font-family:var(--display);font-size:1.85rem;font-weight:700;line-height:1;letter-spacing:-.02em}
+  .shape span{display:block;font-size:.82rem;color:var(--text-soft);margin-top:.3rem}
+
+  /* ---- section rhythm -------------------------------------------------- */
+  section{margin-top:4rem}
+  section > h2{
+    font-size:clamp(1.35rem,3vw,1.8rem);font-weight:700;letter-spacing:-.015em;
+    padding-bottom:.5rem;border-bottom:2px solid var(--text);display:inline-block
+  }
+  section > .intro{margin:1.1rem 0 0;color:var(--text-soft)}
+
+  /* ---- the four layers ------------------------------------------------- */
+  .layers{display:grid;gap:.55rem;margin-top:1.6rem;counter-reset:layer}
+  .layer{
+    display:grid;grid-template-columns:2.1rem 1fr;gap:1rem;align-items:start;
+    background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);
+    border-radius:0 8px 8px 0;padding:.85rem 1.1rem
+  }
+  .layer::before{
+    counter-increment:layer;content:counter(layer);
+    font-family:var(--mono);font-size:.8rem;color:var(--accent);
+    background:var(--accent-soft);border-radius:5px;text-align:center;padding:.18rem 0;font-weight:500
+  }
+  .layer h4{font-size:.98rem;font-weight:600;margin-bottom:.15rem}
+  .layer p{font-size:.9rem;color:var(--text-soft);margin:0}
+
+  /* ---- role bands ------------------------------------------------------ */
+  .role{
+    margin-top:1.5rem;background:var(--surface);border:1px solid var(--line);
+    border-radius:12px;overflow:hidden;box-shadow:var(--shadow)
+  }
+  .role > .head{
+    display:flex;flex-wrap:wrap;gap:.7rem 1.1rem;align-items:baseline;
+    padding:1.05rem 1.3rem;border-bottom:1px solid var(--line);background:var(--surface-sunk)
+  }
+  .role > .head h3{font-size:1.16rem;font-weight:700;letter-spacing:-.01em}
+  .role > .head .who{font-size:.86rem;color:var(--text-soft);margin-left:auto;text-align:right}
+  .role > .head code{background:var(--surface);font-size:.78rem}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0}
+  @media (max-width:760px){.grid2{grid-template-columns:1fr}}
+  .grid2 > div{padding:1.1rem 1.3rem}
+  .grid2 > div:first-child{border-right:1px solid var(--line)}
+  @media (max-width:760px){.grid2 > div:first-child{border-right:0;border-bottom:1px solid var(--line)}}
+  .grid2 h4{font-family:var(--mono);font-size:.71rem;letter-spacing:.13em;text-transform:uppercase;color:var(--text-faint);font-weight:500;margin-bottom:.6rem}
+
+  ul.tight{margin:0;padding-left:1.05rem}
+  ul.tight li{margin:.3rem 0;font-size:.92rem}
+  ul.tight li::marker{color:var(--text-faint)}
+  ul.plain{list-style:none;margin:0;padding:0}
+  ul.plain li{margin:.42rem 0;font-size:.92rem;padding-left:1.4rem;position:relative}
+  ul.plain li::before{
+    position:absolute;left:0;top:.05em;font-family:var(--mono);font-size:.9em;font-weight:500
+  }
+  li.y::before{content:"\2713";color:var(--ok)}
+  li.n::before{content:"\2715";color:var(--broken)}
+  li.p::before{content:"~";color:var(--partial)}
+
+  .verdict{
+    display:flex;gap:.55rem;align-items:flex-start;
+    padding:.85rem 1.3rem;border-top:1px solid var(--line);font-size:.91rem;
+    background:var(--ok-bg);color:var(--ok)
+  }
+  .verdict strong{font-weight:600}
+  .verdict span{color:var(--text);opacity:.86}
+
+  /* ---- findings -------------------------------------------------------- */
+  .finding{
+    display:grid;grid-template-columns:auto 1fr;gap:.4rem 1rem;align-items:start;
+    padding:1.05rem 0;border-bottom:1px solid var(--line)
+  }
+  .finding:first-of-type{border-top:1px solid var(--line)}
+  .sev{
+    font-family:var(--mono);font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;
+    padding:.24rem .5rem;border-radius:4px;font-weight:500;white-space:nowrap;margin-top:.15rem
+  }
+  .sev.fixed{background:var(--ok-bg);color:var(--ok);box-shadow:inset 2px 0 0 var(--ok)}
+  .finding h4{font-size:1rem;font-weight:600;margin-bottom:.2rem}
+  .finding p{font-size:.92rem;color:var(--text-soft);margin:.25rem 0 0}
+  .finding .where{font-family:var(--mono);font-size:.76rem;color:var(--text-faint);margin-top:.35rem;max-width:none}
+
+  /* ---- tables ---------------------------------------------------------- */
+  .scroll{overflow-x:auto;margin-top:1.4rem;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-size:.88rem;min-width:640px}
+  th,td{text-align:left;padding:.6rem .85rem;border-bottom:1px solid var(--line);vertical-align:top}
+  thead th{
+    font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--text-faint);font-weight:500;background:var(--surface-sunk);position:sticky;top:0
+  }
+  tbody tr:last-child td{border-bottom:0}
+  td.n{font-variant-numeric:tabular-nums;text-align:right}
+  .dot{display:inline-block;width:.5rem;height:.5rem;border-radius:50%;margin-right:.45rem;vertical-align:.05em;background:var(--ok)}
+
+  footer{margin-top:4.5rem;padding-top:1.5rem;border-top:1px solid var(--line);color:var(--text-faint);font-size:.86rem}
+  footer code{font-size:.8em}
+
+  @media (prefers-reduced-motion:no-preference){
+    .role{transition:border-color .18s ease}
+  }
+</style>
+
+<div class="wrap">
+
+<header class="top">
+  <p class="stamp">DigiPuls &middot; MDSF &middot; pilot instance &middot; {{date}}</p>
+  <h1>What each role can actually see</h1>
+  <p class="lede">
+    Seven roles are defined. This is what each one reaches in the running code and the live
+    database &mdash; not what the role name promises. Three were materially narrower than intended,
+    and the largest group of pilot users was the worst served. Everything below has since been
+    built and deployed; the findings are kept with their original wording so the record shows
+    what was wrong, not only what is right now.
+  </p>
+
+  <div class="banner">
+    <b>All nine findings closed</b>, plus one regression they caused, recorded at the end.
+    Deployed at <code>{{commit}}</code>; {{testsPass}} tests passing. Every figure on this page is
+    read from the pilot database when the page is built, not typed in &mdash; two schools left the
+    pilot the afternoon this was first published and every number on it was wrong within hours.
+  </div>
+
+  <div class="shape">
+    <div><b class="num">{{schools}}</b><span>pilot schools, across {{districts}} raioane</span></div>
+    <div><b class="num">{{accounts}}</b><span>accounts, {{posts}} active posts</span></div>
+    <div><b class="num">{{cap_feedback_submit}}</b><span>posts that can report a problem</span></div>
+    <div><b class="num">{{noConfirmed}}</b><span>schools yet to confirm a cycle, now visible to their mentors</span></div>
+    <div><b class="num">{{regionalResolving}}</b><span>posts whose regional view resolves</span></div>
+  </div>
+</header>
+
+<section>
+  <h2>Scope is decided in four places</h2>
+  <p class="intro">
+    Most of what follows was a disagreement between these layers. A capability can be held and
+    still be unreachable; a page can be reachable and still be empty. Both were true.
+  </p>
+
+  <div class="layers">
+    <div class="layer">
+      <div>
+        <h4>The role's default capability set</h4>
+        <p><code>ROLE_DEFAULTS</code> plus the baseline every role holds (<code>feedback.submit</code>).
+        This is what the account screen shows and what an administrator reasons about.</p>
+      </div>
+    </div>
+    <div class="layer">
+      <div>
+        <h4>Per-post overrides</h4>
+        <p>Only differences from the default are stored, so a role's defaults can be revised
+        later without rewriting every account.</p>
+      </div>
+    </div>
+    <div class="layer">
+      <div>
+        <h4>The route guard</h4>
+        <p><code>requireCapability(...)</code>, and in one case <code>requireRole('SCHOOL_TEAM')</code>
+        as well. Where the guard demands a role the capability model doesn't mention, a held
+        capability becomes unusable.</p>
+      </div>
+    </div>
+    <div class="layer">
+      <div>
+        <h4>The data filter inside the route</h4>
+        <p><code>activeSchoolId(req)</code> / <code>activeTerritoryId(req)</code> off the active post.
+        This is the layer nobody sees in the admin UI, and where the emptiest pages came from.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Role by role</h2>
+  <p class="intro">
+    Counts are live posts in the pilot database. &ldquo;Reaches&rdquo; is what the guards admit;
+    &ldquo;gets&rdquo; is what the page actually renders once the data filter has run.
+  </p>
+
+  <article class="role">
+    <div class="head">
+      <h3>Echipa digital&#259;</h3><code>SCHOOL_TEAM</code>
+      <span class="who">{{schoolTeamPosts}} posts &middot; one per pilot school</span>
+    </div>
+    <div class="grid2">
+      <div>
+        <h4>Reaches</h4>
+        <ul class="tight">
+          <li><code>/school</code> &mdash; the 19-indicator assessment, device inventory, network checklist</li>
+          <li><code>/school/history</code> &mdash; levels over cycles</li>
+          <li><code>/school/cycles/:id/plan</code> &mdash; the development plan</li>
+          <li><code>/feedback</code> &mdash; its own tickets</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Gets</h4>
+        <ul class="plain">
+          <li class="y">Its own school only, enforced by <code>cycle.schoolId</code> on every route</li>
+          <li class="y">Confirmed cycles locked; edits need a continuation cycle</li>
+          <li class="y">Names its meta-mentor &mdash; the link was in the database all along, in the other direction</li>
+          <li class="y">A post with no school explains the misconfiguration instead of landing on the feedback page</li>
+        </ul>
+      </div>
+    </div>
+    <p class="verdict"><strong>Works.</strong>&nbsp;<span>The best-served role. Object-level
+    scoping is correct and the assessment flow is complete.</span></p>
+  </article>
+
+  <article class="role">
+    <div class="head">
+      <h3>Meta-mentor</h3><code>META_MENTOR</code>
+      <span class="who">{{mentorPosts}} posts &middot; the pilot's largest group</span>
+    </div>
+    <div class="grid2">
+      <div>
+        <h4>Reaches</h4>
+        <ul class="tight">
+          <li><code>/ministry</code> &mdash; all {{allSchools}}</li>
+          <li><code>/ministry/compliance</code> &mdash; Order 675 device and network monitor</li>
+          <li><code>/territorial</code> &mdash; regional dashboard</li>
+          <li><code>/feedback</code> &mdash; its own tickets</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Was getting</h4>
+        <ul class="plain">
+          <li class="n"><strong>Regional dashboard: zero schools.</strong> The post names no district, and
+            <code>{ territoryId: null }</code> means <em>IS NULL</em> &mdash; it matched schools with no
+            district, of which there are none</li>
+          <li class="n"><strong>The school they mentor was invisible.</strong>
+            {{mentorsWithSchool}} of {{mentorPosts}} posts name a school; no route read it</li>
+          <li class="n">Could not open a school's workspace &mdash; <code>requireRole('SCHOOL_TEAM')</code> blocked it</li>
+          <li class="p">School detail showed the confirmed cycle only, so a school mid-assessment showed almost nothing</li>
+        </ul>
+      </div>
+    </div>
+    <p class="verdict"><strong>Fixed.</strong>&nbsp;<span>A mentor now lands on the school they
+    support, sees what is rated and what is blocking confirmation &mdash; drafts included &mdash;
+    and their regional view resolves to that school's district.</span></p>
+  </article>
+
+  <article class="role">
+    <div class="head">
+      <h3>MEC Task Force</h3><code>MINISTRY</code>
+      <span class="who">{{ministryPosts}} post &middot; national</span>
+    </div>
+    <div class="grid2">
+      <div>
+        <h4>Reaches</h4>
+        <ul class="tight">
+          <li><code>/ministry</code> &mdash; national dashboard and CSV export</li>
+          <li><code>/ministry/compliance</code> &mdash; Annex 2 quotas, Annex 5 checklist</li>
+          <li><code>/ministry/schools/:id</code> &mdash; per-school detail</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Gets</h4>
+        <ul class="plain">
+          <li class="y">All {{allSchools}}; filters on district, enrolment band, status, compliance, domain minimums</li>
+          <li class="y">Official record is the latest confirmed cycle, never a newer draft</li>
+          <li class="y">Only districts that actually hold a school are offered as filters</li>
+          <li class="y">The validation heading appears only when there is something under it</li>
+        </ul>
+      </div>
+    </div>
+    <p class="verdict"><strong>Fixed.</strong>&nbsp;<span>The district filter is wired to the list
+    the route was already loading and discarding.</span></p>
+  </article>
+
+  <article class="role">
+    <div class="head">
+      <h3>Autoritate teritorial&#259;</h3><code>TERRITORIAL</code>
+      <span class="who">{{territorialPosts}} post &middot; {{territorialName}}, {{territorialSchools}}</span>
+    </div>
+    <div class="grid2">
+      <div>
+        <h4>Reaches</h4>
+        <ul class="tight">
+          <li><code>/territorial</code> &mdash; schools in its own raion</li>
+          <li><code>/territorial/schools/:id</code> &mdash; detail, refused outside the district</li>
+          <li><code>POST /territorial/schools/:id/flag</code> &mdash; raise a concern</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Gets</h4>
+        <ul class="plain">
+          <li class="y">Correctly scoped by <code>territoryId</code>, on the list and the detail page</li>
+          <li class="y">Concerns it raised, read back and shown on the school's page</li>
+        </ul>
+      </div>
+    </div>
+    <p class="verdict"><strong>Fixed.</strong>&nbsp;<span>A flag used to go only to the audit log,
+    which this role cannot read &mdash; it filed a concern and never saw it again. Concerns are now
+    visible to the district that raised them and to the Ministry the escalation is aimed at.</span></p>
+  </article>
+
+  <article class="role">
+    <div class="head">
+      <h3>Partener de finan&#539;are</h3><code>PARTNER</code>
+      <span class="who">{{partnerPosts}} post &middot; UNICEF Moldova</span>
+    </div>
+    <div class="grid2">
+      <div>
+        <h4>Reaches</h4>
+        <ul class="tight">
+          <li><code>/partner</code> &mdash; filterable overview, aggregate figures only</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Gets</h4>
+        <ul class="plain">
+          <li class="y">All {{allSchools}}; domain scores, compliance, enrolment band</li>
+          <li class="y">No per-indicator evidence, by design &mdash; case-by-case reading, not matchmaking</li>
+          <li class="y">Schools without a confirmed cycle read as not started, rather than as blank rows</li>
+        </ul>
+      </div>
+    </div>
+    <p class="verdict"><strong>Works as specified.</strong>&nbsp;<span>The narrowest role, and
+    deliberately so.</span></p>
+  </article>
+
+  <article class="role">
+    <div class="head">
+      <h3>Partener strategic</h3><code>STRATEGIC_PARTNER</code>
+      <span class="who">{{strategicPosts}} post &middot; Clasa Viitorului</span>
+    </div>
+    <div class="grid2">
+      <div>
+        <h4>Reaches</h4>
+        <ul class="tight">
+          <li><code>/strategic</code> &mdash; Domain C triage: C1 teacher competence, C3 mentoring
+            capacity, C4 AI literacy</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Gets</h4>
+        <ul class="plain">
+          <li class="y">Schools ranked lowest-capacity-first, one disclosed sort, no hidden weighting</li>
+          <li class="y">Ranked on the confirmed cycle, not on whatever draft happens to be open</li>
+          <li class="y">Schools that cannot be ranked listed separately, not mixed in at the top</li>
+        </ul>
+      </div>
+    </div>
+    <p class="verdict"><strong>Fixed.</strong>&nbsp;<span>Both mistakes were invisible on screen
+    with the data of the day &mdash; one needed a school to open a second cycle, the other needed an
+    unrated indicator. Moved into a service so tests pin them.</span></p>
+  </article>
+
+  <article class="role">
+    <div class="head">
+      <h3>Administrator</h3><code>ADMIN</code>
+      <span class="who">{{adminPosts}} posts &middot; owner and fallback</span>
+    </div>
+    <div class="grid2">
+      <div>
+        <h4>Reaches</h4>
+        <ul class="tight">
+          <li>Every dashboard, plus <code>/admin/users</code>, <code>/admin/schools/new</code>,
+            <code>/admin/audit-log</code></li>
+          <li><code>/feedback/backlog</code> &mdash; every ticket and its status</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Gets</h4>
+        <ul class="plain">
+          <li class="y">Full account management, split into <code>admin.users</code> and
+            <code>admin.grant</code> so managing people is not the same as handing out powers</li>
+          <li class="y">The picker marks <code>view.school</code> as needing a school-team post, so a
+            box that changes nothing says so</li>
+          <li class="y">Regional view resolves rather than showing an empty list</li>
+        </ul>
+      </div>
+    </div>
+    <p class="verdict"><strong>Fixed.</strong>&nbsp;<span>An administrator held
+    <code>view.school</code> and could never use it; the control is now honest about what it
+    needs.</span></p>
+  </article>
+</section>
+
+<section>
+  <h2>Findings, worst first</h2>
+  <p class="intro">Original wording kept, so the record shows what was wrong.</p>
+
+  <div class="finding">
+    <span class="sev fixed">Fixed &middot; was high</span>
+    <div>
+      <h4>The regional dashboard was empty for every post that held the capability</h4>
+      <p>Prisma reads <code>where: { territoryId: null }</code> as <em>IS NULL</em>, not as
+      &ldquo;no filter&rdquo;. Every meta-mentor and both administrators hold
+      <code>view.regional</code>, saw the link in the sidebar, and landed on a list of nothing.
+      No school in the pilot lacks a district, so the query could only ever return zero rows.
+      {{regionalHolders}} posts hold it; all {{regionalResolving}} now resolve.</p>
+      <p class="where">src/routes/territorial.js &rarr; schoolOverview.schoolsWithLatestCycle</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <span class="sev fixed">Fixed &middot; was high</span>
+    <div>
+      <h4>A meta-mentor could not see the school they mentor</h4>
+      <p>{{mentorsWithSchool}} mentor posts name a school &mdash; Elena Guri&#539;&#259; to
+      LT &bdquo;Boris D&icirc;nga&rdquo;, Criuleni, and so on. Nothing read it. The mentor found
+      their school as one row among {{schools}}, and the detail page behind it showed only confirmed
+      cycles, so a school midway through its first assessment showed an empty wheel and no progress.
+      Supporting a school through the instrument is the entire job of this role.</p>
+      <p class="where">Assignment.schoolId was written by the admin screen and read by no route</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <span class="sev fixed">Fixed &middot; was high</span>
+    <div>
+      <h4>Training-need ranking read the wrong cycle</h4>
+      <p>The strategic dashboard filtered on the official cycle and then read C1/C3/C4 from the
+      current one. A school with a confirmed cycle 1 and a draft cycle 2 would have been ranked on
+      unconfirmed figures. No school was in that state, so it was latent rather than visible &mdash;
+      and the pilot reaches it the moment anyone starts a second cycle.</p>
+      <p class="where">src/routes/strategic.js &mdash; <code>r.cycle.ratings</code> should have been <code>r.officialCycle.ratings</code></p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <span class="sev fixed">Fixed &middot; was medium</span>
+    <div>
+      <h4>Missing ratings were scored as zero</h4>
+      <p>An unrated C-indicator contributed 0 to the sort key, indistinguishable from a genuine
+      level 0. A school that had simply not filled in Domain C appeared as the most urgent training
+      case in the country.</p>
+      <p class="where">src/routes/strategic.js &mdash; a sum over nullable levels</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <span class="sev fixed">Fixed &middot; was medium</span>
+    <div>
+      <h4>Territorial flags went nowhere the flagger could see</h4>
+      <p>Flagging wrote an audit entry and redirected. Reading it back needs
+      <code>admin.audit</code>, which no territorial post holds. The Ministry was never notified
+      either, so the button appeared to do nothing.</p>
+      <p class="where">src/routes/territorial.js</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <span class="sev fixed">Fixed &middot; was medium</span>
+    <div>
+      <h4>No district filter on the national dashboard</h4>
+      <p>The route queried the district list and passed it to the view; the view never used it, and
+      <code>filterRows</code> had no territory branch. With {{districts}} raioane and a Ministry user
+      whose commonest question is regional, this was the missing filter.</p>
+      <p class="where">src/routes/ministry.js &mdash; <code>territories</code> was an unused local</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <span class="sev fixed">Fixed &middot; was low</span>
+    <div>
+      <h4><code>view.school</code> was unusable for anyone but a school team</h4>
+      <p>The guard requires the SCHOOL_TEAM role as well as the capability, so the capability alone
+      granted nothing. It was offered in the picker for every role and silently did nothing for six
+      of the seven.</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <span class="sev fixed">Fixed &middot; was low</span>
+    <div>
+      <h4>Validation records were read but never written</h4>
+      <p>The Ministry detail page rendered a validation section no code path could populate. The
+      external-validation workflow is on the roadmap; until then the heading only appears when
+      there is something under it.</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <span class="sev fixed">Fixed &middot; was low</span>
+    <div>
+      <h4>A school team with no school landed on the feedback page</h4>
+      <p><code>homeFor</code> fell through <code>view.school</code> when the post had no
+      <code>schoolId</code> and settled on <code>/feedback</code> &mdash; technically reachable, but
+      not an answer to &ldquo;where am I supposed to start&rdquo;.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>The regression these fixes caused</h2>
+  <p class="intro">
+    Recorded because a document that only lists what was found, and never what the fixing broke,
+    is a sales sheet rather than a record.
+  </p>
+
+  <div class="finding">
+    <span class="sev fixed">Fixed &middot; was an outage</span>
+    <div>
+      <h4>Every authenticated page returned 500 for anyone holding more than one post</h4>
+      <p>The workspace switcher in the top bar read <code>workspace.role</code> without checking
+      whether a post had been chosen. Before a choice there is none &mdash; which is the normal state
+      on <code>/workspace</code>, the page that exists to make the choice.</p>
+      <p>Because the top bar sits in the layout, the throw happened while rendering the layout, so
+      the error page could not render either and Express answered with a bare
+      &ldquo;Internal Server Error&rdquo;. Every authenticated page failed at once.</p>
+      <p>Latent for as long as nobody held two posts. Giving the account that runs the pilot three
+      posts made it reachable immediately, and login redirects straight to the picker, so it was the
+      first page seen. Two tests now cover the unchosen state.</p>
+      <p class="where">src/views/partials/workspace-switch.ejs</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Capability reference</h2>
+  <p class="intro">What each capability grants, and how many live posts hold it today.</p>
+
+  <div class="scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Capability</th><th>Unlocks</th><th>Roles holding it by default</th>
+          <th class="n">Live posts</th><th>State</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>view.school</code></td><td>The school's own assessment workspace</td><td>SCHOOL_TEAM, ADMIN</td><td class="n">{{cap_view_school}}</td><td><span class="dot"></span>Marked in the picker as needing a school-team post</td></tr>
+        <tr><td><code>view.national</code></td><td><code>/ministry</code> dashboard, CSV export</td><td>MINISTRY, META_MENTOR, ADMIN</td><td class="n">{{cap_view_national}}</td><td><span class="dot"></span>Works</td></tr>
+        <tr><td><code>view.compliance</code></td><td>Order 675 quantitative monitor</td><td>MINISTRY, META_MENTOR, ADMIN</td><td class="n">{{cap_view_compliance}}</td><td><span class="dot"></span>Works</td></tr>
+        <tr><td><code>view.regional</code></td><td><code>/territorial</code>, own district only</td><td>TERRITORIAL, META_MENTOR, ADMIN</td><td class="n">{{cap_view_regional}}</td><td><span class="dot"></span>Resolves for all {{regionalResolving}}</td></tr>
+        <tr><td><code>view.partner</code></td><td>Financing-partner overview</td><td>PARTNER, ADMIN</td><td class="n">{{cap_view_partner}}</td><td><span class="dot"></span>Works</td></tr>
+        <tr><td><code>view.training</code></td><td>Domain C training-needs triage</td><td>STRATEGIC_PARTNER, ADMIN</td><td class="n">{{cap_view_training}}</td><td><span class="dot"></span>Ranks on the confirmed cycle</td></tr>
+        <tr><td><code>admin.schools</code></td><td>Provision schools from SIME</td><td>ADMIN</td><td class="n">{{cap_admin_schools}}</td><td><span class="dot"></span>Works</td></tr>
+        <tr><td><code>admin.users</code></td><td>Create, rename, deactivate, reset password</td><td>ADMIN</td><td class="n">{{cap_admin_users}}</td><td><span class="dot"></span>Works</td></tr>
+        <tr><td><code>admin.grant</code></td><td>Set a post's role and permissions</td><td>ADMIN</td><td class="n">{{cap_admin_grant}}</td><td><span class="dot"></span>Works</td></tr>
+        <tr><td><code>admin.audit</code></td><td>Read the audit log</td><td>ADMIN</td><td class="n">{{cap_admin_audit}}</td><td><span class="dot"></span>Works</td></tr>
+        <tr><td><code>feedback.submit</code></td><td>Click-to-report overlay and own tickets</td><td>every role (baseline)</td><td class="n">{{cap_feedback_submit}}</td><td><span class="dot"></span>Works</td></tr>
+        <tr><td><code>feedback.triage</code></td><td>The developer backlog</td><td>ADMIN</td><td class="n">{{cap_feedback_triage}}</td><td><span class="dot"></span>Works</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<footer>
+  Built by <code>scripts/role-scope.js</code> from <code>src/services/capabilities.js</code>, the
+  route guards, and read-only queries against the pilot database. Every count above is read at
+  build time, so re-running the script after schools or accounts change is what keeps this page
+  true &mdash; no figure on it is typed by hand. Built {{date}} at <code>{{commit}}</code>.
+  &ldquo;Live posts&rdquo; counts every post whose effective capability set includes the row, so a
+  person holding several posts is counted once per post.
+</footer>
+
+</div>
