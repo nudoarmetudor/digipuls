@@ -1,7 +1,12 @@
 const express = require('express');
 const prisma = require('../config/db');
 const { requireCapability } = require('../middleware/auth');
-const { INDICATORS, DOMAINS } = require('../data/indicators');
+// The instrument in the reader's own language. Imported through the picker
+// rather than directly, because `data/indicators` is the *English* file: a
+// direct import renders the whole parameter list in English to a reader who
+// chose Romanian, which is what this page did — and it is a metamentor's main
+// screen, so it was the page most likely to be read in Romanian.
+const { getIndicatorData } = require('../data/indicatorsI18n');
 const { checkDeviceCompliance, checkNetworkCompliance } = require('../data/order675');
 const { logAction } = require('../services/audit');
 const { schoolsWithLatestCycle, filterRows, toCsv, ENROLMENT_BANDS, selectOfficialAndCurrentCycle } = require('../services/schoolOverview');
@@ -79,6 +84,7 @@ router.get('/schools/:id', async (req, res) => {
   const deviceCompliance = latest?.deviceInventory ? checkDeviceCompliance(school, latest.deviceInventory) : null;
   const networkCompliance = latest?.networkChecklist ? checkNetworkCompliance(latest.networkChecklist) : null;
   const validations = latest ? await prisma.validationRecord.findMany({ where: { cycleId: latest.id } }) : [];
+  const { INDICATORS, DOMAINS } = getIndicatorData(req.lang);
   const wheelSvg = latest ? renderWheel(itemsFromRatings(latest.ratings, INDICATORS), { mode: 'indicators', size: 380, t: res.locals.t }) : null;
   const flags = await flagsForSchool(school.id);
   res.render('ministry/school-detail', {

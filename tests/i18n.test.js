@@ -2,7 +2,9 @@ const test = require('node:test');
 const assert = require('node:assert');
 
 const { STRINGS, SUPPORTED_LANGS, LANG_NAMES, LANG_SHORT, STATUS_LABELS, CHANGE_STATE_LABELS, t, pickFromAcceptLanguage } = require('../src/i18n');
-const { BY_LANG } = require('../src/data/indicatorsI18n');
+const fs = require('node:fs');
+const path = require('node:path');
+const { BY_LANG, getIndicatorData } = require('../src/data/indicatorsI18n');
 const { checkDeviceCompliance, checkNetworkCompliance, NETWORK_CHECKLIST_ITEMS } = require('../src/data/order675');
 
 // The point of these tests: a missing translation must fail the build rather
@@ -152,4 +154,49 @@ test('every Order 675 check label resolves in every language', () => {
   // The dynamic one must actually interpolate the room count.
   const itRoom = compliance.checks.find((c) => c.key === 'itRoomPCs');
   assert.match(t('ru')(itRoom.labelKey, itRoom.labelParams), new RegExp(String(itRoom.labelParams.rooms)));
+});
+
+// --- the instrument reaches the reader in their own language ----------------
+//
+// Reported from the live site as a blocker: the whole parameter list rendered
+// in English on a page a metamentor had opened in Romanian. `data/indicators`
+// is the English file — `getIndicatorData(lang)` is the picker — and the two
+// imports look identical at a glance, which is how two routes came to serve
+// English to every reader regardless of what they had chosen.
+//
+// The rule this enforces: a route may import the English file only for
+// structural work (codes, counts, order, which are the same in all three), and
+// if it does, it must import the picker as well for anything it renders.
+
+const routeFiles = fs.readdirSync(path.join(__dirname, '..', 'src', 'routes'))
+  .filter((f) => f.endsWith('.js'));
+
+test('no route serves the English instrument to a reader who chose otherwise', () => {
+  const offenders = [];
+  routeFiles.forEach((file) => {
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'routes', file), 'utf8');
+    const rawImport = /require\('\.\.\/data\/indicators'\)/.test(source);
+    const picker = /require\('\.\.\/data\/indicatorsI18n'\)/.test(source);
+    // Naming INDICATORS or DOMAINS in a render's locals is display, not
+    // structure, so the picker has to be in the file.
+    const renders = /\bINDICATORS\b|\bDOMAINS\b/.test(source);
+    if (renders && !picker) offenders.push(`${file}: uses the instrument without getIndicatorData`);
+    if (rawImport && !picker) offenders.push(`${file}: imports the English file only`);
+  });
+  assert.deepStrictEqual(offenders, []);
+});
+
+test('each language file names the parameters in that language', () => {
+  // The reason the rule above matters: these really are different strings, so
+  // getting the file wrong is visible to every reader and invisible in English.
+  const a1 = (lang) => getIndicatorData(lang).INDICATORS.find((i) => i.code === 'A1').name;
+  assert.notStrictEqual(a1('ro'), a1('en'));
+  assert.notStrictEqual(a1('ru'), a1('en'));
+  assert.notStrictEqual(a1('ru'), a1('ro'));
+
+  // And the domain headings beside them.
+  const domains = (lang) => getIndicatorData(lang).DOMAINS;
+  assert.notStrictEqual(domains('ro').A, domains('en').A);
+  assert.notStrictEqual(domains('ru').A, domains('en').A);
 });

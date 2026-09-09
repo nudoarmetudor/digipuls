@@ -4,7 +4,12 @@ const { requireCapability } = require('../middleware/auth');
 const { activeTerritoryId, territoryFilter, coversSchool } = require('../middleware/workspace');
 const { progressSummary } = require('../services/stepStatus');
 const { flagsForSchool } = require('../services/flags');
-const { INDICATORS, DOMAINS } = require('../data/indicators');
+// The instrument in the reader's own language. Imported through the picker
+// rather than directly, because `data/indicators` is the *English* file: a
+// direct import renders the whole parameter list in English to a reader who
+// chose Romanian, which is what this page did — and it is a metamentor's main
+// screen, so it was the page most likely to be read in Romanian.
+const { getIndicatorData } = require('../data/indicatorsI18n');
 const { schoolsWithLatestCycle, selectOfficialAndCurrentCycle } = require('../services/schoolOverview');
 const { renderWheel, itemsFromRatings } = require('../services/wheelChart');
 
@@ -60,6 +65,7 @@ router.get('/schools/:id', async (req, res) => {
   // Same rule as the Ministry detail view: the official record is the
   // latest CONFIRMED cycle, never a newer draft in progress.
   const { currentCycle, officialCycle: latest, hasNewerDraft } = selectOfficialAndCurrentCycle(school.cycles);
+  const { INDICATORS, DOMAINS } = getIndicatorData(req.lang);
   const wheelSvg = latest ? renderWheel(itemsFromRatings(latest.ratings, INDICATORS), { mode: 'indicators', size: 380, t: res.locals.t }) : null;
   const flags = await flagsForSchool(school.id);
   res.render('territorial/school-detail', {
