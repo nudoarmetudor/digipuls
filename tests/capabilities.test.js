@@ -4,6 +4,7 @@ const assert = require('node:assert');
 const {
   CAPABILITIES, CAPABILITY_GROUPS, ROLES, ROLE_DEFAULTS,
   capabilitiesFor, overridesFrom, homeFor, canOpenSchoolWorkspace,
+  SCHOOL_ROLES, roleNeedsSchool, roleNeedsTerritory, roleAllowsTerritory,
   BASELINE_CAPABILITIES, defaultsFor, capabilityIsUsableBy,
 } = require('../src/services/capabilities');
 
@@ -87,7 +88,7 @@ test('overridesFrom round-trips through capabilitiesFor', () => {
 
 test('homeFor sends each account somewhere it can actually reach', () => {
   const withSchool = { schoolId: 3 };
-  assert.strictEqual(homeFor(capabilitiesFor('SCHOOL_TEAM', []), withSchool), '/school');
+  assert.strictEqual(homeFor(capabilitiesFor('SCHOOL_MENTOR', []), withSchool), '/school');
   assert.strictEqual(homeFor(capabilitiesFor('MINISTRY', []), {}), '/ministry');
   assert.strictEqual(homeFor(capabilitiesFor('TERRITORIAL', []), {}), '/territorial');
   assert.strictEqual(homeFor(capabilitiesFor('PARTNER', []), {}), '/partner');
@@ -116,7 +117,7 @@ test('an admin is never sent to a school workspace it has no school for', () => 
 });
 
 test('a school-team account without a school is told what is wrong', () => {
-  const caps = capabilitiesFor('SCHOOL_TEAM', []);
+  const caps = capabilitiesFor('SCHOOL_MENTOR', []);
   // This used to land on /feedback, because every role holds feedback.submit
   // and that was the first entry left in the table. Reachable, but it does not
   // answer "where am I supposed to start" — the account is misconfigured and
@@ -127,7 +128,7 @@ test('a school-team account without a school is told what is wrong', () => {
   assert.strictEqual(homeFor(caps, { schoolId: 4 }), '/school');
 
   // Stripped of everything, it still gets a page rather than a redirect loop.
-  const stripped = capabilitiesFor('SCHOOL_TEAM', [
+  const stripped = capabilitiesFor('SCHOOL_MENTOR', [
     { capability: 'view.school', granted: false },
     { capability: 'feedback.submit', granted: false },
   ]);
@@ -150,7 +151,7 @@ test('an oversight post that names a school lands on that school', () => {
 
   // A school team is not an oversight post: it opens the workspace, where it
   // can actually enter ratings.
-  const team = capabilitiesFor('SCHOOL_TEAM', []);
+  const team = capabilitiesFor('SCHOOL_MENTOR', []);
   assert.strictEqual(homeFor(team, { schoolId: 11 }), '/school');
 });
 
@@ -159,7 +160,7 @@ test('a capability that needs a particular post says so', () => {
   // insists on a SCHOOL_TEAM post. An administrator holds the capability and
   // can never use it, so the picker marks it rather than offering a control
   // that silently does nothing.
-  assert.ok(capabilityIsUsableBy('view.school', 'SCHOOL_TEAM'));
+  assert.ok(capabilityIsUsableBy('view.school', 'SCHOOL_MENTOR'));
   assert.ok(!capabilityIsUsableBy('view.school', 'ADMIN'));
   assert.ok(!capabilityIsUsableBy('view.school', 'META_MENTOR'));
 
@@ -212,40 +213,89 @@ test('every capability has a label in all three languages', () => {
 
 // --- what makes a post distinct -------------------------------------------
 
-test('one person can hold the same role twice when the posts differ in name', () => {
-  // The account owner holds three posts: administrator, coordinator of the
-  // meta-mentors, and an ordinary meta-mentor view for seeing the platform the
-  // way the people being supported see it. The last two share a role and have
-  // no institution, so the label is the only thing separating them — which is
-  // why routes/adminUsers.js counts the label as part of a post's identity.
-  const coordinator = capabilitiesFor('META_MENTOR', overridesFrom('META_MENTOR', [
-    ...ROLE_DEFAULTS.META_MENTOR, 'admin.users',
-  ]));
-  const plain = capabilitiesFor('META_MENTOR', []);
-
-  assert.ok(coordinator.has('admin.users'), 'the coordinator can run the pilot');
-  assert.ok(!plain.has('admin.users'), 'the plain mentor post cannot');
-  assert.ok(!coordinator.has('admin.grant'),
-    'and neither can set privileges — that belongs to the administrator post');
-
-  // If the two granted the same thing, splitting them would record nothing.
-  const same = [...coordinator].sort().join('|') === [...plain].sort().join('|');
-  assert.ok(!same, 'two posts that grant the same thing are one post with two names');
+test('a meta-mentor only exists in relation to a school', () => {
+  // The position is "meta-mentor for LT „Boris Dînga”" — there is no such
+  // thing as a meta-mentor at large. One per school, twelve in the group.
+  assert.ok(roleNeedsSchool('META_MENTOR'),
+    'a meta-mentor post without a school is not a position, it is a mistake');
+  assert.ok(!roleAllowsTerritory('META_MENTOR'),
+    'their district follows from their school rather than being set separately');
 });
 
-test('three posts between them reach everything, without any one being everything', () => {
-  const admin = capabilitiesFor('ADMIN', []);
-  const coordinator = capabilitiesFor('META_MENTOR', overridesFrom('META_MENTOR', [
-    ...ROLE_DEFAULTS.META_MENTOR, 'admin.users',
-  ]));
-  const plain = capabilitiesFor('META_MENTOR', []);
+test('a meta-coordinator coordinates mentors, not an institution', () => {
+  // Drawn from among the twelve, and leading the group: sessions, coaching,
+  // reporting, deliverables. It used to be modelled as a meta-mentor carrying
+  // an extra permission, which made a distinct position look like a footnote
+  // on another one.
+  assert.ok(ROLES.includes('META_COORDINATOR'));
+  assert.ok(!roleNeedsSchool('META_COORDINATOR'), 'names no school');
+  assert.ok(!roleNeedsTerritory('META_COORDINATOR'), 'and no district');
 
-  const union = new Set([...admin, ...coordinator, ...plain]);
+  const coordinator = capabilitiesFor('META_COORDINATOR', []);
+  const mentor = capabilitiesFor('META_MENTOR', []);
+
+  assert.ok(coordinator.has('admin.users'), 'can run the group: add a mentor, reissue a password');
+  assert.ok(!mentor.has('admin.users'), 'an ordinary mentor cannot');
+  assert.ok(!coordinator.has('admin.grant'),
+    'but deciding what any post may do stays with the administrator');
+  assert.ok(!coordinator.has('view.school'),
+    'and coordinating mentors is not editing a school');
+});
+
+test('nobody in the mentoring line can edit a school', () => {
+  // Every change to a school's record is made by that school. A mentor watches
+  // the live status, drafts included, and advises.
+  ['META_MENTOR', 'META_COORDINATOR'].forEach((role) => {
+    assert.ok(!capabilitiesFor(role, []).has('view.school'),
+      `${role} must not hold the school editing capability`);
+  });
+});
+
+test('the three school positions can all work on their own assessment', () => {
+  // Five or six people per school: a principal, a deputy, and about five
+  // mentors. The two-track split between administration and team is a
+  // workflow question, not a permissions boundary, and is not modelled yet.
+  SCHOOL_ROLES.forEach((role) => {
+    assert.ok(capabilitiesFor(role, []).has('view.school'), `${role} works on the assessment`);
+    assert.ok(roleNeedsSchool(role), `${role} must name a school`);
+    assert.ok(capabilityIsUsableBy('view.school', role), `${role} can actually use it`);
+  });
+  assert.deepStrictEqual(SCHOOL_ROLES,
+    ['SCHOOL_PRINCIPAL', 'SCHOOL_DEPUTY', 'SCHOOL_MENTOR']);
+});
+
+test('the oversight roles read results and take no part in producing them', () => {
+  // The ministry, the territorial agency, the financing partner and the
+  // development partner. None of them can touch a school's record.
+  ['MINISTRY', 'TERRITORIAL', 'PARTNER', 'STRATEGIC_PARTNER'].forEach((role) => {
+    const caps = capabilitiesFor(role, []);
+    assert.ok(!caps.has('view.school'), `${role} must not edit a school`);
+    assert.ok(![...caps].some((c) => c.startsWith('admin.')),
+      `${role} must hold no administrative power`);
+  });
+
+  // The territorial agency has the ministry's function bounded to one district,
+  // so it is the one oversight role that names an institution.
+  assert.ok(roleNeedsTerritory('TERRITORIAL'));
+  assert.ok(!roleNeedsTerritory('MINISTRY'), 'the ministry reads nationally');
+});
+
+test('the three posts a coordinator holds are nested, not identical', () => {
+  // Someone who coordinates the group is also one of the twelve mentors, and
+  // on this instance also administers the platform. Three posts, and the point
+  // of keeping them apart is that the audit trail records which authority was
+  // in use — so routine mentoring is not done under the administrator post.
+  const admin = capabilitiesFor('ADMIN', []);
+  const coordinator = capabilitiesFor('META_COORDINATOR', []);
+  const mentor = capabilitiesFor('META_MENTOR', []);
+
+  const union = new Set([...admin, ...coordinator, ...mentor]);
   CAPABILITIES.forEach((c) => assert.ok(union.has(c), `nothing should be out of reach: ${c}`));
 
-  // The point of holding three rather than one: the audit trail records which
-  // authority was actually in use, so routine work is not done under the
-  // administrator post.
   assert.ok(coordinator.size < admin.size, 'the coordinator post is genuinely smaller');
-  assert.ok(plain.size < coordinator.size, 'and the mentor post smaller still');
+  assert.ok(mentor.size < coordinator.size, 'and the mentor post smaller still');
+
+  // Nested: a mentor can do nothing a coordinator cannot.
+  [...mentor].forEach((c) => assert.ok(coordinator.has(c),
+    `a coordinator should also be able to ${c}`));
 });

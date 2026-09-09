@@ -45,7 +45,8 @@ model User {
   login        String   @unique
   passwordHash String
   name         String
-  // SCHOOL_TEAM | MINISTRY | TERRITORIAL | PARTNER | STRATEGIC_PARTNER | ADMIN
+  // See ROLES in src/services/capabilities.js — the school positions, the
+  // meta-mentor line, the oversight readers, and the platform administrator.
   role         String
   schoolId     Int?
   school       School?  @relation(fields: [schoolId], references: [id])

@@ -16,7 +16,7 @@
           const checked = selected ? selected.has(cap) : isDefault;
           // Some capabilities need a particular kind of post as well as the
           // tick. view.school opens the school's own workspace, which
-          // routes/school.js only opens for a SCHOOL_TEAM post — so on any
+          // routes/school.js only opens for a school-side post — so on any
           // other role this box can be ticked and change nothing. Saying so
           // is better than a control that silently does nothing.
           const usable = capabilityIsUsableBy(cap, role);

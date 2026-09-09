@@ -99,6 +99,7 @@ const ALLOWED_ERRORS = new Set([
   'admin_user_err_territory_required',
   'admin_user_err_self_lockout',
   'admin_user_err_more_privileged',
+  'admin_user_err_mentor_taken',
 ]);
 
 function normaliseLogin(value) {
@@ -331,6 +332,18 @@ router.post('/:id/assignments', requireGrant, async (req, res) => {
   // The new post may not exceed what the granter holds.
   if (!canActOn(req.capabilities || new Set(), capabilitiesFor(role, []))) {
     return res.redirect(res.locals.href(`${back}?error=admin_user_err_more_privileged`));
+  }
+
+  // Exactly one meta-mentor per school. The position is defined in relation to
+  // the school — "meta-mentor for LT „Boris Dînga”" — and the programme fields
+  // one per school, twelve in the group. Two would make "the mentor for this
+  // school" an ambiguous phrase, and the school's page names one.
+  if (role === 'META_MENTOR' && scope.schoolId) {
+    const taken = await prisma.assignment.findFirst({
+      where: { role: 'META_MENTOR', schoolId: scope.schoolId, isActive: true },
+      include: { user: { select: { name: true } } },
+    });
+    if (taken) return res.redirect(res.locals.href(`${back}?error=admin_user_err_mentor_taken`));
   }
 
   // MySQL treats NULLs as distinct in a unique index, so the unscoped posts

@@ -242,7 +242,7 @@ function templatesFor(lang) {
         { id: 2, name: 'Elena Guriță', login: 'gurita.elena', isActive: true, mustChangePassword: true,
           posts: [
             { id: 7, role: 'META_MENTOR', label: null, institution: 'LT Boris Dînga', capabilityCount: 4, customised: false, isActive: true },
-            { id: 8, role: 'SCHOOL_TEAM', label: 'Coordonator DigiPuls', institution: 'LT Gaudeamus', capabilityCount: 1, customised: true, isActive: false },
+            { id: 8, role: 'SCHOOL_MENTOR', label: 'Coordonator DigiPuls', institution: 'LT Gaudeamus', capabilityCount: 1, customised: true, isActive: false },
           ] },
         { id: 3, name: 'Fără funcție', login: 'fara.functie', isActive: false, mustChangePassword: false, posts: [] },
       ],
@@ -260,8 +260,8 @@ function templatesFor(lang) {
       posts: [
         { id: 7, role: 'META_MENTOR', label: null, isActive: true, institution: 'LT Boris Dînga',
           selected: capabilitiesFor('META_MENTOR', []) },
-        { id: 8, role: 'SCHOOL_TEAM', label: 'Coordonator DigiPuls', isActive: true, institution: 'LT Gaudeamus',
-          selected: capabilitiesFor('SCHOOL_TEAM', []) },
+        { id: 8, role: 'SCHOOL_MENTOR', label: 'Coordonator DigiPuls', isActive: true, institution: 'LT Gaudeamus',
+          selected: capabilitiesFor('SCHOOL_MENTOR', []) },
       ],
       errorMessage: 'Something is wrong',
       schools: [{ id: 1, name: 'LT Mihai Eminescu' }], territories: [{ id: 1, name: 'Chișinău' }],
@@ -293,7 +293,7 @@ function templatesFor(lang) {
       options: [
         { id: 7, role: 'META_MENTOR', label: null, institution: 'LT Boris Dînga', isSchool: true,
           capabilityCount: 4, href: '/w/7/ministry', isCurrent: true },
-        { id: 8, role: 'SCHOOL_TEAM', label: 'Coordonator DigiPuls', institution: 'LT Gaudeamus', isSchool: true,
+        { id: 8, role: 'SCHOOL_MENTOR', label: 'Coordonator DigiPuls', institution: 'LT Gaudeamus', isSchool: true,
           capabilityCount: 1, href: '/w/8/school', isCurrent: false },
       ],
     }],
@@ -326,7 +326,7 @@ function baseLocals(lang) {
     workspace: { id: 7, role: 'META_MENTOR', label: null, schoolId: 1, schoolName: 'LT Boris Dînga', territoryId: null, territoryName: null },
     workspaces: [
       { id: 7, role: 'META_MENTOR', label: null, schoolId: 1, schoolName: 'LT Boris Dînga', territoryId: null, territoryName: null },
-      { id: 8, role: 'SCHOOL_TEAM', label: 'Coordonator DigiPuls', schoolId: 2, schoolName: 'LT Gaudeamus', territoryId: null, territoryName: null },
+      { id: 8, role: 'SCHOOL_MENTOR', label: 'Coordonator DigiPuls', schoolId: 2, schoolName: 'LT Gaudeamus', territoryId: null, territoryName: null },
     ],
     href: (path) => (typeof path === 'string' && path.startsWith('/')
       && !/^\/(public-view|login|logout|lang|preferences|change-password|workspace)(\/|$)/.test(path)

@@ -117,7 +117,7 @@ router.post('/schools', requireCapability('admin.schools'), async (req, res) => 
           login: teamAccountLogin,
           passwordHash,
           name: teamName || `Echipa digitală — ${created.name}`,
-          role: 'SCHOOL_TEAM',
+          role: 'SCHOOL_MENTOR',
           schoolId: created.id,
           mustChangePassword: true,
           // The post is what actually carries permissions — see
@@ -127,9 +127,9 @@ router.post('/schools', requireCapability('admin.schools'), async (req, res) => 
           // provisioned through this form was arriving broken.
           assignments: {
             create: [{
-              role: 'SCHOOL_TEAM',
+              role: 'SCHOOL_MENTOR',
               schoolId: created.id,
-              capabilities: { create: overridesFrom('SCHOOL_TEAM', ROLE_DEFAULTS.SCHOOL_TEAM) },
+              capabilities: { create: overridesFrom('SCHOOL_MENTOR', ROLE_DEFAULTS.SCHOOL_MENTOR) },
             }],
           },
         },

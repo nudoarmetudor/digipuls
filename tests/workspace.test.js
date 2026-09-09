@@ -103,7 +103,7 @@ test('the worked example holds together', () => {
   // routes scoped to whichever school the active post names.
   const { capabilitiesFor } = require('../src/services/capabilities');
   const mentor = { id: 7, role: 'META_MENTOR', schoolId: 11, capabilities: [] };
-  const coordinator = { id: 8, role: 'SCHOOL_TEAM', schoolId: 22, capabilities: [] };
+  const coordinator = { id: 8, role: 'SCHOOL_MENTOR', schoolId: 22, capabilities: [] };
 
   const mentorCaps = capabilitiesFor(mentor.role, mentor.capabilities);
   const coordCaps = capabilitiesFor(coordinator.role, coordinator.capabilities);

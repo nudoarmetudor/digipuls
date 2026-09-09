@@ -149,7 +149,7 @@ async function seedSchoolsAndUsers(territories) {
     network: { wifiWholeSchool: true, subnetsSeparated: true, wifi80211n: true, wifi80211ac: true, firewallActive: true, contentFiltering: true },
   });
   await prisma.user.create({
-    data: { login: 'zadnipru@digipuls.md', passwordHash: await hash(DEMO_PASSWORD), name: 'Echipa digitală — LT Petru Zadnipru', role: 'SCHOOL_TEAM', schoolId: zadnipru.id },
+    data: { login: 'zadnipru@digipuls.md', passwordHash: await hash(DEMO_PASSWORD), name: 'Echipa digitală — LT Petru Zadnipru', role: 'SCHOOL_MENTOR', schoolId: zadnipru.id },
   });
 
   // ---- School 2: LT B. P. Hașdeu — Bălți (large, network OK, device-poor: DEVICE-donation candidate) ----
@@ -165,7 +165,7 @@ async function seedSchoolsAndUsers(territories) {
     network: { wifiWholeSchool: true, subnetsSeparated: true, wifi80211n: true, wifi80211ac: true, firewallActive: true, contentFiltering: true },
   });
   await prisma.user.create({
-    data: { login: 'hasdeu@digipuls.md', passwordHash: await hash(DEMO_PASSWORD), name: 'Echipa digitală — LT B. P. Hașdeu', role: 'SCHOOL_TEAM', schoolId: hasdeu.id },
+    data: { login: 'hasdeu@digipuls.md', passwordHash: await hash(DEMO_PASSWORD), name: 'Echipa digitală — LT B. P. Hașdeu', role: 'SCHOOL_MENTOR', schoolId: hasdeu.id },
   });
 
   // ---- School 3: LT Onisifor Ghibu — Orhei (network non-compliant — excluded from DEVICE matching hard floor) ----
@@ -181,7 +181,7 @@ async function seedSchoolsAndUsers(territories) {
     network: { wifiWholeSchool: false, subnetsSeparated: false, wifi80211n: true, wifi80211ac: false, firewallActive: false, contentFiltering: false },
   });
   await prisma.user.create({
-    data: { login: 'ghibu@digipuls.md', passwordHash: await hash(DEMO_PASSWORD), name: 'Echipa digitală — LT Onisifor Ghibu', role: 'SCHOOL_TEAM', schoolId: ghibu.id },
+    data: { login: 'ghibu@digipuls.md', passwordHash: await hash(DEMO_PASSWORD), name: 'Echipa digitală — LT Onisifor Ghibu', role: 'SCHOOL_MENTOR', schoolId: ghibu.id },
   });
   await prisma.validationRecord.create({
     data: { cycleId: ghibuCycle.id, reviewerName: 'Territorial authority, Orhei', reviewerType: 'external_evaluator', verdict: 'agree', reliabilityNote: 'broadly_reliable', notes: 'On-site visit confirmed network non-compliance.' },
@@ -202,7 +202,7 @@ async function seedSchoolsAndUsers(territories) {
   // Deliberately NOT validated — demonstrates the matching engine's
   // validation split (this school will show up flagged "self-reported only").
   await prisma.user.create({
-    data: { login: 'cainari@digipuls.md', passwordHash: await hash(DEMO_PASSWORD), name: 'Echipa digitală — LT Alexei Mateevici', role: 'SCHOOL_TEAM', schoolId: cainari.id },
+    data: { login: 'cainari@digipuls.md', passwordHash: await hash(DEMO_PASSWORD), name: 'Echipa digitală — LT Alexei Mateevici', role: 'SCHOOL_MENTOR', schoolId: cainari.id },
   });
 
   // ---- School 5: LT Mihai Eminescu — Drochia (real pilot pattern: good infra, weak pedagogy -> improves via training) ----
@@ -226,7 +226,7 @@ async function seedSchoolsAndUsers(territories) {
     network: { wifiWholeSchool: true, subnetsSeparated: true, wifi80211n: true, wifi80211ac: true, firewallActive: true, contentFiltering: true },
   });
   await prisma.user.create({
-    data: { login: 'drochia@digipuls.md', passwordHash: await hash(DEMO_PASSWORD), name: 'Echipa digitală — LT Mihai Eminescu', role: 'SCHOOL_TEAM', schoolId: drochia.id },
+    data: { login: 'drochia@digipuls.md', passwordHash: await hash(DEMO_PASSWORD), name: 'Echipa digitală — LT Mihai Eminescu', role: 'SCHOOL_MENTOR', schoolId: drochia.id },
   });
 
   // ---- School 6: LT Miron Costin — Florești (small, strong internal PD/mentoring — "Digital Pill" pattern) ----
@@ -245,7 +245,7 @@ async function seedSchoolsAndUsers(territories) {
     data: { cycleId: florestiCycle.id, reviewerName: 'Meta-mentor, DigitalAccelerator', reviewerType: 'meta_mentor', verdict: 'agree', reliabilityNote: 'broadly_reliable', notes: '"Pastila Digitală" peer micro-learning confirmed via session logs.' },
   });
   await prisma.user.create({
-    data: { login: 'floresti@digipuls.md', passwordHash: await hash(DEMO_PASSWORD), name: 'Echipa digitală — LT Miron Costin', role: 'SCHOOL_TEAM', schoolId: floresti.id },
+    data: { login: 'floresti@digipuls.md', passwordHash: await hash(DEMO_PASSWORD), name: 'Echipa digitală — LT Miron Costin', role: 'SCHOOL_MENTOR', schoolId: floresti.id },
   });
 
   // ---- School 7: LT "Alexandru cel Bun" — Cimișlia (mid-size, balanced/average profile) ----
@@ -261,7 +261,7 @@ async function seedSchoolsAndUsers(territories) {
     network: { wifiWholeSchool: true, subnetsSeparated: true, wifi80211n: true, wifi80211ac: true, firewallActive: true, contentFiltering: true },
   });
   await prisma.user.create({
-    data: { login: 'cimislia@digipuls.md', passwordHash: await hash(DEMO_PASSWORD), name: 'Echipa digitală — LT "Alexandru cel Bun"', role: 'SCHOOL_TEAM', schoolId: cimislia.id },
+    data: { login: 'cimislia@digipuls.md', passwordHash: await hash(DEMO_PASSWORD), name: 'Echipa digitală — LT "Alexandru cel Bun"', role: 'SCHOOL_MENTOR', schoolId: cimislia.id },
   });
 
   // ---- School 8: Gimnaziul Ion Vatamanu — Sîngera (freshly onboarded, DRAFT only — mid-workflow demo) ----
@@ -290,7 +290,7 @@ async function seedSchoolsAndUsers(territories) {
     )
   );
   await prisma.user.create({
-    data: { login: 'singera@digipuls.md', passwordHash: await hash(DEMO_PASSWORD), name: 'Echipa digitală — Gimnaziul Ion Vatamanu', role: 'SCHOOL_TEAM', schoolId: singera.id },
+    data: { login: 'singera@digipuls.md', passwordHash: await hash(DEMO_PASSWORD), name: 'Echipa digitală — Gimnaziul Ion Vatamanu', role: 'SCHOOL_MENTOR', schoolId: singera.id },
   });
 
   console.log('Seeded 8 schools (7 confirmed + 1 in-progress) with realistic, varied data.');
@@ -360,7 +360,7 @@ async function seedSchoolsAndUsers(territories) {
   const coordinatedSchool = drochia; // stands in for LT „Gaudeamus", Chișinău
   for (const post of [
     { role: 'META_MENTOR', schoolId: mentoredSchool.id, territoryId: null, label: 'Meta-mentor' },
-    { role: 'SCHOOL_TEAM', schoolId: coordinatedSchool.id, territoryId: null, label: 'Coordonator DigiPuls' },
+    { role: 'SCHOOL_MENTOR', schoolId: coordinatedSchool.id, territoryId: null, label: 'Coordonator DigiPuls' },
   ]) {
     const existing = await prisma.assignment.findFirst({
       where: { userId: elena.id, role: post.role, schoolId: post.schoolId, territoryId: post.territoryId },

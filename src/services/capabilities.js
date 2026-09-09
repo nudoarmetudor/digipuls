@@ -43,14 +43,44 @@ const CAPABILITY_GROUPS = [
 ];
 
 const ROLES = [
-  'SCHOOL_TEAM',
+  // --- inside a school: the people who do the assessment and write the plan ---
+  // A school fields a team of five or six. One position of principal, one of
+  // deputy principal, and about five mentors. All three can work on the
+  // school's own assessment; the two-track split between administration and
+  // team is a workflow question, not a permissions one, and is not modelled
+  // yet.
+  'SCHOOL_PRINCIPAL',
+  'SCHOOL_DEPUTY',
+  'SCHOOL_MENTOR',
+
+  // --- the DigitalAccelerator mentoring line ---
+  // A meta-mentor (DigCompEdu C1) advises one school and only exists in
+  // relation to it: exactly one per school, twelve in the group. They watch
+  // and advise; every change to a school's record is made by that school.
+  'META_MENTOR',
+  // A meta-coordinator (DigCompEdu C2) is drawn from among the twelve and
+  // coordinates the group itself — sessions, coaching, reporting,
+  // deliverables. The position is about the mentors, not about an
+  // institution, so it names none.
+  'META_COORDINATOR',
+
+  // --- oversight: reads the results, takes no part in producing them ---
   'MINISTRY',
+  // The Territorial Education Agency, replacing the raion-level Direcție
+  // Generală de Educație. Same function as the ministry, bounded to one
+  // territory.
   'TERRITORIAL',
   'PARTNER',
   'STRATEGIC_PARTNER',
-  'META_MENTOR',
+
+  // --- the platform itself, not a position in the programme ---
   'ADMIN',
 ];
+
+// The positions a school fills. Grouped because they share what they may do
+// today and are told apart by who the person is, not by what the software
+// lets them touch.
+const SCHOOL_ROLES = ['SCHOOL_PRINCIPAL', 'SCHOOL_DEPUTY', 'SCHOOL_MENTOR'];
 
 // Held by every role. Reporting a problem is not a privilege attached to one
 // kind of account: whoever hits the thing that is wrong is the person best
@@ -64,70 +94,50 @@ const ROLES = [
 const BASELINE_CAPABILITIES = ['feedback.submit'];
 
 // A few capabilities need more than themselves. view.school opens the school's
-// own editing workspace, and routes/school.js also insists on a SCHOOL_TEAM
+// own editing workspace, and routes/school.js also insists on a school-side
 // post because every route under it reads the active school. So an
 // administrator holds view.school and can never use it.
 //
-// Rather than quietly leave a control in the picker that does nothing for six
-// of the seven roles, the requirement is declared here and the picker says so.
+// Rather than quietly leave a control in the picker that does nothing for most
+// roles, the requirement is declared here and the picker says so.
 const CAPABILITY_REQUIRES_ROLE = {
-  'view.school': 'SCHOOL_TEAM',
+  'view.school': SCHOOL_ROLES,
 };
 
 /** True when this role can actually exercise the capability, not merely hold it. */
 function capabilityIsUsableBy(capability, role) {
   const needed = CAPABILITY_REQUIRES_ROLE[capability];
-  return !needed || needed === role;
+  if (!needed) return true;
+  return Array.isArray(needed) ? needed.includes(role) : needed === role;
 }
-
-
-// Why admin.users and admin.grant are two capabilities and not one.
-//
-// They used to be one, and holding it meant: create any account, reset
-// anyone's password and read the new one, and add an ADMIN post to any
-// account including your own. That last part makes it not an administrative
-// capability but a route to becoming the administrator, which is more than
-// anyone was ever knowingly granted.
-//
-//   admin.users  running the pilot: add a mentor, correct a name, switch an
-//                account off, issue a new one-time password.
-//   admin.grant  deciding what a post may do. This is the privilege boundary,
-//                so it is held by fewer people than admin.users.
-//
-// canActOn() below closes the remaining sideways route: admin.users can issue
-// a new password for an account, which would be a takeover if the target were
-// more privileged than the actor.
-
-// Why admin.users and admin.grant are two capabilities and not one.
-//
-// They used to be one, and holding it meant: create any account, reset
-// anyone's password and read the new one, and add an ADMIN post to any
-// account including your own. That last part makes it not an administrative
-// capability but a route to becoming the administrator, which is more than
-// anyone was ever knowingly granted.
-//
-//   admin.users  running the pilot: add a mentor, correct a name, switch an
-//                account off, issue a new one-time password.
-//   admin.grant  deciding what a post may do. This is the privilege boundary,
-//                so it is held by fewer people than admin.users.
-//
-// canActOn() below closes the remaining sideways route: admin.users can issue
-// a new password for an account, which would be a takeover if the target were
-// more privileged than the actor.
 
 // The public tier (/public-view) is deliberately absent from CAPABILITIES:
 // it requires no login at all, so gating it per account would be theatre.
 const ROLE_DEFAULTS = {
-  SCHOOL_TEAM: ['view.school'],
+  // Everyone inside the school works on the same assessment. The DigiPlan is
+  // written once per two-year cycle by the school, together.
+  SCHOOL_PRINCIPAL: ['view.school'],
+  SCHOOL_DEPUTY: ['view.school'],
+  SCHOOL_MENTOR: ['view.school'],
+
+  // Deliberately without view.school: a meta-mentor watches their school's
+  // live status, drafts included, and cannot change any of it. Only the school
+  // edits the school's record. They also read the national picture, so they
+  // can see where their school stands among the twelve.
+  META_MENTOR: ['view.national', 'view.compliance', 'view.regional'],
+
+  // Everything a mentor sees, plus the account management needed to run the
+  // group. Not admin.grant — coordinating mentors is not the same as deciding
+  // what any post in the system may do.
+  META_COORDINATOR: ['view.national', 'view.compliance', 'view.regional', 'admin.users'],
+
   MINISTRY: ['view.national', 'view.compliance'],
+  // The same reading as the ministry, bounded to its own territory. It does
+  // not get view.compliance, because that monitor is national and scoping it
+  // to a district is a separate piece of work.
   TERRITORIAL: ['view.regional'],
   PARTNER: ['view.partner'],
   STRATEGIC_PARTNER: ['view.training'],
-  // Meta-mentors evaluate the platform rather than operate it: they get the
-  // read-only oversight views plus the ability to report what they find, and
-  // no administrative powers. An admin can widen or narrow any individual
-  // mentor from the user-management screen.
-  META_MENTOR: ['view.national', 'view.compliance', 'view.regional', 'feedback.submit'],
   ADMIN: CAPABILITIES.slice(),
 };
 
@@ -291,14 +301,17 @@ function homeFor(capabilities, user) {
 // How a role relates to an institution.
 //
 // Two different questions, and conflating them was a bug waiting to happen:
-//   * "needs"  — the post is meaningless without one. A school-team post has
-//     to name a school; a territorial post has to name a territory.
-//   * "allows" — the post may name one. A meta-mentor mentors a *particular*
-//     school ("Elena is meta-mentor for LT Boris Dînga"), but may also work
-//     across a territory or nationally, so the institution is optional.
-// Ministry and Admin posts are national and take neither.
+//   * "needs"  — the post is meaningless without one. A mentor has to name
+//     their school; so does a meta-mentor, whose position exists only in
+//     relation to the school they advise.
+//   * "allows" — the post may name one.
+//
+// The programme's shape: one meta-mentor per school, twelve schools, twelve
+// mentors. A meta-coordinator coordinates those mentors rather than any
+// institution, so it names neither a school nor a district — and neither do
+// the ministry, the partners, or an administrator.
 function roleNeedsSchool(role) {
-  return role === 'SCHOOL_TEAM';
+  return SCHOOL_ROLES.includes(role) || role === 'META_MENTOR';
 }
 
 function roleNeedsTerritory(role) {
@@ -306,15 +319,22 @@ function roleNeedsTerritory(role) {
 }
 
 function roleAllowsSchool(role) {
-  return role === 'SCHOOL_TEAM' || role === 'META_MENTOR';
+  return roleNeedsSchool(role);
 }
 
 function roleAllowsTerritory(role) {
-  return role === 'TERRITORIAL' || role === 'META_MENTOR';
+  return role === 'TERRITORIAL';
+}
+
+/** Positions that exist only in relation to one school. */
+function isSchoolRole(role) {
+  return SCHOOL_ROLES.includes(role);
 }
 
 module.exports = {
   CAPABILITIES,
+  SCHOOL_ROLES,
+  isSchoolRole,
   BASELINE_CAPABILITIES,
   defaultsFor,
   roleNeedsSchool,

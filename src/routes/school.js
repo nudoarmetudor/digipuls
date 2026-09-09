@@ -11,12 +11,16 @@ const { renderWheel, itemsFromRatings } = require('../services/wheelChart');
 const { computeStepStatuses, finalizeReviewStatus, overallProgress } = require('../services/stepStatus');
 const { ValidationError, toLevel, toNonNegativeInt } = require('../utils/validate');
 const { mentorsForSchool } = require('../services/mentors');
+const { SCHOOL_ROLES } = require('../services/capabilities');
 
 const router = express.Router();
 // Both must hold: the role because every route below reads the session's
 // schoolId, the capability so an admin can suspend a school's access
 // without changing what kind of account it is.
-router.use(requireRole('SCHOOL_TEAM'), requireCapability('view.school'), requireSchool);
+// Any of the positions a school fills — principal, deputy, mentor. They work
+// on the same assessment; the two-track split between administration and team
+// is a workflow question and is not a permissions boundary today.
+router.use(requireRole(...SCHOOL_ROLES), requireCapability('view.school'), requireSchool);
 
 async function getSchool(req) {
   const id = activeSchoolId(req);
