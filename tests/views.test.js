@@ -223,6 +223,25 @@ function templatesFor(lang) {
     }],
     ['public/school-summary.ejs', { school, hasData: false }],
 
+    ['school/accounts.ejs', {
+      school: { id: 1, name: 'LT „Boris Dînga” — Criuleni' },
+      people: [
+        { id: 2, postId: 5, name: 'Elena Guriță', login: 'gurita.elena', role: 'SCHOOL_PRINCIPAL',
+          isActive: true, mustChangePassword: false, manageable: false, isSelf: true, capabilityCount: 5 },
+        { id: 3, postId: 6, name: 'Ion Băbălău', login: 'babalau.ion', role: 'SCHOOL_MENTOR',
+          isActive: true, mustChangePassword: true, manageable: true, isSelf: false, capabilityCount: 2 },
+      ],
+      grantableRole: 'SCHOOL_MENTOR', errorMessage: null,
+    }],
+    ['school/account-form.ejs', {
+      school: { id: 1, name: 'LT „Boris Dînga” — Criuleni' },
+      grantableRole: 'SCHOOL_MENTOR', body: {}, errorMessage: null,
+    }],
+    ['school/account-created.ejs', {
+      school: { id: 1, name: 'LT „Boris Dînga” — Criuleni' },
+      user: { id: 3, name: 'Ion Băbălău', login: 'babalau.ion' },
+      tempPassword: 'Qx7mKp2ntDvR', wasReset: false,
+    }],
     ['admin/school-new.ejs', {
       territories: [{ id: 1, name: 'Chișinău' }],
       // The form re-renders itself with what was typed when validation fails,

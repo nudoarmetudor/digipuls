@@ -1,0 +1,36 @@
+<h1><%= t('school_acct_new') %></h1>
+<p class="subtitle"><%= school.name %></p>
+
+<% if (errorMessage) { %>
+  <div class="flash flash-error" role="alert"><%= errorMessage %></div>
+<% } %>
+
+<div class="card">
+  <form method="POST" action="<%= href('/school/accounts') %>">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+    <label for="acct-name"><%= t('school_acct_person') %></label>
+    <input type="text" id="acct-name" name="name" required autofocus
+           value="<%= (body && body.name) || '' %>">
+    <p class="help"><%= t('school_acct_name_help') %></p>
+
+    <label for="acct-login"><%= t('school_acct_login') %></label>
+    <input type="text" id="acct-login" name="login" required
+           value="<%= (body && body.login) || '' %>">
+    <p class="help"><%= t('school_acct_login_help') %></p>
+
+    <div class="btn-row" style="margin-top:1rem;">
+      <button class="btn" type="submit"><%= t('school_acct_create') %></button>
+      <a class="btn btn-sm btn-secondary" href="<%= href('/school/accounts') %>"><%= t('cancel') %></a>
+    </div>
+  </form>
+</div>
+
+<div class="card card-flat">
+  <h2 class="plain-heading" style="font-size:1rem;"><%= t('school_acct_fixed_title') %></h2>
+  <ul>
+    <li><%= t('school_acct_fixed_position', { role: t('role_' + grantableRole) }) %></li>
+    <li><%= t('school_acct_fixed_school', { school: school.name }) %></li>
+    <li><%= t('school_acct_fixed_password') %></li>
+  </ul>
+</div>

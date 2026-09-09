@@ -5,7 +5,7 @@ const {
   CAPABILITIES, CAPABILITY_GROUPS, ROLES, ROLE_DEFAULTS,
   capabilitiesFor, overridesFrom, homeFor, canOpenSchoolWorkspace,
   SCHOOL_ROLES, roleNeedsSchool, roleNeedsTerritory, roleAllowsTerritory,
-  BASELINE_CAPABILITIES, defaultsFor, capabilityIsUsableBy,
+  BASELINE_CAPABILITIES, defaultsFor, capabilityIsUsableBy, CAPABILITY_REQUIRES_ROLE,
 } = require('../src/services/capabilities');
 
 test('every role has defaults, and every default is a real capability', () => {
@@ -156,18 +156,65 @@ test('an oversight post that names a school lands on that school', () => {
 });
 
 test('a capability that needs a particular post says so', () => {
-  // view.school opens the school's own workspace, and routes/school.js also
-  // insists on a SCHOOL_TEAM post. An administrator holds the capability and
-  // can never use it, so the picker marks it rather than offering a control
+  // Some capabilities need more than themselves: the routes under /school also
+  // insist on a school-side post, so an administrator holds view.school and
+  // can never use it. The picker marks those rather than offering a control
   // that silently does nothing.
+  //
+  // Derived from CAPABILITY_REQUIRES_ROLE rather than listed here, so a
+  // capability added to that map is covered the day it is added.
+  Object.entries(CAPABILITY_REQUIRES_ROLE).forEach(([capability, needed]) => {
+    const allowed = Array.isArray(needed) ? needed : [needed];
+    allowed.forEach((role) => assert.ok(capabilityIsUsableBy(capability, role),
+      `${capability} should be usable by ${role}`));
+    ROLES.filter((r) => !allowed.includes(r)).forEach((role) => {
+      assert.ok(!capabilityIsUsableBy(capability, role),
+        `${capability} should be marked as unusable by ${role}`);
+    });
+  });
+
+  // The school workspace is the case this was built for.
   assert.ok(capabilityIsUsableBy('view.school', 'SCHOOL_MENTOR'));
   assert.ok(!capabilityIsUsableBy('view.school', 'ADMIN'));
   assert.ok(!capabilityIsUsableBy('view.school', 'META_MENTOR'));
 
-  // Everything else is usable by whoever holds it.
-  CAPABILITIES.filter((c) => c !== 'view.school').forEach((c) => {
+  // Everything not in the map is usable by whoever holds it.
+  CAPABILITIES.filter((c) => !(c in CAPABILITY_REQUIRES_ROLE)).forEach((c) => {
     ROLES.forEach((r) => assert.ok(capabilityIsUsableBy(c, r), `${c} should be usable by ${r}`));
   });
+});
+
+test('only the principal and the deputy can run a school', () => {
+  // Opening and confirming a cycle, deciding what the plan aims at, publishing
+  // anything, and creating the school's own accounts. A mentor does the work
+  // inside a cycle; they do not decide that one is starting or closing.
+  const MANAGEMENT = ['school.manage', 'school.publish', 'school.accounts'];
+
+  ['SCHOOL_PRINCIPAL', 'SCHOOL_DEPUTY'].forEach((role) => {
+    MANAGEMENT.forEach((c) => assert.ok(capabilitiesFor(role, []).has(c),
+      `${role} should hold ${c}`));
+  });
+
+  const mentor = capabilitiesFor('SCHOOL_MENTOR', []);
+  MANAGEMENT.forEach((c) => assert.ok(!mentor.has(c), `a mentor must not hold ${c}`));
+  assert.ok(mentor.has('view.school'), 'but a mentor still works on the assessment');
+
+  // The two management positions are equivalent: which of them holds the post
+  // is recorded in the audit trail, not enforced as a difference in power.
+  const principal = [...capabilitiesFor('SCHOOL_PRINCIPAL', [])].sort().join('|');
+  const deputy = [...capabilitiesFor('SCHOOL_DEPUTY', [])].sort().join('|');
+  assert.strictEqual(principal, deputy);
+});
+
+test('a school can only ever create mentors, for its own school', () => {
+  // The bound that matters: school.accounts must not become a way to climb.
+  // Whatever a principal creates holds strictly less than they do.
+  const principal = capabilitiesFor('SCHOOL_PRINCIPAL', []);
+  const created = capabilitiesFor('SCHOOL_MENTOR', []);
+
+  [...created].forEach((c) => assert.ok(principal.has(c),
+    `a created account must not hold ${c}, which its creator does not`));
+  assert.ok(created.size < principal.size, 'and must hold strictly less');
 });
 
 test('everyone can report a problem, whatever their role', () => {

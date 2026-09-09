@@ -17,8 +17,15 @@
 //     in routes/territorial.js; granting view.regional does not widen it.
 
 const CAPABILITIES = [
-  // --- what the account can see ---
-  'view.school',      // a school's own assessment workspace
+  // --- inside a school ---
+  'view.school',      // work on the school's own assessment and plan
+  // The three below are the principal's and the deputy's. They are separate
+  // capabilities rather than one "is management" flag because they are three
+  // different kinds of authority, and a school may later want to delegate one
+  // without the others.
+  'school.manage',    // open a cycle, confirm it, decide what the plan aims at
+  'school.publish',   // put the assessment, the plan or the interim report out
+  'school.accounts',  // create and administer this school's own mentor accounts
   'view.national',    // the Ministry's national dashboard
   'view.compliance',  // the Order 675 quantitative monitor
   'view.regional',    // the territorial dashboard (own territory only)
@@ -37,7 +44,8 @@ const CAPABILITIES = [
 // Grouped for the admin UI, so the checkbox list reads as something other
 // than eleven undifferentiated strings.
 const CAPABILITY_GROUPS = [
-  { key: 'views', capabilities: ['view.school', 'view.national', 'view.compliance', 'view.regional', 'view.partner', 'view.training'] },
+  { key: 'school', capabilities: ['view.school', 'school.manage', 'school.publish', 'school.accounts'] },
+  { key: 'views', capabilities: [ 'view.national', 'view.compliance', 'view.regional', 'view.partner', 'view.training'] },
   { key: 'admin', capabilities: ['admin.schools', 'admin.users', 'admin.grant', 'admin.audit'] },
   { key: 'feedback', capabilities: ['feedback.submit', 'feedback.triage'] },
 ];
@@ -102,6 +110,9 @@ const BASELINE_CAPABILITIES = ['feedback.submit'];
 // roles, the requirement is declared here and the picker says so.
 const CAPABILITY_REQUIRES_ROLE = {
   'view.school': SCHOOL_ROLES,
+  'school.manage': SCHOOL_ROLES,
+  'school.publish': SCHOOL_ROLES,
+  'school.accounts': SCHOOL_ROLES,
 };
 
 /** True when this role can actually exercise the capability, not merely hold it. */
@@ -116,8 +127,14 @@ function capabilityIsUsableBy(capability, role) {
 const ROLE_DEFAULTS = {
   // Everyone inside the school works on the same assessment. The DigiPlan is
   // written once per two-year cycle by the school, together.
-  SCHOOL_PRINCIPAL: ['view.school'],
-  SCHOOL_DEPUTY: ['view.school'],
+  // The principal and the deputy principal are equivalent in the software.
+  // Which of them holds the post is recorded in the audit trail; it is not a
+  // permissions boundary, and nothing in the workflow needs one.
+  SCHOOL_PRINCIPAL: ['view.school', 'school.manage', 'school.publish', 'school.accounts'],
+  SCHOOL_DEPUTY: ['view.school', 'school.manage', 'school.publish', 'school.accounts'],
+  // A mentor does the assessment and writes the initiatives. They cannot open
+  // or close a cycle, decide the plan's targets, publish anything, or create
+  // accounts.
   SCHOOL_MENTOR: ['view.school'],
 
   // Deliberately without view.school: a meta-mentor watches their school's

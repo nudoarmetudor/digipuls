@@ -205,6 +205,10 @@ app.use((req, res, next) => {
 });
 
 app.use('/', require('./routes/auth'));
+// Mounted before /school so it keeps its own guards: managing the school's
+// accounts needs school.accounts, which a mentor does not hold, while
+// everything under /school needs only view.school.
+app.use('/school/accounts', require('./routes/schoolAccounts'));
 app.use('/school', require('./routes/school'));
 app.use('/ministry', require('./routes/ministry'));
 app.use('/territorial', require('./routes/territorial'));

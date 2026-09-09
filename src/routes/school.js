@@ -68,7 +68,9 @@ router.get('/', async (req, res) => {
   });
 });
 
-router.post('/cycles/start', async (req, res) => {
+// Opening a cycle is the principal's. A mentor works inside a cycle; they do
+// not decide that the school is starting one.
+router.post('/cycles/start', requireCapability('school.manage'), async (req, res) => {
   const school = req.school;
   const existingDraft = await prisma.assessmentCycle.findFirst({ where: { schoolId: school.id, status: 'DRAFT' } });
   if (existingDraft) return res.redirect(res.locals.href(`/school/cycles/${existingDraft.id}`));
@@ -294,7 +296,9 @@ router.post('/cycles/:id/network', loadCycleForSchool, requireDraftCycle, async 
   res.redirect(res.locals.href(`/school/cycles/${cycle.id}/step/infra`));
 });
 
-router.post('/cycles/:id/confirm', loadCycleForSchool, async (req, res) => {
+// Closing a cycle turns a draft into the school's official, on-the-record
+// declaration — which the Ministry, the partners and the public then read.
+router.post('/cycles/:id/confirm', requireCapability('school.manage'), loadCycleForSchool, async (req, res) => {
   const cycle = req.cycle;
   if (cycle.status === 'CONFIRMED') return res.redirect(res.locals.href(`/school/cycles/${cycle.id}/plan`));
   const school = req.school;
@@ -337,7 +341,10 @@ router.get('/cycles/:id/plan', loadCycleForSchool, async (req, res) => {
   });
 });
 
-router.post('/cycles/:id/plan/priorities', loadCycleForSchool, async (req, res) => {
+// What the plan aims at — which parameters advance, and to what level — is
+// the principal's decision. Writing the initiatives that get there is the
+// whole team's work, and is not gated.
+router.post('/cycles/:id/plan/priorities', requireCapability('school.manage'), loadCycleForSchool, async (req, res) => {
   const cycle = req.cycle;
   let plan = cycle.plan;
   if (!plan) {
@@ -358,7 +365,7 @@ router.post('/cycles/:id/plan/priorities', loadCycleForSchool, async (req, res) 
   res.redirect(res.locals.href(`/school/cycles/${cycle.id}/plan`));
 });
 
-router.post('/cycles/:id/plan/details', loadCycleForSchool, async (req, res) => {
+router.post('/cycles/:id/plan/details', requireCapability('school.manage'), loadCycleForSchool, async (req, res) => {
   const cycle = req.cycle;
   let plan = cycle.plan;
   if (!plan) plan = await prisma.developmentPlan.create({ data: { cycleId: cycle.id } });
@@ -370,7 +377,9 @@ router.post('/cycles/:id/plan/details', loadCycleForSchool, async (req, res) => 
   res.redirect(res.locals.href(`/school/cycles/${cycle.id}/plan`));
 });
 
-router.post('/cycles/:id/plan/publish', loadCycleForSchool, async (req, res) => {
+// Publishing is a decision about what the school says in public, so it sits
+// with the person accountable for saying it.
+router.post('/cycles/:id/plan/publish', requireCapability('school.publish'), loadCycleForSchool, async (req, res) => {
   const cycle = req.cycle;
   if (!cycle.plan) return res.status(400).render('error', { title: res.locals.t('err_no_plan'), message: res.locals.t('err_no_plan_body') });
   await prisma.developmentPlan.update({ where: { id: cycle.plan.id }, data: { publishedAt: new Date() } });

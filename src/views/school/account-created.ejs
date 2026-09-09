@@ -1,0 +1,29 @@
+<h1><%= wasReset ? t('school_acct_reset_done') : t('school_acct_created') %></h1>
+<p class="subtitle"><%= school.name %></p>
+
+<div class="card">
+  <p><%= wasReset ? t('school_acct_reset_intro') : t('school_acct_created_intro') %></p>
+
+  <table>
+    <tbody>
+      <tr>
+        <th scope="row"><%= t('school_acct_person') %></th>
+        <td><%= user.name %></td>
+      </tr>
+      <tr>
+        <th scope="row"><%= t('school_acct_login') %></th>
+        <td class="mono"><%= user.login %></td>
+      </tr>
+      <tr>
+        <th scope="row"><%= t('school_acct_temp_password') %></th>
+        <td class="mono"><b><%= tempPassword %></b></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p class="help"><%= t('school_acct_shown_once') %></p>
+</div>
+
+<div class="btn-row">
+  <a class="btn" href="<%= href('/school/accounts') %>"><%= t('school_acct_back') %></a>
+</div>

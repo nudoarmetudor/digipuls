@@ -11,10 +11,14 @@
 const groups = [];
 
 if (can('view.school') && workspace && workspace.schoolId) {
-  groups.push({ key: 'assessment', items: [
+  const assessment = [
     ['/school', t('nav_dashboard'), 'home'],
     ['/school/history', t('nav_my_progress'), 'trend'],
-  ] });
+  ];
+  // Only the principal and the deputy principal. A mentor works on the
+  // assessment but does not provision colleagues.
+  if (can('school.accounts')) assessment.push(['/school/accounts', t('nav_school_accounts'), 'people']);
+  groups.push({ key: 'assessment', items: assessment });
 }
 
 // A post that names a school but cannot open its workspace is an oversight

@@ -1,0 +1,90 @@
+<h1><%= t('school_acct_title') %></h1>
+<p class="subtitle"><%= school.name %></p>
+
+<% if (errorMessage) { %>
+  <div class="flash flash-error" role="alert"><%= errorMessage %></div>
+<% } %>
+
+<p><%= t('school_acct_intro') %></p>
+
+<div class="btn-row" style="margin:1rem 0;">
+  <a class="btn btn-sm" href="<%= href('/school/accounts/new') %>"><%= t('school_acct_new') %></a>
+</div>
+
+<div class="card">
+  <div class="table-scroll">
+    <table>
+      <caption><%= t('school_acct_people', { n: people.length }) %></caption>
+      <thead>
+        <tr>
+          <th scope="col"><%= t('school_acct_person') %></th>
+          <th scope="col"><%= t('school_acct_login') %></th>
+          <th scope="col"><%= t('school_acct_position') %></th>
+          <th scope="col"><%= t('school_acct_state') %></th>
+          <th scope="col"><span class="visually-hidden"><%= t('school_acct_actions') %></span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (people.length === 0) { %>
+          <tr><td colspan="5"><%= t('school_acct_none') %></td></tr>
+        <% } %>
+        <% people.forEach(function (p) { %>
+          <tr>
+            <th scope="row" style="background:none;font-weight:400;color:inherit;">
+              <%= p.name %>
+              <% if (p.isSelf) { %> <span class="badge"><%= t('school_acct_you') %></span><% } %>
+            </th>
+            <td class="mono"><%= p.login %></td>
+            <td><%= t('role_' + p.role) %></td>
+            <td>
+              <% if (!p.isActive) { %>
+                <span class="badge badge-maintained"><%= t('admin_user_inactive') %></span>
+              <% } else if (p.mustChangePassword) { %>
+                <span class="badge badge-unvalidated"><%= t('school_acct_awaiting_first_login') %></span>
+              <% } else { %>
+                <span class="badge badge-confirmed"><%= t('school_acct_active') %></span>
+              <% } %>
+            </td>
+            <td>
+              <% if (p.manageable) { %>
+                <div class="btn-row">
+                  <form method="POST" action="<%= href('/school/accounts/' + (p.id) + '/reset-password') %>">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <button class="btn btn-sm btn-secondary" type="submit">
+                      <%= t('school_acct_reset') %><span class="visually-hidden"> — <%= p.name %></span>
+                    </button>
+                  </form>
+                  <form method="POST" action="<%= href('/school/accounts/' + (p.id) + '/active') %>">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <input type="hidden" name="active" value="<%= p.isActive ? 'false' : 'true' %>">
+                    <button class="btn btn-sm btn-secondary" type="submit">
+                      <%= p.isActive ? t('admin_user_deactivate') : t('admin_user_activate') %><span class="visually-hidden"> — <%= p.name %></span>
+                    </button>
+                  </form>
+                </div>
+                <form method="POST" action="<%= href('/school/accounts/' + (p.id)) %>" style="margin-top:.5rem;">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <div class="inline-fields">
+                    <div>
+                      <label class="visually-hidden" for="name-<%= p.id %>"><%= t('school_acct_person') %></label>
+                      <input type="text" id="name-<%= p.id %>" name="name" value="<%= p.name %>">
+                    </div>
+                    <div>
+                      <button class="btn btn-sm" type="submit" style="margin-top:.15rem;">
+                        <%= t('school_acct_rename') %><span class="visually-hidden"> — <%= p.name %></span>
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              <% } else { %>
+                <span class="help"><%= t('school_acct_not_manageable') %></span>
+              <% } %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<p class="help" style="margin-top:1rem;"><%= t('school_acct_bounds') %></p>
