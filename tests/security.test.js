@@ -608,3 +608,29 @@ test('a room full of people fumbling their passwords cannot lock out the cohort'
   assert.ok(MAX_PER_ACCOUNT <= 10, 'one account still gets ten tries, not more');
   assert.ok(MAX_OVERALL <= 5000, 'the ceiling must still bound a brute-force run');
 });
+
+test('no route sits on a path a cache will mistake for a static file', () => {
+  // The generalised version of the export bug, and the reason it is worth a
+  // test rather than a memo. The host's CDN decides what to cache by looking
+  // at the URL, not at what the origin says: /ministry/export.csv was treated
+  // as a file, cached while a Ministry account was signed in, and served to
+  // anonymous visitors. The origin now sends no-store on everything, but a
+  // second line of defence costs nothing — a path with no extension is never
+  // offered to that heuristic in the first place.
+  const dir = path.join(__dirname, '..', 'src', 'routes');
+  const offenders = [];
+  fs.readdirSync(dir).filter((f) => f.endsWith('.js')).forEach((file) => {
+    const source = fs.readFileSync(path.join(dir, file), 'utf8');
+    const routes = source.match(/router\.(?:get|post)\('([^']+)'/g) || [];
+    routes.forEach((decl) => {
+      const route = decl.replace(/router\.(?:get|post)\('/, '').replace(/'$/, '');
+      // A trailing .something on the last segment is what a cache reads as a
+      // file extension. Route parameters (:id) are not that.
+      const last = route.split('/').pop();
+      if (/\.[a-z0-9]{2,5}$/i.test(last)) offenders.push(`${file}: ${route}`);
+    });
+  });
+  assert.deepStrictEqual(offenders, [],
+    'these routes look like static files to a CDN — drop the extension and name '
+    + 'the download with Content-Disposition instead');
+});
