@@ -10,17 +10,24 @@
 -- defaults to AGREED rather than to a working track — anything created by code
 -- that predates this change is, by definition, the agreed value.
 --
--- Written by hand rather than generated. `prisma migrate diff` renders a
--- uniqueness change as DROP + CREATE around a table it has also just altered,
--- and the order it picks is not guaranteed to keep the old index valid while
--- the column is being added.
+-- ORDER MATTERS, and the first version of this file got it wrong. MySQL uses
+-- the (cycleId, indicatorCode) unique index to satisfy the foreign key on
+-- cycleId, so dropping it first fails with
+--
+--   1553  Cannot drop index 'IndicatorRating_cycleId_indicatorCode_key':
+--         needed in a foreign key constraint
+--
+-- Creating the replacement first gives the constraint another index with
+-- cycleId leading, after which the old one can go. The same trap waits for any
+-- future uniqueness change on a table whose foreign key column leads the index.
 
 ALTER TABLE `IndicatorRating`
   ADD COLUMN `track` VARCHAR(191) NOT NULL DEFAULT 'AGREED';
 
--- The old constraint said "one rating per indicator per cycle", which is now
--- exactly the thing that must not be true.
-DROP INDEX `IndicatorRating_cycleId_indicatorCode_key` ON `IndicatorRating`;
-
+-- New first, so the foreign key on cycleId always has an index to use.
 CREATE UNIQUE INDEX `IndicatorRating_cycleId_indicatorCode_track_key`
   ON `IndicatorRating`(`cycleId`, `indicatorCode`, `track`);
+
+-- Then the old constraint, which said "one rating per indicator per cycle" —
+-- exactly the thing that must now be false.
+DROP INDEX `IndicatorRating_cycleId_indicatorCode_key` ON `IndicatorRating`;
