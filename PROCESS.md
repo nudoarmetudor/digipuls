@@ -625,6 +625,19 @@ nineteen parameters — which is what makes the second cycle's numbers comparabl
 with the first's, and what turns this from a snapshot into a trajectory. The
 school's own history page shows each parameter's movement across cycles.
 
+**A renewal starts empty, not pre-filled.** Both sides rate all nineteen again,
+and all nineteen are reconciled again. Last cycle's agreed level is shown beside
+each parameter as context, and the platform still works out on its own whether
+each one grew, was maintained or decayed — but somebody has to say what the
+level is this time. A renewal that carried last cycle's numbers forward would
+let a school confirm a new official record without anyone having looked at
+anything, and would put the same number in front of both sides before either
+had answered, which is exactly what the two tracks exist to prevent.
+
+The equipment data — the device counts and the network checklist — *is* carried
+forward. It is an inventory rather than a judgement, and retyping eight numbers
+proves nothing.
+
 ---
 
 ## 12. What the oversight roles do

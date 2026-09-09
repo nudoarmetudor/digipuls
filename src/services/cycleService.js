@@ -1,6 +1,8 @@
 const prisma = require('../config/db');
 const { INDICATORS } = require('../data/indicators');
 const { TRACKS, AGREED } = require('./tracks');
+// AGREED is still read by setContinuationRating below, which derives the change
+// state from the previous cycle's official level.
 
 /**
  * Starts a school's first assessment cycle: one draft IndicatorRating per
@@ -35,24 +37,41 @@ async function startFirstCycle(schoolId) {
 }
 
 /**
- * Starts a continuation cycle from a confirmed prior cycle: pre-populates
- * every indicator with the prior cycle's level as the starting point, so
- * the school is confirming/adjusting, not starting from a blank form.
- * See DigiPuls - use case catalog.md, UC-S6, and end-to-end process flows,
- * Process 2 — this is the piece flagged as "the single largest undesigned
- * piece of the tool" in MDSF tool - requirements bridge.md, now built.
+ * Starts a continuation cycle from a confirmed prior cycle.
+ *
+ * The ratings start empty, on all three tracks, exactly as a first cycle
+ * does. This used to copy the prior cycle's agreed level into every track, so
+ * that a school was "adjusting a shared baseline rather than re-deriving one
+ * from nothing" — which sounds reasonable and quietly destroyed the two
+ * things a cycle is for:
+ *
+ *   Both sides began holding the same number, so they never assessed
+ *   independently. "The administration and the team both reached 3" was not a
+ *   finding on a renewal; it was a copy. The masking that keeps the two
+ *   readings apart had nothing to hide, because every parameter already had
+ *   an answer on both sides the moment the cycle opened.
+ *
+ *   The agreed track was pre-filled too, which meant last cycle's record
+ *   silently became this cycle's — a renewal could be confirmed with nobody
+ *   having looked at anything. Confirmation is a signature, and it was
+ *   available for free.
+ *
+ * The baseline is not lost: previousCycleId links the two, every parameter
+ * shows last cycle's agreed level beside the picker (see the step pages), and
+ * the change state — grew, maintained, decayed — is still derived from that
+ * link rather than from a copied row. What changes is that somebody now has
+ * to say what the level is this time.
+ *
+ * See DigiPuls - use case catalog.md, UC-S6.
  */
 async function startContinuationCycle(schoolId) {
   const priorCycle = await prisma.assessmentCycle.findFirst({
     where: { schoolId, status: 'CONFIRMED' },
     orderBy: { cycleNumber: 'desc' },
-    // The agreed track only: a continuation cycle starts from what the school
-    // officially recorded last time, not from either side's working draft.
-    include: {
-      ratings: { where: { track: AGREED } },
-      deviceInventory: true,
-      networkChecklist: true,
-    },
+    // The equipment data only. Last cycle's *levels* are deliberately not
+    // read here any more — they are context shown beside each parameter, from
+    // previousCycle, not a starting value copied into this cycle's rows.
+    include: { deviceInventory: true, networkChecklist: true },
   });
   if (!priorCycle) {
     throw new Error('No confirmed prior cycle to continue from — use startFirstCycle instead.');
@@ -96,23 +115,13 @@ async function startContinuationCycle(schoolId) {
     },
   });
 
-  // Pre-populate each indicator's rating with the prior level as the
-  // starting point. changeState stays null until the team actively
-  // confirms maintained/grew/decayed for it (see routes/assessment.js).
-  // Every track starts from last cycle's agreed level, so both sides are
-  // adjusting a shared baseline rather than re-deriving one from nothing.
-  const priorByIndicator = new Map(priorCycle.ratings.map((r) => [r.indicatorCode, r]));
+  // Empty, on every track — the same shape a first cycle starts in. See the
+  // note above this function for why a copy of last cycle's levels is worse
+  // than a blank one, and where the baseline lives instead.
   await prisma.indicatorRating.createMany({
-    data: INDICATORS.flatMap((ind) => {
-      const prior = priorByIndicator.get(ind.code);
-      return TRACKS.map((track) => ({
-        cycleId: newCycle.id,
-        indicatorCode: ind.code,
-        track,
-        level: prior ? prior.level : 0,
-        changeState: null,
-      }));
-    }),
+    data: INDICATORS.flatMap((ind) => TRACKS.map((track) => ({
+      cycleId: newCycle.id, indicatorCode: ind.code, track, level: null, changeState: null,
+    }))),
   });
 
   return newCycle;

@@ -238,3 +238,56 @@ test('masking does not touch the agreed record or the counts', () => {
   // still describes the school rather than the viewer.
   assert.deepStrictEqual(outstanding(rows).unsettled, ['A2', 'A3']);
 });
+
+// --- a renewal is a new assessment, not a copy of the last one --------------
+
+const fsMod = require('node:fs');
+const pathMod = require('node:path');
+
+test('a continuation cycle starts empty on every track', () => {
+  // It used to copy the previous cycle's agreed level into all three tracks,
+  // which destroyed both things a cycle is for. Both sides began holding the
+  // same number, so "the administration and the team both reached 3" was a
+  // copy rather than a finding — and the masking that keeps the two readings
+  // apart had nothing to hide, because every parameter already had an answer
+  // on both sides the moment the cycle opened. The agreed track was pre-filled
+  // too, so a renewal could be confirmed with nobody having looked at
+  // anything: a signature available for free.
+  const source = fsMod.readFileSync(
+    pathMod.join(__dirname, '..', 'src', 'services', 'cycleService.js'), 'utf8');
+
+  const fn = source.slice(source.indexOf('async function startContinuationCycle'));
+  const body = fn.slice(0, fn.indexOf('\n}\n'));
+
+  assert.match(body, /level: null/,
+    'a renewal must start unrated, like a first cycle');
+  assert.ok(!/level: prior/.test(body),
+    'no track may be seeded from the previous cycle');
+
+  // The baseline is not lost — it is a link, not a copy. previousCycleId is
+  // what shows last cycle's level beside each parameter and what
+  // setContinuationRating derives grew/maintained/decayed from.
+  assert.match(body, /previousCycleId: priorCycle\.id/);
+
+  // Equipment counts are still carried forward: they are inventory, not a
+  // judgement, and retyping eight numbers proves nothing.
+  assert.match(body, /deviceInventory: \{/);
+  assert.match(body, /networkChecklist: \{/);
+});
+
+test('the change state still comes from the previous cycle, not from a copy', () => {
+  const source = fsMod.readFileSync(
+    pathMod.join(__dirname, '..', 'src', 'services', 'cycleService.js'), 'utf8');
+  const fn = source.slice(source.indexOf('async function setContinuationRating'));
+  assert.match(fn, /previousCycle: \{ include: \{ ratings: \{ where: \{ track: AGREED \}/,
+    'grew/maintained/decayed is measured against last cycle’s official record');
+});
+
+test('an empty renewal cannot be confirmed by doing nothing', () => {
+  // The consequence that matters. With all three tracks blank, every parameter
+  // is unsettled, and outstanding() is what the confirm route checks.
+  const rows = reconciliation([], IND);
+  assert.deepStrictEqual(outstanding(rows).unsettled, ['A1', 'A2', 'A3'],
+    'nothing is agreed until somebody agrees it');
+  assert.deepStrictEqual(outstanding(rows).untouched, ['A1', 'A2', 'A3']);
+});
