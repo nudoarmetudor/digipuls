@@ -24,7 +24,32 @@
 // change. The default is off because claiming to distinguish clients when you
 // cannot is worse than admitting you cannot.
 
-const TRUST = process.env.TRUST_CLIENT_IP === 'true';
+// Reading the switch.
+//
+// It was `=== 'true'`, and the first time anyone set it the panel wrote
+// TRUST_CLIENT_IP='TRUE'. Uppercase. The comparison failed, the flag stayed
+// off, and nothing said so: the setting looked right in the panel and did
+// nothing at all. A security control that silently declines to switch on is
+// worse than one that is plainly off, because someone believes it is running.
+//
+// So: any ordinary spelling of yes turns it on, any ordinary spelling of no
+// leaves it off, and anything else is shouted about at startup rather than
+// quietly read as no.
+const ON = ['true', '1', 'yes', 'on'];
+const OFF = ['false', '0', 'no', 'off', ''];
+
+function readSwitch(raw) {
+  const value = String(raw === undefined || raw === null ? '' : raw).trim().toLowerCase();
+  if (ON.includes(value)) return true;
+  if (OFF.includes(value)) return false;
+  console.warn(
+    `[clientId] TRUST_CLIENT_IP is set to ${JSON.stringify(raw)}, which is neither `
+    + `${ON.join('/')} nor ${OFF.join('/')}. Treating it as off, so every rate limit `
+    + 'stays global. Set it to "true" if that is not what you meant.');
+  return false;
+}
+
+const TRUST = readSwitch(process.env.TRUST_CLIENT_IP);
 
 /**
  * A key to count against.
@@ -41,4 +66,4 @@ function clientId(req) {
 /** True when limits are shared by every visitor, so callers can size them. */
 const limitsAreGlobal = !TRUST;
 
-module.exports = { clientId, limitsAreGlobal, TRUST_CLIENT_IP: TRUST };
+module.exports = { clientId, limitsAreGlobal, TRUST_CLIENT_IP: TRUST, readSwitch };

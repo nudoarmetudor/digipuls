@@ -690,3 +690,30 @@ test('password spraying is bounded once addresses can be seen', () => {
   assert.ok(!/perAddress\.clear/.test(clear) && !/overall\.clear/.test(clear),
     'guessing one password must not refund the budget spent on the others');
 });
+
+test('the client-address switch is read the way people actually write it', () => {
+  // Found on the live deployment, not here: the panel wrote
+  // TRUST_CLIENT_IP='TRUE' and the comparison was `=== 'true'`, so the flag
+  // stayed off and nothing said so. The setting looked right and did nothing —
+  // which is the worst state for a security control, because somebody believes
+  // it is running.
+  const { readSwitch } = require('../src/utils/clientId');
+
+  ['true', 'TRUE', 'True', ' true ', '1', 'yes', 'on']
+    .forEach((v) => assert.strictEqual(readSwitch(v), true, `${JSON.stringify(v)} means on`));
+  ['false', 'FALSE', '0', 'no', 'off', '', undefined, null]
+    .forEach((v) => assert.strictEqual(readSwitch(v), false, `${JSON.stringify(v)} means off`));
+
+  // Anything else stays off — but says so, instead of being read as a silent no.
+  const warnings = [];
+  const real = console.warn;
+  console.warn = (m) => warnings.push(String(m));
+  try {
+    assert.strictEqual(readSwitch('maybe'), false);
+  } finally {
+    console.warn = real;
+  }
+  assert.strictEqual(warnings.length, 1, 'an unrecognised value must be complained about');
+  assert.match(warnings[0], /TRUST_CLIENT_IP/);
+  assert.match(warnings[0], /global/, 'and must say what the consequence is');
+});
