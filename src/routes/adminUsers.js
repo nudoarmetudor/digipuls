@@ -4,8 +4,10 @@ const prisma = require('../config/db');
 const { requireCapability } = require('../middleware/auth');
 const { logAction } = require('../services/audit');
 const { generateTempPassword } = require('../utils/password');
+const { nameProblem } = require('../services/personalAccount');
 const {
-  CAPABILITY_GROUPS, ROLES, ROLE_DEFAULTS, capabilitiesFor, overridesFrom, defaultsFor,
+  CAPABILITY_GROUPS, ROLES, ROLE_DEFAULTS, SCHOOL_ROLES,
+  capabilitiesFor, overridesFrom, defaultsFor,
   canActOn, capabilityIsUsableBy, CAPABILITY_REQUIRES_ROLE,
   roleNeedsSchool, roleNeedsTerritory, roleAllowsSchool, roleAllowsTerritory,
 } = require('../services/capabilities');
@@ -100,6 +102,8 @@ const ALLOWED_ERRORS = new Set([
   'admin_user_err_self_lockout',
   'admin_user_err_more_privileged',
   'admin_user_err_mentor_taken',
+  'admin_user_err_name_incomplete',
+  'admin_user_err_name_collective',
 ]);
 
 function normaliseLogin(value) {
@@ -224,6 +228,12 @@ router.post('/', requireGrant, async (req, res) => {
   if (!isValidLogin(login)) return fail('admin_user_err_login');
   if (!name || !name.trim()) return fail('admin_user_err_name');
   if (!ROLES.includes(role)) return fail('admin_user_err_role');
+  // A school-level account is one person's. The oversight roles are not:
+  // "MEC Task Force" and "UNICEF Moldova" are institutions reading the
+  // results, and naming them after an individual would be the wrong record.
+  // So the rule applies where sharing does damage, and not elsewhere.
+  const nameFault = SCHOOL_ROLES.includes(role) ? nameProblem(name) : null;
+  if (nameFault) return fail('admin_user_err_name_' + nameFault);
 
   const existing = await prisma.user.findUnique({ where: { login: normaliseLogin(login) } });
   if (existing) return fail('admin_user_err_duplicate');
@@ -254,6 +264,9 @@ router.post('/', requireGrant, async (req, res) => {
       territoryId: scope.territoryId,
       passwordHash: await bcrypt.hash(tempPassword, 10),
       mustChangePassword: true,
+      // An administrator named a specific holder, so there is nothing for a
+      // claim screen to ask. See src/services/personalAccount.js.
+      identityConfirmedAt: new Date(),
       assignments: {
         create: [{
           role,
@@ -306,6 +319,13 @@ router.post('/:id', async (req, res) => {
     return res.redirect(res.locals.href(`/admin/users/${id}/edit?error=admin_user_err_login`));
   }
   if (!name || !name.trim()) return res.redirect(res.locals.href(`/admin/users/${id}/edit?error=admin_user_err_name`));
+  // Renaming is the other way a school account could become a shared one.
+  if (user.assignments.some((a) => SCHOOL_ROLES.includes(a.role))) {
+    const fault = nameProblem(name);
+    if (fault) {
+      return res.redirect(res.locals.href(`/admin/users/${id}/edit?error=admin_user_err_name_${fault}`));
+    }
+  }
 
   const normalised = normaliseLogin(login);
   const clash = await prisma.user.findUnique({ where: { login: normalised } });

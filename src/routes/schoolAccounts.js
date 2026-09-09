@@ -31,6 +31,7 @@ const { generateTempPassword } = require('../utils/password');
 const {
   SCHOOL_ROLES, ROLE_DEFAULTS, overridesFrom, capabilitiesFor,
 } = require('../services/capabilities');
+const { nameProblem, normaliseName } = require('../services/personalAccount');
 
 const router = express.Router();
 router.use(requireRole(...SCHOOL_ROLES), requireCapability('school.accounts'));
@@ -74,6 +75,8 @@ const ALLOWED_ERRORS = new Set([
   'school_acct_err_duplicate',
   'school_acct_err_not_found',
   'school_acct_err_self',
+  'school_acct_err_name_incomplete',
+  'school_acct_err_name_collective',
 ]);
 
 function normaliseLogin(value) {
@@ -147,6 +150,7 @@ router.get('/', async (req, res) => {
       role: p.role,
       isActive: p.user.isActive && p.isActive,
       mustChangePassword: p.user.mustChangePassword,
+      identityConfirmed: !!p.user.identityConfirmedAt,
       // A principal can only act on mentors — see loadMentor.
       manageable: p.role === GRANTABLE_ROLE,
       isSelf: p.user.id === req.session.user.id,
@@ -171,7 +175,7 @@ router.post('/', async (req, res) => {
   if (school === null) return notFound(res);
 
   const login = normaliseLogin(req.body.login);
-  const name = String(req.body.name || '').trim();
+  const name = normaliseName(req.body.name);
 
   const fail = (key) => res.status(400).render('school/account-form', {
     title: res.locals.t('school_acct_new'),
@@ -182,7 +186,13 @@ router.post('/', async (req, res) => {
   });
 
   if (!LOGIN_PATTERN.test(login)) return fail('school_acct_err_login');
-  if (!name) return fail('school_acct_err_name');
+  // One account, one person — see services/personalAccount.js. Refused here
+  // and not merely discouraged in the help text, because the shortcut this
+  // stops ("Echipa digitală", one login for eight people) is exactly how the
+  // pilot's first weeks ran, and it takes the audit trail with it.
+  const problem = nameProblem(name);
+  if (problem === 'missing') return fail('school_acct_err_name');
+  if (problem) return fail('school_acct_err_name_' + problem);
   if (await prisma.user.findUnique({ where: { login } })) return fail('school_acct_err_duplicate');
 
   const tempPassword = generateTempPassword();
@@ -197,6 +207,10 @@ router.post('/', async (req, res) => {
       schoolId: school,
       passwordHash: await bcrypt.hash(tempPassword, 10),
       mustChangePassword: true,
+      // Created by a colleague who named a specific person and had that name
+      // checked, so there is nothing left to claim. The claim screen exists
+      // for credentials issued to an institution, not to someone.
+      identityConfirmedAt: new Date(),
       assignments: {
         create: [{
           role: GRANTABLE_ROLE,

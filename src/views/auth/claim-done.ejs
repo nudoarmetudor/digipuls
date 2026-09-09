@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="<%= lang %>" <%- prefsAttrs %>>
+<head>
+<%- include('../partials/head') %>
+</head>
+<body>
+  <a class="skip-link" href="#main"><%= t('skip_to_content') %></a>
+  <header class="topbar">
+    <%- include('../partials/brand') %>
+    <nav class="topbar-nav" aria-label="<%= t('nav_primary_label') %>">
+      <%- include('../partials/lang-switch') %>
+      <%- include('../partials/display-settings') %>
+    </nav>
+  </header>
+  <main id="main" tabindex="-1">
+    <div class="container narrow">
+      <div class="card">
+        <h1><%= t('claim_done_title') %></h1>
+        <p class="subtitle"><%= t('claim_done_subtitle', { name: name }) %></p>
+        <% if (loginChanged) { %>
+          <div class="flash flash-info" role="status">
+            <p style="margin:0;"><%= t('claim_done_login_changed') %></p>
+            <p style="margin:.4rem 0 0;"><b class="mono"><%= login %></b></p>
+          </div>
+        <% } else { %>
+          <p><%= t('claim_done_login_kept', { login: login }) %></p>
+        <% } %>
+        <p><%= t('claim_done_next') %></p>
+        <div class="btn-row" style="margin-top:1.2rem;">
+          <a class="btn" href="<%= href('/') %>"><%= t('claim_done_continue') %></a>
+        </div>
+      </div>
+    </div>
+  </main>
+  <%- include('../partials/footer') %>
+  <script src="/static/js/a11y.js" defer></script>
+</body>
+</html>

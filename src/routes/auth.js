@@ -5,6 +5,9 @@ const { logAction } = require('../services/audit');
 const { loginRateLimit, recordFailedAttempt, clearAttempts } = require('../middleware/loginRateLimit');
 const { rotateToken } = require('../middleware/csrf');
 const { safeRedirect } = require('../utils/safeRedirect');
+const {
+  nameProblem, normaliseName, suggestLogin, LOGIN_PATTERN,
+} = require('../services/personalAccount');
 
 // Compared against when no such account exists, so a miss costs the same
 // ~100ms of bcrypt as a hit. Without it the response time answers "does this
@@ -58,6 +61,9 @@ router.post('/login', loginRateLimit, async (req, res) => {
       territoryId: user.territoryId,
       territoryName: user.territory ? user.territory.name : null,
       mustChangePassword: user.mustChangePassword,
+      // Null until a named person has taken the account over. Checked in
+      // app.js on every request, the same way the password change is.
+      identityConfirmed: !!user.identityConfirmedAt,
     };
     // regenerate() threw the old session away, CSRF token included. Without
     // a fresh one every form on the next page would fail its check.
@@ -139,6 +145,96 @@ router.post('/change-password', async (req, res) => {
   req.session.user.mustChangePassword = false;
   await logAction(req.session.user.id, 'PASSWORD_CHANGED', 'User', req.session.user.id, null);
   res.redirect('/');
+});
+
+
+// --- Claiming an account ----------------------------------------------------
+//
+// An account provisioned for a school but not yet worn by anybody. Until
+// someone puts their own name on it, nothing else in the platform is
+// reachable (the gate is in app.js, next to the password one).
+//
+// This exists because the pilot ran for its first weeks on twelve shared
+// logins — one "Echipa digitală" account per school. Deleting them would have
+// locked twelve schools out; renaming them for people would have meant
+// inventing names for real directors. So the credential survives the change
+// and the *person* completes it: the first to sign in says who they are, and
+// the account becomes theirs.
+//
+// The handle is offered for replacement at the same time. A login like
+// "zadnipru@digipuls.md" is the school's, not a person's, and left in place it
+// would quietly outlive every director who ever used it.
+
+function claimView(req, res, extra) {
+  return {
+    title: res.locals.t('claim_title'),
+    layout: false,
+    currentName: req.session.user.name,
+    currentLogin: extra.currentLogin,
+    suggestedLogin: extra.suggestedLogin,
+    body: extra.body || {},
+    error: extra.error || null,
+  };
+}
+
+router.get('/claim-account', async (req, res) => {
+  if (!req.session.user) return res.redirect('/login');
+  const account = await prisma.user.findUnique({ where: { id: req.session.user.id } });
+  if (!account) return res.redirect('/login');
+  if (account.identityConfirmedAt) return res.redirect('/');
+  return res.render('auth/claim-account', claimView(req, res, {
+    currentLogin: account.login,
+    suggestedLogin: null,
+    body: { name: '', login: account.login },
+  }));
+});
+
+router.post('/claim-account', async (req, res) => {
+  if (!req.session.user) return res.redirect('/login');
+  const account = await prisma.user.findUnique({ where: { id: req.session.user.id } });
+  if (!account) return res.redirect('/login');
+  if (account.identityConfirmedAt) return res.redirect('/');
+
+  const name = normaliseName(req.body.name);
+  const login = String(req.body.login || '').trim().toLowerCase();
+
+  const fail = (key) => res.status(400).render('auth/claim-account', claimView(req, res, {
+    currentLogin: account.login,
+    suggestedLogin: suggestLogin(name),
+    body: { name, login },
+    error: res.locals.t(key),
+  }));
+
+  const problem = nameProblem(name);
+  if (problem) return fail('claim_err_' + problem);
+  if (!LOGIN_PATTERN.test(login)) return fail('claim_err_login');
+  if (login !== account.login && await prisma.user.findUnique({ where: { login } })) {
+    return fail('claim_err_login_taken');
+  }
+
+  await prisma.user.update({
+    where: { id: account.id },
+    data: { name, login, identityConfirmedAt: new Date() },
+  });
+  // Named after the account it replaces, so the audit trail shows which
+  // shared login became whose. That link is the whole reason this screen is
+  // worth having.
+  await logAction(account.id, 'IDENTITY_CONFIRMED', 'User', account.id,
+    `${account.login} -> ${login} (${name})`);
+
+  req.session.user.name = name;
+  req.session.user.identityConfirmed = true;
+
+  // Shown rather than redirected past, because the handle they sign in with
+  // may have just changed. Sending them straight to the dashboard would mean
+  // the next time they came back they would have no idea what to type.
+  return res.render('auth/claim-done', {
+    title: res.locals.t('claim_done_title'),
+    layout: false,
+    name,
+    login,
+    loginChanged: login !== account.login,
+  });
 });
 
 module.exports = router;

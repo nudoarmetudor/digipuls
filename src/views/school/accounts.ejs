@@ -39,6 +39,8 @@
             <td>
               <% if (!p.isActive) { %>
                 <span class="badge badge-maintained"><%= t('admin_user_inactive') %></span>
+              <% } else if (!p.identityConfirmed) { %>
+                <span class="badge badge-unvalidated"><%= t('school_acct_unclaimed') %></span>
               <% } else if (p.mustChangePassword) { %>
                 <span class="badge badge-unvalidated"><%= t('school_acct_awaiting_first_login') %></span>
               <% } else { %>

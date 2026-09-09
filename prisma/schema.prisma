@@ -58,6 +58,17 @@ model User {
   // one-time password (see admin.js), never true for the demo seed logins.
   mustChangePassword Boolean    @default(false)
 
+  // When a named person took this account over.
+  //
+  // Null means the credential has been issued but nobody has yet put their
+  // own name on it — the state every school login was in when the shared
+  // "Echipa digitală" accounts were retired. Nothing except the claim screen
+  // is reachable while this is null, so an unclaimed credential cannot be
+  // used by a team; the first person to sign in with it has to say who they
+  // are, and from then on the account is theirs. See
+  // src/services/personalAccount.js.
+  identityConfirmedAt DateTime?
+
   // Deactivation rather than deletion is the default way to remove someone's
   // access: a user is referenced by audit entries and by the cycles they
   // confirmed, and those references are the record of who did what. Blanking

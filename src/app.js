@@ -193,6 +193,20 @@ app.use((req, res, next) => {
   next();
 });
 
+// An account that has been provisioned but not yet claimed by a named person.
+// Same shape as the password gate above and deliberately after it: someone
+// arriving with a one-time credential sets a password first, then says who
+// they are. Until they do, nothing else in the platform answers — which is
+// what stops an unclaimed credential being used as a shared team login.
+// See src/services/personalAccount.js.
+app.use((req, res, next) => {
+  const user = req.session.user;
+  const allowed = req.path === '/claim-account' || req.path === '/logout'
+    || req.path === '/preferences' || req.path.startsWith('/lang/');
+  if (user && user.identityConfirmed === false && !allowed) return res.redirect('/claim-account');
+  next();
+});
+
 // loadWorkspace runs before the language middleware, so it records the
 // refusal rather than rendering it — this is the first point where there is a
 // translator to render it with.

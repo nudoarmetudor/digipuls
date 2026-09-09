@@ -58,6 +58,10 @@ async function loadAccount(req, res, next) {
   // without forcing the person to sign out and back in.
   req.session.user.name = account.name;
   req.session.user.mustChangePassword = account.mustChangePassword;
+  // Re-read for the same reason as the password flag: an account whose
+  // identity has been reset by an administrator must be asked again now,
+  // not at its next sign-in.
+  req.session.user.identityConfirmed = !!account.identityConfirmedAt;
   // Handed to loadWorkspace, which decides which of these is active.
   req.accountAssignments = account.assignments;
   next();

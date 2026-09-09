@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="<%= lang %>" <%- prefsAttrs %>>
+<head>
+<%- include('../partials/head') %>
+</head>
+<body>
+  <a class="skip-link" href="#main"><%= t('skip_to_content') %></a>
+  <header class="topbar">
+    <%- include('../partials/brand') %>
+    <nav class="topbar-nav" aria-label="<%= t('nav_primary_label') %>">
+      <%- include('../partials/lang-switch') %>
+      <%- include('../partials/display-settings') %>
+      <form action="<%= href('/logout') %>" method="POST">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button class="btn btn-sm btn-secondary" type="submit"><%= t('nav_logout') %></button>
+      </form>
+    </nav>
+  </header>
+  <main id="main" tabindex="-1">
+    <div class="container narrow">
+      <div class="card">
+        <h1><%= t('claim_title') %></h1>
+        <p class="subtitle"><%= t('claim_subtitle', { name: currentName }) %></p>
+        <p><%= t('claim_why') %></p>
+        <% if (error) { %><div class="flash flash-error" role="alert"><%= error %></div><% } %>
+        <form method="POST" action="<%= href('/claim-account') %>">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+          <label for="claim-name"><%= t('claim_name_label') %></label>
+          <input type="text" id="claim-name" name="name" value="<%= body.name || '' %>"
+                 autocomplete="name" required autofocus>
+          <p class="help"><%= t('claim_name_help') %></p>
+
+          <label for="claim-login"><%= t('claim_login_label') %></label>
+          <input type="text" id="claim-login" name="login" value="<%= body.login || currentLogin %>"
+                 autocomplete="username" required>
+          <p class="help">
+            <%= t('claim_login_help', { current: currentLogin }) %>
+            <% if (suggestedLogin) { %>
+              <br><%= t('claim_login_suggestion', { suggestion: suggestedLogin }) %>
+            <% } %>
+          </p>
+
+          <div style="margin-top:1.2rem;">
+            <button class="btn" type="submit"><%= t('claim_button') %></button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
+  <%- include('../partials/footer') %>
+  <script src="/static/js/a11y.js" defer></script>
+</body>
+</html>
