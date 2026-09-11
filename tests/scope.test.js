@@ -286,3 +286,39 @@ test('every oversight listing is scoped, downloads included', () => {
   // And the detail page refuses a school outside the scope.
   assert.match(source, /if \(!coversSchool\(req, school\)\)/);
 });
+
+// --- sharing the parameters out ---------------------------------------------
+
+test('delegation records who took what, and locks nobody out', () => {
+  // "delegarea subseturilor de indicatori către diferite persoane din echipa
+  // școlii". The thing to get wrong here would be to make it a permission:
+  // the two tracks rest on each side rating all nineteen independently, and a
+  // lock would strand a whole domain the week its owner is off sick.
+  const schema = fs.readFileSync(
+    path.join(__dirname, '..', 'prisma', 'schema.prisma'), 'utf8');
+  const model = schema.slice(schema.indexOf('model IndicatorAssignment'));
+
+  assert.match(model, /@@unique\(\[cycleId, indicatorCode, userId\]\)/,
+    'several people may share a parameter — one per side, usually');
+  assert.match(model, /assignedById/, 'and who did the delegating is on the row');
+
+  const route = fs.readFileSync(
+    path.join(__dirname, '..', 'src', 'routes', 'school.js'), 'utf8');
+  const block = route.slice(route.indexOf("router.post('/cycles/:id/delegation'"));
+  const post = block.slice(0, block.indexOf('\n});'));
+
+  // Only the principal and the deputy share the work out...
+  assert.match(post, /requireCapability\('school\.manage'\)/);
+  // ...and only among their own school's people.
+  assert.match(post, /allowed\.has\(n\)/,
+    'an id typed into the form must reach nobody outside this school');
+
+  // Rebuilt wholesale, because an un-ticked parameter arrives as an absent key
+  // rather than an empty one: diffing would make un-assigning impossible.
+  assert.match(post, /deleteMany\(\{ where: \{ cycleId: cycle\.id \} \}\)/);
+
+  // And nothing anywhere refuses a rating because of who it was assigned to.
+  const ratingRoute = route.slice(route.indexOf("router.post('/cycles/:id/ratings/:code'"));
+  assert.ok(!/indicatorAssignment/i.test(ratingRoute.slice(0, 2000)),
+    'recording a level must not consult the split');
+});

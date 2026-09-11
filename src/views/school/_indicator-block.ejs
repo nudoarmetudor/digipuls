@@ -19,6 +19,12 @@ const evidenceTypes = [
   <h3 id="ind-<%= ind.code %>-h"><%= ind.code %>. <%= ind.name %></h3>
   <p class="small"><%= ind.description %></p>
 
+  <%# Who took this parameter on. A name here is a note about who is gathering
+      the evidence, not a restriction on who may record it. %>
+  <% if (ind.assignees && ind.assignees.length) { %>
+    <p class="small"><%= t('delegation_taken_by', { names: ind.assignees.map(function (a) { return a.name; }).join(', ') }) %></p>
+  <% } %>
+
   <% if (ind.priorRating) { %>
     <p class="small">
       <%= t('previous_cycle') %>

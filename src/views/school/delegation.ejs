@@ -1,0 +1,76 @@
+<h1><%= t('delegation_title') %></h1>
+<p class="subtitle"><%= school.name %> · <%= t('cycle') %> <%= cycle.cycleNumber %></p>
+
+<p><%= t('delegation_intro') %></p>
+
+<div class="card card-flat">
+  <p style="margin:0;">
+    <b><%= t('delegation_coverage') %></b>
+    <%= t('delegation_counts', { assigned: rows.length - unassigned.length, total: rows.length }) %>
+  </p>
+  <% if (unassigned.length) { %>
+    <p class="small" style="margin:.4rem 0 0;"><%= t('delegation_nobody_yet', { codes: unassigned.join(', ') }) %></p>
+  <% } %>
+  <%# Said plainly, because a grid of checkboxes beside a list of names reads
+      like a permission matrix, and this is not one. %>
+  <p class="small" style="margin:.4rem 0 0;"><%= t('delegation_not_a_lock') %></p>
+</div>
+
+<% if (!people.length) { %>
+  <div class="card"><p style="margin:0;"><%= t('delegation_no_people') %></p></div>
+<% } else { %>
+  <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/delegation') %>">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="table-scroll">
+      <table>
+        <caption><%= t('delegation_caption') %></caption>
+        <thead>
+          <tr>
+            <th scope="col"><%= t('indicator') %></th>
+            <% people.forEach(function (p) { %>
+              <th scope="col" class="c">
+                <%= p.name %><br>
+                <span class="small"><%= t('role_' + p.role) %></span>
+              </th>
+            <% }) %>
+          </tr>
+        </thead>
+        <tbody>
+          <% rows.forEach(function (row) { %>
+            <tr>
+              <th scope="row" style="background:none;font-weight:400;color:inherit;">
+                <b><%= row.indicator.code %></b> — <%= row.indicator.name %>
+                <% if (!row.assignees.length) { %>
+                  <span class="badge badge-unvalidated"><%= t('delegation_unassigned') %></span>
+                <% } %>
+              </th>
+              <% people.forEach(function (p) { %>
+                <td class="c">
+                  <label class="visually-hidden" for="a-<%= row.indicator.code %>-<%= p.id %>">
+                    <%= row.indicator.code %> — <%= p.name %>
+                  </label>
+                  <input type="checkbox" id="a-<%= row.indicator.code %>-<%= p.id %>"
+                         name="assign[<%= row.indicator.code %>][]" value="<%= p.id %>"
+                         <%- row.assignees.some(function (a) { return a.id === p.id; }) ? 'checked' : '' %>
+                         <%- canAssign ? '' : 'disabled' %>>
+                </td>
+              <% }) %>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+
+    <% if (canAssign) { %>
+      <div class="btn-row" style="margin-top:1rem;">
+        <button class="btn" type="submit"><%= t('delegation_save') %></button>
+      </div>
+    <% } else { %>
+      <p class="help" style="margin-top:1rem;"><%= t('delegation_read_only') %></p>
+    <% } %>
+  </form>
+<% } %>
+
+<div class="btn-row" style="margin-top:1.2rem;">
+  <a class="btn btn-secondary" href="<%= href('/school/cycles/' + (cycle.id)) %>"><%= t('reconcile_back') %></a>
+</div>

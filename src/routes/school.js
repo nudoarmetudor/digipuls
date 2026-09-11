@@ -208,10 +208,12 @@ router.get('/cycles/:id/step/:stepKey', loadCycleForSchool, async (req, res) => 
     const priorByCode = cycle.previousCycle
       ? new Map(cycle.previousCycle.ratings.map((r) => [r.indicatorCode, r]))
       : null;
+    const assignedTo = await assignmentsByCode(cycle.id);
     const indicators = localeData.INDICATORS.filter((i) => i.domain === stepKey).map((ind) => ({
       ...ind,
       rating: ratingsByCode.get(ind.code) || null,
       priorRating: priorByCode ? priorByCode.get(ind.code) : null,
+      assignees: assignedTo.get(ind.code) || [],
     }));
     const ratedInDomain = indicators.filter((i) => i.rating && i.rating.level !== null && i.rating.level !== undefined).length;
     return res.render('school/step-domain', {
@@ -843,6 +845,99 @@ router.get('/cycles/:id/plan/document', loadCycleForSchool, async (req, res) => 
   });
 });
 
+
+
+// -------------------- Who takes which parameters --------------------
+//
+// Nineteen parameters is more than one person can evidence properly. A school
+// fields a team of five or six precisely so the work can be split, and until
+// now the platform had nowhere to write that split down — it was decided in a
+// staff room and remembered, or not.
+//
+// What this is not: a permission. Anyone on the school team may still rate any
+// parameter on their own side. Making it a gate would break the two tracks,
+// which rest on each side rating all nineteen independently, and would strand
+// a whole domain the week its owner is off sick. It records who took
+// responsibility, not who is allowed — a plan of work rather than a lock.
+
+/** Every assignment on this cycle, grouped by parameter. */
+async function assignmentsByCode(cycleId) {
+  const rows = await prisma.indicatorAssignment.findMany({
+    where: { cycleId },
+    include: { user: { select: { id: true, name: true } } },
+    orderBy: { id: 'asc' },
+  });
+  const map = new Map();
+  rows.forEach((r) => {
+    if (!map.has(r.indicatorCode)) map.set(r.indicatorCode, []);
+    map.get(r.indicatorCode).push({ id: r.user.id, name: r.user.name });
+  });
+  return map;
+}
+
+router.get('/cycles/:id/delegation', loadCycleForSchool, async (req, res) => {
+  const cycle = req.cycle;
+  const localeData = getIndicatorData(req.lang);
+  const people = await schoolPeople(req.school.id);
+  const byCode = await assignmentsByCode(cycle.id);
+
+  const rows = localeData.INDICATORS.map((indicator) => ({
+    indicator,
+    assignees: byCode.get(indicator.code) || [],
+  }));
+
+  return res.render('school/delegation', {
+    title: res.locals.t('delegation_title'),
+    wide: true,
+    school: req.school,
+    cycle,
+    rows,
+    people,
+    // How much of the instrument nobody has picked up. The number the person
+    // doing the splitting actually needs.
+    unassigned: rows.filter((r) => r.assignees.length === 0).map((r) => r.indicator.code),
+    mine: rows.filter((r) => r.assignees.some((a) => a.id === req.session.user.id))
+      .map((r) => r.indicator.code),
+    canAssign: res.locals.can('school.manage'),
+  });
+});
+
+router.post('/cycles/:id/delegation',
+  requireCapability('school.manage'), loadCycleForSchool, async (req, res) => {
+    const cycle = req.cycle;
+    const people = await schoolPeople(req.school.id);
+    const allowed = new Set(people.map((p) => p.id));
+    const body = req.body.assign || {};
+
+    // Rebuilt from the form rather than diffed, because a parameter nobody
+    // ticked arrives as an absent key rather than an empty one — treating
+    // absence as "no change" would make un-assigning impossible.
+    const wanted = [];
+    INDICATORS.forEach((ind) => {
+      const raw = body[ind.code];
+      const ids = (Array.isArray(raw) ? raw : (raw ? [raw] : []))
+        .map((v) => Number(v))
+        // Only this school's own people. An id typed into the form reaches
+        // nobody else.
+        .filter((n) => Number.isInteger(n) && allowed.has(n));
+      [...new Set(ids)].forEach((userId) => wanted.push({ indicatorCode: ind.code, userId }));
+    });
+
+    await prisma.indicatorAssignment.deleteMany({ where: { cycleId: cycle.id } });
+    if (wanted.length) {
+      await prisma.indicatorAssignment.createMany({
+        data: wanted.map((w) => ({
+          cycleId: cycle.id,
+          indicatorCode: w.indicatorCode,
+          userId: w.userId,
+          assignedById: req.session.user.id,
+        })),
+      });
+    }
+    await logAction(req.session.user.id, 'SET_DELEGATION', 'AssessmentCycle', cycle.id,
+      `${wanted.length} assignments across ${new Set(wanted.map((w) => w.indicatorCode)).size} parameters`);
+    return res.redirect(res.locals.href(`/school/cycles/${cycle.id}/delegation`));
+  });
 
 // -------------------- Publishing the assessment --------------------
 //

@@ -361,7 +361,25 @@ Principal or deputy: **Dashboard → Start a new cycle**. A mentor cannot open
 one — a cycle is the school committing to an assessment period, and that is the
 administration's act.
 
-### 6.3 The six steps
+### 6.3 Sharing the parameters out
+
+Nineteen parameters is more than one person can evidence properly, and a school
+fields a team of five or six precisely so the work can be split. **Who takes
+what** records that split: the principal or the deputy shares the parameters
+across the team, and the page shows how many still have nobody.
+
+It is a plan of work, **not a restriction**. Everyone on the team can still
+record a level for any parameter on their own side, so a parameter is never
+stuck because the person who took it is away — and the two tracks still rest on
+each side rating all nineteen independently. A parameter can be taken by two
+people at once, and usually is: one on the administration side, one on the team
+side.
+
+People from outside the digital team who are brought in to help are given their
+own mentor account first (see [§4.2](#42-how-an-account-comes-into-being)), so
+everything they record is attributable like anyone else's.
+
+### 6.4 The six steps
 
 The assessment is not one long form. It is six independently saveable steps, so
 seven people can work on it over two weeks without blocking each other:
@@ -385,7 +403,7 @@ half-done and what nobody has opened:
 | Red | All rated, but something required is missing — usually evidence |
 | Green | Complete |
 
-### 6.4 Rating a parameter
+### 6.5 Rating a parameter
 
 For each parameter you see its description and the written description of all
 six levels. Choose the level that describes the school as it is today, not as it
@@ -398,7 +416,7 @@ of 2 or more with no evidence turns its step red and will block confirmation.
 Your answer is yours: it goes into your side's track, and the other side's
 number is not shown to you while you work.
 
-### 6.5 The infrastructure step
+### 6.6 The infrastructure step
 
 Two things that are counted rather than judged:
 

@@ -403,6 +403,33 @@ function templatesFor(lang) {
       hiddenCount: 0,
       canSettle: false, myTrack: 'TEAM', errorMessage: null, predatesTracks: true,
     }],
+    ['school/delegation.ejs', {
+      school: { id: 1, name: 'LT „Boris Dînga” — Criuleni' },
+      cycle: { id: 4, cycleNumber: 1, status: 'DRAFT' },
+      rows: [
+        { indicator: { code: 'A1', name: 'Viziune' }, assignees: [{ id: 2, name: 'Elena Guriță' }] },
+        { indicator: { code: 'A2', name: 'Conducere' }, assignees: [] },
+      ],
+      people: [
+        { id: 2, name: 'Elena Guriță', role: 'SCHOOL_PRINCIPAL' },
+        { id: 3, name: 'Ana Novic', role: 'SCHOOL_MENTOR' },
+      ],
+      unassigned: ['A2'], mine: ['A1'], canAssign: true,
+    }],
+    // The same screen for a mentor, who reads the split but does not make it.
+    ['school/delegation.ejs', {
+      school: { id: 1, name: 'LT „Boris Dînga” — Criuleni' },
+      cycle: { id: 4, cycleNumber: 1, status: 'DRAFT' },
+      rows: [{ indicator: { code: 'A1', name: 'Viziune' }, assignees: [] }],
+      people: [{ id: 3, name: 'Ana Novic', role: 'SCHOOL_MENTOR' }],
+      unassigned: ['A1'], mine: [], canAssign: false,
+    }],
+    // A school that has not created its team yet.
+    ['school/delegation.ejs', {
+      school: { id: 1, name: 'LT „Boris Dînga” — Criuleni' },
+      cycle: { id: 4, cycleNumber: 1, status: 'DRAFT' },
+      rows: [], people: [], unassigned: [], mine: [], canAssign: true,
+    }],
     ['school/accounts.ejs', {
       school: { id: 1, name: 'LT „Boris Dînga” — Criuleni' },
       people: [
