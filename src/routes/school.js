@@ -326,9 +326,18 @@ router.post('/cycles/:id/ratings/:code/evidence', loadCycleForSchool, requireDra
 router.post('/cycles/:id/device', loadCycleForSchool, requireDraftCycle, async (req, res) => {
   const cycle = req.cycle;
   const fields = ['classroomPCs', 'interactivePanels', 'itRoomPCs', 'managementPCs', 'methodicalCentrePCs', 'libraryPCs', 'printers', 'multifunctionPrinters'];
+  // Each kind of device is two numbers now: how many the school has, and how
+  // many of those are waiting to be written off.
+  const all = fields.flatMap((f) => [f, `${f}Obsolete`]);
   const data = {};
   try {
-    fields.forEach((f) => { data[f] = toNonNegativeInt(req.body[f] === '' ? 0 : req.body[f], f); });
+    all.forEach((f) => { data[f] = toNonNegativeInt(req.body[f] === '' ? 0 : req.body[f], f); });
+    // Reported scrap cannot exceed the stock it is part of. Clamped rather
+    // than refused: the school is mid-inventory and a hard error here loses
+    // the other fifteen numbers they just typed.
+    fields.forEach((f) => {
+      if (data[`${f}Obsolete`] > data[f]) data[`${f}Obsolete`] = data[f];
+    });
   } catch (e) {
     if (!(e instanceof ValidationError)) throw e;
     const msg = encodeURIComponent(res.locals.t('err_invalid_number'));

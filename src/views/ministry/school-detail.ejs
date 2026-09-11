@@ -95,7 +95,11 @@
               <% deviceCompliance.checks.forEach(c => { %>
                 <tr>
                   <th scope="row" class="small" style="background:none;font-weight:400;color:inherit;"><%= t(c.labelKey, c.labelParams) %></th>
-                  <td class="small"><%= c.actual %>/<%= c.required %></td>
+                  <td class="small"><%= c.actual %>/<%= c.required %><%
+                    /* The scrap is named rather than silently deducted: a
+                       Ministry reader comparing this against the school's own
+                       stock list must be able to see where the gap went. */
+                    if (c.obsolete) { %> <span class="small text-bad">(<%= t('dev_obsolete_short', { n: c.obsolete }) %>)</span><% } %></td>
                   <td><span class="badge badge-<%= c.pass ? 'pass' : 'fail' %>"><%= c.pass ? t('ok') : t('short') %></span></td>
                 </tr>
               <% }) %>

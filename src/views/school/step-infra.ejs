@@ -21,11 +21,15 @@ const nc = cycle.networkChecklist || {};
       <h3 id="inv-h" style="font-size:0.95rem;"><%= t('device_inventory') %></h3>
       <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/device') %>">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <p class="help"><%= t('dev_obsolete_help') %></p>
         <div class="grid-2">
           <% deviceFields.forEach(f => { %>
             <div>
               <label for="dev-<%= f %>"><%= t('dev_' + f) %></label>
               <input type="number" id="dev-<%= f %>" name="<%= f %>" min="0" step="1" value="<%= inv[f] || 0 %>">
+              <label class="help" for="dev-<%= f %>-obs"><%= t('dev_of_which_obsolete') %></label>
+              <input type="number" id="dev-<%= f %>-obs" name="<%= f %>Obsolete" min="0" step="1"
+                     value="<%= inv[f + 'Obsolete'] || 0 %>">
             </div>
           <% }) %>
         </div>
@@ -59,6 +63,8 @@ const nc = cycle.networkChecklist || {};
           <tr>
             <th scope="col"><%= t('requirement') %></th>
             <th scope="col"><%= t('required') %></th>
+            <th scope="col"><%= t('dev_held') %></th>
+            <th scope="col"><%= t('dev_obsolete') %></th>
             <th scope="col"><%= t('actual') %></th>
             <th scope="col"><%= t('th_status') %></th>
           </tr>
@@ -68,6 +74,9 @@ const nc = cycle.networkChecklist || {};
             <tr>
               <th scope="row" style="background:none;font-weight:400;color:inherit;"><%= t(c.labelKey, c.labelParams) %></th>
               <td><%= c.required %></td>
+              <td><%= c.held %></td>
+              <%# Shown even when zero: a blank column reads as "not asked". %>
+              <td<%- c.obsolete ? ' class="text-bad"' : '' %>><%= c.obsolete %></td>
               <td><%= c.actual %></td>
               <td><span class="badge badge-<%= c.pass ? 'pass' : 'fail' %>"><%= c.pass ? t('ok') : t('short') %></span></td>
             </tr>

@@ -263,6 +263,26 @@ model DeviceInventory {
   libraryPCs            Int             @default(0)
   printers              Int             @default(0)
   multifunctionPrinters Int             @default(0)
+
+  // Of the counts above, how many are beyond their working life and waiting to
+  // be written off.
+  //
+  // Reported from the pilot: a school that owns twenty classroom PCs of which
+  // eight are scrap was counted as owning twenty, and the Ministry's monitor
+  // marked it compliant. The quota check now measures what a school can
+  // actually put in front of a class.
+  //
+  // Additive and defaulting to zero, so every cycle confirmed before this
+  // existed keeps exactly the verdict it was given: subtracting nothing
+  // changes nothing.
+  classroomPCsObsolete          Int @default(0)
+  interactivePanelsObsolete     Int @default(0)
+  itRoomPCsObsolete             Int @default(0)
+  managementPCsObsolete         Int @default(0)
+  methodicalCentrePCsObsolete   Int @default(0)
+  libraryPCsObsolete            Int @default(0)
+  printersObsolete              Int @default(0)
+  multifunctionPrintersObsolete Int @default(0)
 }
 
 // Order 675 Annex 5 network/security checklist — feeds the D1 compliance check.

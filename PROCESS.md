@@ -138,7 +138,10 @@ Two things are not scored on the six-level scale, because they are counted
 rather than judged. They belong to Order 675/2024:
 
 - **The device inventory** (Annex 2): how many of each kind of device the school
-  has, against the national quota for its size.
+  has, and **how many of those are waiting to be written off**, against the
+  national quota for its size. Only the difference counts: equipment that
+  cannot be put in front of a class does not equip one, and a school that
+  counted its scrap would be reporting a number it would not itself recognise.
 - **The network checklist** (Annex 5): whether Wi-Fi covers the whole school,
   whether subnets are separated, 802.11n and 802.11ac, an active firewall,
   content filtering.

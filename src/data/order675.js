@@ -48,6 +48,17 @@ function itRoomsRequired(studentsGrades7to12, maxClassSize = 15) {
  * requirement checked individually, per Annex A v2's design note that a
  * school must be shown *which* requirement failed, not just "non-compliant".
  */
+/**
+ * How many of a kind of device the school can actually use: what it holds,
+ * less what is waiting to be written off. Never negative — a school that
+ * reports more scrap than it owns has made a typo, not acquired debt.
+ */
+function usable(inventory, key) {
+  const held = (inventory && inventory[key]) || 0;
+  const obsolete = (inventory && inventory[`${key}Obsolete`]) || 0;
+  return Math.max(0, held - obsolete);
+}
+
 function checkDeviceCompliance({ enrolmentTotal, classroomsTotal, studentsGrades7to12 }, inventory) {
   const band = bandFor(enrolmentTotal);
   const quotas = QUOTAS_BY_BAND[band];
@@ -60,19 +71,28 @@ function checkDeviceCompliance({ enrolmentTotal, classroomsTotal, studentsGrades
   // three languages by the views, and dropped into the CSV export in English.
   // The English 'label' is kept alongside for that export and for logs.
   const checks = [
-    { key: 'classroomPCs', labelKey: 'o675_classroomPCs', label: 'Classroom PCs/laptops (≥50% of classrooms equipped)', required: requiredClassroomDevices, actual: inventory.classroomPCs },
-    { key: 'interactivePanels', labelKey: 'o675_interactivePanels', label: 'Interactive panels (1 per equipped classroom)', required: requiredClassroomDevices, actual: inventory.interactivePanels },
-    { key: 'itRoomPCs', labelKey: 'o675_itRoomPCs', labelParams: { rooms: requiredItRooms }, label: `IT-room PCs (${requiredItRooms} room(s) × 15)`, required: requiredItRoomPCs, actual: inventory.itRoomPCs },
-    { key: 'managementPCs', labelKey: 'o675_managementPCs', label: 'Management PCs/laptops', required: quotas.managementPCs, actual: inventory.managementPCs },
-    { key: 'methodicalCentrePCs', labelKey: 'o675_methodicalCentrePCs', label: 'Methodical-centre PCs/laptops', required: quotas.methodicalCentrePCs, actual: inventory.methodicalCentrePCs },
-    { key: 'libraryPCs', labelKey: 'o675_libraryPCs', label: 'Library PCs/AiOs', required: quotas.libraryPCs, actual: inventory.libraryPCs },
-    { key: 'printers', labelKey: 'o675_printers', label: 'Printers', required: quotas.printers, actual: inventory.printers },
-    { key: 'multifunctionPrinters', labelKey: 'o675_multifunctionPrinters', label: 'Multifunction printers', required: quotas.multifunctionPrinters, actual: inventory.multifunctionPrinters },
-  ].map((c) => ({ ...c, pass: (c.actual || 0) >= c.required }));
+    { key: 'classroomPCs', labelKey: 'o675_classroomPCs', label: 'Classroom PCs/laptops (≥50% of classrooms equipped)', required: requiredClassroomDevices, actual: usable(inventory, 'classroomPCs') },
+    { key: 'interactivePanels', labelKey: 'o675_interactivePanels', label: 'Interactive panels (1 per equipped classroom)', required: requiredClassroomDevices, actual: usable(inventory, 'interactivePanels') },
+    { key: 'itRoomPCs', labelKey: 'o675_itRoomPCs', labelParams: { rooms: requiredItRooms }, label: `IT-room PCs (${requiredItRooms} room(s) × 15)`, required: requiredItRoomPCs, actual: usable(inventory, 'itRoomPCs') },
+    { key: 'managementPCs', labelKey: 'o675_managementPCs', label: 'Management PCs/laptops', required: quotas.managementPCs, actual: usable(inventory, 'managementPCs') },
+    { key: 'methodicalCentrePCs', labelKey: 'o675_methodicalCentrePCs', label: 'Methodical-centre PCs/laptops', required: quotas.methodicalCentrePCs, actual: usable(inventory, 'methodicalCentrePCs') },
+    { key: 'libraryPCs', labelKey: 'o675_libraryPCs', label: 'Library PCs/AiOs', required: quotas.libraryPCs, actual: usable(inventory, 'libraryPCs') },
+    { key: 'printers', labelKey: 'o675_printers', label: 'Printers', required: quotas.printers, actual: usable(inventory, 'printers') },
+    { key: 'multifunctionPrinters', labelKey: 'o675_multifunctionPrinters', label: 'Multifunction printers', required: quotas.multifunctionPrinters, actual: usable(inventory, 'multifunctionPrinters') },
+  ].map((c) => ({
+    ...c,
+    pass: (c.actual || 0) >= c.required,
+    // Carried alongside so a page can show the school the whole picture —
+    // what it holds, what is scrap, and what the quota is measured against —
+    // rather than a bare number that disagrees with its own stock list.
+    held: (inventory && inventory[c.key]) || 0,
+    obsolete: (inventory && inventory[`${c.key}Obsolete`]) || 0,
+  }));
 
   return {
     band,
     compliant: checks.every((c) => c.pass),
+    obsoleteTotal: checks.reduce((sum, c) => sum + c.obsolete, 0),
     checks,
   };
 }
@@ -95,6 +115,7 @@ function checkNetworkCompliance(networkChecklist) {
 }
 
 module.exports = {
+  usable,
   ENROLMENT_BANDS,
   QUOTAS_BY_BAND,
   NETWORK_CHECKLIST_ITEMS,
