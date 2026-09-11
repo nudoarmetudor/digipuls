@@ -733,3 +733,65 @@ test('the DigiPlan is drawn on the wheel as a line, never as an area', () => {
   assert.strictEqual(
     itemsFromRatings(ratings, indicators, null).filter((i) => i.target !== null).length, 0);
 });
+
+test('the wheel gives level 0 a band of its own, and an unrated parameter none', () => {
+  // Reported from the live site: level 0 was drawn as a 2px sliver against the
+  // hub — "we have nothing of this kind" was invisible, and indistinguishable
+  // from a parameter nobody had rated. The platform says everywhere else that
+  // level 0 is an answer and a blank is not; the picture now says it too.
+  const indicators = getIndicatorData('ro').INDICATORS;
+  const ratings = indicators.map((ind, i) => ({
+    indicatorCode: ind.code,
+    level: i === 0 ? 0 : i === 1 ? null : 3,
+  }));
+  const svg = renderWheel(itemsFromRatings(ratings, indicators), {
+    mode: 'indicators', t: i18n.t('ro'),
+  });
+
+  // Six bands of equal width for six levels, so 0 is as tall as any other.
+  const circles = [...svg.matchAll(/<circle cx="210" cy="210" r="([\d.]+)" fill="none"/g)]
+    .map((m) => Number(m[1]));
+  assert.strictEqual(circles.length, 7, 'the hub plus one edge per level 0-5');
+  const widths = circles.slice(1).map((r, i) => +(r - circles[i]).toFixed(1));
+  assert.strictEqual(new Set(widths).size, 1, `bands must be equal, got ${widths}`);
+
+  // The rated-0 parameter is drawn; the unrated one is not.
+  assert.match(svg, /fill-opacity="0\.9"/);
+  assert.match(svg, /fill="transparent"/, 'an unrated sector is empty, not faint');
+  assert.match(svg, /încă neevaluat/, 'and says so on hover');
+});
+
+test('the wheel shows where one parameter ends and the next begins', () => {
+  // "liniile verticale (ca raze a cercului) ca să pot vedea mai ușor
+  // delimitarea între parametri" — a 0.6° gap was not enough, and under the
+  // wedges a divider vanished exactly where two neighbours touch.
+  const indicators = getIndicatorData('ro').INDICATORS;
+  const ratings = indicators.map((ind) => ({ indicatorCode: ind.code, level: 4 }));
+  const svg = renderWheel(itemsFromRatings(ratings, indicators), {
+    mode: 'indicators', t: i18n.t('ro'),
+  });
+
+  assert.strictEqual((svg.match(/<line /g) || []).length, indicators.length,
+    'one divider per sector boundary');
+  // Painted after the wedges, or they are hidden by them.
+  assert.ok(svg.indexOf('<line ') > svg.lastIndexOf('fill-opacity="0.9"'),
+    'dividers must be drawn on top of the wedges');
+
+  // And which colour means which domain.
+  assert.strictEqual((svg.match(/<rect /g) || []).length, 4, 'a legend swatch per domain');
+  assert.match(svg, /A — /, 'named, not just coloured');
+});
+
+test('the public wheel is labelled to the top of its own scale', () => {
+  // It counted to 5 on a wheel whose highest band is 4 — a parent reading it
+  // would think the school was one step lower than it is.
+  const svg = renderWheel(
+    itemsFromDomainScores({ A: 2.4, B: 1.1, C: 0.4, D: 3.6 }, i18n.t('ro')),
+    { mode: 'domains', size: 320, showLabels: true, t: i18n.t('ro') },
+  );
+  const ticks = [...svg.matchAll(/font-size="9" fill="var\(--text-muted\)">(\d)</g)]
+    .map((m) => Number(m[1]));
+  assert.deepStrictEqual(ticks.sort(), [0, 1, 2, 3, 4], 'bands 0-4, and no phantom 5');
+  // The four sectors are the domains here, so no legend is drawn.
+  assert.ok(!svg.includes('<rect '), 'the public wheel names its sectors already');
+});

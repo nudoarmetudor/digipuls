@@ -95,8 +95,23 @@ function renderWheel(items, opts = {}) {
   const innerHole = size * 0.09;
   const outerRadius = size * 0.42;
   const labelRadius = outerRadius + size * 0.055;
-  const ringCount = 5; // levels 1-5 drawn as rings beyond the hole; level 0 = the hole itself
   const showLabels = opts.showLabels !== false;
+
+  // The top of the scale. Six values on the indicator wheel (levels 0-5) and
+  // five on the public one (bands 0-4), which the ring labels used to ignore:
+  // they counted to 5 on a wheel whose top band is 4.
+  const maxLevel = opts.mode === 'domains' ? 4 : 5;
+  const bands = maxLevel + 1;
+
+  // Every level gets a band of its own, level 0 included.
+  //
+  // It used to be drawn as a 2px sliver against the hub, which made "we have
+  // nothing of this kind" almost invisible and indistinguishable from a
+  // parameter nobody had rated. The platform insists everywhere else that
+  // level 0 is an answer and a blank is not — the picture now says the same
+  // thing: 0 is a band you can see, and unrated is empty space.
+  const bandWidth = (outerRadius - innerHole) / bands;
+  const radiusFor = (level) => innerHole + (level + 1) * bandWidth;
   // Falls back to the key itself if no translator was passed, which is
   // conspicuous enough to catch in review but never crashes a render.
   const t = opts.t || ((key) => key);
@@ -110,19 +125,29 @@ function renderWheel(items, opts = {}) {
   // than a pile of unlabelled paths. The exact levels are always also present
   // as text in the table beside it, so nothing is conveyed by the picture
   // alone — the wheel is a summary, not the only copy of the data.
-  let svg = `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg" `
+  // Two rows of two beneath the wheel, and only where a legend is drawn at
+  // all — an unlabelled thumbnail keeps its square box.
+  const legendRows = opts.mode !== 'domains' && showLabels ? 2 : 0;
+  const legendHeight = legendRows * 16 + (legendRows ? 12 : 0);
+  const boxHeight = size + legendHeight;
+
+  let svg = `<svg viewBox="0 0 ${size} ${boxHeight}" width="${size}" height="${boxHeight}" xmlns="http://www.w3.org/2000/svg" `
     + `role="img" aria-labelledby="${titleId}" style="max-width:100%;height:auto" font-family="inherit">`;
   svg += `<title id="${titleId}">${esc(t('wheel_title'))}</title>`;
 
-  // Concentric level gridlines (0 = the inner hole boundary, 5 = outer edge)
-  for (let lvl = 0; lvl <= ringCount; lvl++) {
-    const r = innerHole + (lvl / ringCount) * (outerRadius - innerHole);
-    svg += `<circle cx="${cx}" cy="${cy}" r="${r.toFixed(1)}" fill="none" stroke="var(--border)" stroke-width="1" />`;
+  // One gridline per band edge, from the hub outwards.
+  svg += `<circle cx="${cx}" cy="${cy}" r="${innerHole.toFixed(1)}" fill="none" stroke="var(--border)" stroke-width="1" />`;
+  for (let lvl = 0; lvl <= maxLevel; lvl++) {
+    svg += `<circle cx="${cx}" cy="${cy}" r="${radiusFor(lvl).toFixed(1)}" fill="none" stroke="var(--border)" stroke-width="1" />`;
   }
+
   if (showLabels) {
-    for (let lvl = 0; lvl <= ringCount; lvl++) {
-      const r = innerHole + (lvl / ringCount) * (outerRadius - innerHole);
-      svg += `<text x="${cx + 3}" y="${(cy - r + 9).toFixed(1)}" font-size="9" fill="var(--text-muted)">${lvl}</text>`;
+    // The numeral sits in the middle of the band it names, rather than on the
+    // line above it, so "3" is inside the level-3 ring instead of straddling
+    // the boundary between 3 and 4.
+    for (let lvl = 0; lvl <= maxLevel; lvl++) {
+      const mid = radiusFor(lvl) - bandWidth / 2;
+      svg += `<text x="${cx + 3}" y="${(cy - mid + 3.5).toFixed(1)}" font-size="9" fill="var(--text-muted)">${lvl}</text>`;
     }
   }
 
@@ -130,16 +155,58 @@ function renderWheel(items, opts = {}) {
   items.forEach((item, i) => {
     const start = i * sectorDeg + gapDeg / 2;
     const end = (i + 1) * sectorDeg - gapDeg / 2;
-    const level = item.level === null || item.level === undefined ? 0 : item.level;
-    const r = innerHole + (level / ringCount) * (outerRadius - innerHole);
+    const rated = item.level !== null && item.level !== undefined;
     const color = DOMAIN_VARS[item.domain] || 'var(--text-muted)';
-    const opacity = item.level === null || item.level === undefined ? 0.2 : 0.9;
-    svg += `<path d="${wedgePath(cx, cy, Math.max(r, innerHole + 2), start, end, innerHole)}" fill="${color}" fill-opacity="${opacity}" stroke="var(--surface)" stroke-width="1">`;
     const levelText = item.tooltipSuffix === 'band'
-      ? `${t('band')} ${item.level ?? '—'}/4`
+      ? `${t('band')} ${item.level ?? '—'}/${maxLevel}`
       : `${t('level_label')} ${item.level ?? '—'}`;
-    svg += `<title>${esc(item.code)}${item.name ? ' — ' + esc(item.name) : ''}: ${esc(levelText)}</title>`;
-    svg += '</path>';
+    const label = `${esc(item.code)}${item.name ? ' — ' + esc(item.name) : ''}`;
+
+    if (rated) {
+      const r = radiusFor(item.level);
+      svg += `<path d="${wedgePath(cx, cy, r, start, end, innerHole)}" fill="${color}" `
+        + 'fill-opacity="0.9" stroke="var(--surface)" stroke-width="1">';
+      svg += `<title>${label}: ${esc(levelText)}</title>`;
+      svg += '</path>';
+
+      // The level, written at the outer edge of its own wedge. The tooltip
+      // said it already, but a tooltip needs a mouse and a steady hand across
+      // nineteen sectors — and the request was to read the level off the
+      // picture.
+      if (showLabels) {
+        const mid = i * sectorDeg + sectorDeg / 2;
+        const pos = polarToCartesian(cx, cy, r - bandWidth / 2, mid);
+        svg += `<text x="${pos.x.toFixed(1)}" y="${pos.y.toFixed(1)}" font-size="9" `
+          + 'fill="var(--text-on-brand)" text-anchor="middle" dominant-baseline="middle" '
+          + `aria-hidden="true">${item.level}</text>`;
+      }
+    } else {
+      // Nothing drawn, and the sector left empty on purpose — see the note on
+      // radiusFor. An unrated parameter is still hoverable so the wheel can
+      // say that nobody has answered it.
+      svg += `<path d="${wedgePath(cx, cy, radiusFor(maxLevel), start, end, innerHole)}" `
+        + 'fill="transparent" stroke="none">';
+      svg += `<title>${label}: ${esc(t('wheel_unrated'))}</title>`;
+      svg += '</path>';
+    }
+  });
+
+  // Radial dividers, one per sector boundary, running the full depth of the
+  // wheel. Asked for directly: with only a 0.6° gap between wedges, a
+  // parameter sitting at a low level left most of its sector empty and there
+  // was nothing to show where one ended and the next began.
+  //
+  // Drawn *after* the wedges rather than before. Underneath them, a divider
+  // disappeared the moment a sector was filled — which is the half of the
+  // wheel where two neighbours actually touch. The border colour reads as a
+  // line over the pale ground and over a saturated wedge alike.
+  items.forEach((item, i) => {
+    const angle = i * sectorDeg;
+    const from = polarToCartesian(cx, cy, innerHole, angle);
+    const to = polarToCartesian(cx, cy, outerRadius, angle);
+    svg += `<line x1="${from.x.toFixed(1)}" y1="${from.y.toFixed(1)}" `
+      + `x2="${to.x.toFixed(1)}" y2="${to.y.toFixed(1)}" `
+      + 'stroke="var(--border)" stroke-width="1" />';
   });
 
   // The DigiPlan in progress: a bold dotted arc at the level each parameter is
@@ -153,7 +220,7 @@ function renderWheel(items, opts = {}) {
     if (item.target === null || item.target === undefined) return;
     const start = i * sectorDeg + gapDeg / 2;
     const end = (i + 1) * sectorDeg - gapDeg / 2;
-    const r = innerHole + (item.target / ringCount) * (outerRadius - innerHole);
+    const r = radiusFor(item.target);
     svg += `<path d="${arcPath(cx, cy, r, start, end)}" fill="none" stroke="var(--signal)" `
       + `stroke-width="3.5" stroke-linecap="round" stroke-dasharray="5 4">`;
     svg += `<title>${esc(item.code)}${item.name ? ' — ' + esc(item.name) : ''}: `
@@ -173,6 +240,27 @@ function renderWheel(items, opts = {}) {
 
   // Center hole label
   svg += `<circle cx="${cx}" cy="${cy}" r="${innerHole}" fill="var(--surface)" stroke="var(--border)" />`;
+
+  // Which colour is which domain.
+  //
+  // DOMAIN_COLORS has carried a comment about legend swatches since it was
+  // written, and no legend was ever drawn — so four colours meant nothing
+  // unless you already knew the instrument. Inside the SVG rather than beside
+  // it in a view, because the wheel appears on five different pages and a
+  // legend that lives in one of them is a legend missing from four.
+  //
+  // The public wheel needs none: there, the four sectors *are* the domains and
+  // are already named around the rim.
+  if (legendRows) {
+    const colWidth = size / 2;
+    DOMAIN_ORDER.forEach((d, i) => {
+      const x = 10 + (i % 2) * colWidth;
+      const y = size + 14 + Math.floor(i / 2) * 16;
+      svg += `<rect x="${x}" y="${y - 8}" width="10" height="10" rx="2" fill="${DOMAIN_VARS[d]}" />`;
+      svg += `<text x="${x + 15}" y="${y}" font-size="10" fill="var(--text-muted)" `
+        + `dominant-baseline="middle">${esc(d)} — ${esc(t('domain_' + d + '_short'))}</text>`;
+    });
+  }
 
   svg += '</svg>';
   return svg;
