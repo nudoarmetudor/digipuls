@@ -29,6 +29,7 @@
     <% } %>
   </p>
   <% if (draft) { %><p class="small"><b><%= t('assessment_doc_draft_note') %></b></p><% } %>
+  <%- include('../partials/_cycle-record-notes', { cycle }) %>
 
   <div class="doc-wheel"><%- wheelSvg %></div>
 

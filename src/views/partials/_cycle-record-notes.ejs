@@ -1,0 +1,19 @@
+<%
+/* What the record says about how a cycle was confirmed and whether it has
+   been closed — for the school and for everyone who reads its assessment.
+   Expects: cycle. */
+%>
+<% if (cycle && cycle.confirmedWithoutReadings) { %>
+  <div class="card card-flat">
+    <p class="small" style="margin:0;">
+      <b><%= t('confirmed_without_readings', { codes: cycle.confirmedWithoutReadings.split(',').join(', ') }) %></b>
+      <% if (cycle.confirmationNote) { %><br><%= t('confirmation_reason') %> <%= cycle.confirmationNote %><% } %>
+    </p>
+  </div>
+<% } %>
+<% if (cycle && cycle.closedAt) { %>
+  <p class="small">
+    <span class="badge badge-confirmed"><%= t('status_closed') %></span>
+    <%= new Date(cycle.closedAt).toLocaleDateString(lang) %><% if (cycle.closingNote) { %> — <%= cycle.closingNote %><% } %>
+  </p>
+<% } %>

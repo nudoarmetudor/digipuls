@@ -152,3 +152,51 @@ test('only http and https sources become links', () => {
   assert.ok(!isEvidenceLink('dosarul nr. 3, cabinetul directorului'));
   assert.ok(!isEvidenceLink('https://x.md/"onmouseover="alert(1)'));
 });
+
+const { sideLevel } = require('../src/services/tracks');
+
+test('a side reads as the middle of its members, rounded down', () => {
+  assert.strictEqual(sideLevel([]), null);
+  assert.strictEqual(sideLevel([null, undefined]), null);
+  assert.strictEqual(sideLevel([3]), 3);
+  assert.strictEqual(sideLevel([2, 4]), 2);
+  assert.strictEqual(sideLevel([4, 1, 3]), 3);
+  assert.strictEqual(sideLevel([0, 5, 5, 1]), 1);
+});
+
+test('each person’s reading is kept, and the spread within a side is visible', () => {
+  const ratings = [
+    { indicatorCode: 'A1', track: TEAM, level: 2 },
+    { indicatorCode: 'A1', track: ADMINISTRATION, level: 3 },
+  ];
+  const personal = [
+    { indicatorCode: 'A1', track: TEAM, userId: 2, level: 1, user: { name: 'Ion' } },
+    { indicatorCode: 'A1', track: TEAM, userId: 3, level: 4, user: { name: 'Ana' } },
+    { indicatorCode: 'A1', track: ADMINISTRATION, userId: 1, level: 3, user: { name: 'Elena' } },
+  ];
+  const [row] = reconciliation(ratings, [{ code: 'A1' }], personal);
+  assert.deepStrictEqual(row.readings[TEAM].map((r) => r.name), ['Ana', 'Ion']);
+  assert.strictEqual(row.spread[TEAM], 3);
+  assert.strictEqual(row.spread[ADMINISTRATION], 0);
+});
+
+test('a colleague having answered does not open the row for you', () => {
+  const ratings = [
+    { indicatorCode: 'A1', track: TEAM, level: 4 },
+    { indicatorCode: 'A1', track: ADMINISTRATION, level: 2 },
+    { indicatorCode: 'A2', track: TEAM, level: 3 },
+    { indicatorCode: 'A2', track: ADMINISTRATION, level: 3 },
+  ];
+  const personal = [
+    { indicatorCode: 'A1', track: TEAM, userId: 9, level: 4, user: { name: 'Colleague' } },
+    { indicatorCode: 'A2', track: TEAM, userId: 7, level: 3, user: { name: 'Me' } },
+  ];
+  const rows = reconciliation(ratings, [{ code: 'A1' }, { code: 'A2' }], personal);
+  const masked = maskForTrack(rows, TEAM, { hideAgreed: true, answered: new Set(['A2']) });
+  assert.ok(masked[0].hidden, 'A1 was answered by a colleague, not by me');
+  assert.strictEqual(masked[0].teamLevel, null, 'my side’s reading is a colleague’s here, so it is hidden too');
+  assert.strictEqual(masked[0].administrationLevel, null);
+  assert.deepStrictEqual(masked[0].readings[TEAM], []);
+  assert.ok(!masked[1].hidden);
+  assert.strictEqual(masked[1].administrationLevel, 3);
+});

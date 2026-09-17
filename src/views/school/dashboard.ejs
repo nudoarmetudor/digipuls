@@ -68,7 +68,10 @@
         <% cycles.forEach(c => { %>
           <tr>
             <td>#<%= c.cycleNumber %></td>
-            <td><span class="badge badge-<%= c.status.toLowerCase() %>"><%= STATUS_LABELS[c.status] %></span></td>
+            <td>
+              <span class="badge badge-<%= c.status.toLowerCase() %>"><%= STATUS_LABELS[c.status] %></span>
+              <% if (c.closedAt) { %><span class="badge badge-maintained"><%= t('status_closed') %></span><% } %>
+            </td>
             <td><%= new Date(c.startedAt).toLocaleDateString(lang) %></td>
             <td><%= c.confirmedAt ? new Date(c.confirmedAt).toLocaleDateString(lang) : '—' %></td>
             <td><%= c.plan ? (c.plan.publishedAt ? t('plan_published') : STATUS_LABELS.DRAFT) : '—' %></td>

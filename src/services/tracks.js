@@ -57,13 +57,44 @@ function compare(administrationLevel, teamLevel) {
 }
 
 /**
+ * A side's reading of one parameter, from the readings of the people on it:
+ * the median, rounded down when the count is even.
+ *
+ * The median, because one outlier on a team of five should not move the side's
+ * number the way an average would. Rounded down, because between two readings
+ * the lower one is the one the evidence has to support anyway. Either way the
+ * individual readings are shown beside it, so nothing is hidden by the choice.
+ *
+ * @param {Array<number|null>} levels
+ * @returns {number|null} null when nobody on the side has answered
+ */
+function sideLevel(levels) {
+  const answered = (levels || []).filter(Number.isInteger).sort((a, b) => a - b);
+  if (!answered.length) return null;
+  return answered[Math.floor((answered.length - 1) / 2)];
+}
+
+/**
  * Folds a cycle's rating rows into one entry per parameter, carrying all three
- * readings side by side.
+ * readings side by side, and each person's reading under their side's.
  *
  * @param {Array} ratings every rating row of the cycle, any track
  * @param {Array} indicators the instrument, in display order
+ * @param {Array} [personal] PersonalRating rows, with `user` loaded
  */
-function reconciliation(ratings, indicators) {
+function reconciliation(ratings, indicators, personal = []) {
+  const readingsFor = (code, track) => (personal || [])
+    .filter((p) => p.indicatorCode === code && p.track === track && Number.isInteger(p.level))
+    .map((p) => ({
+      userId: p.userId,
+      name: p.user ? p.user.name : '',
+      level: p.level,
+      comment: p.comment || null,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const spread = (list) => (list.length > 1
+    ? Math.max(...list.map((r) => r.level)) - Math.min(...list.map((r) => r.level)) : 0);
+
   const byCodeAndTrack = new Map();
   (ratings || []).forEach((r) => byCodeAndTrack.set(`${r.indicatorCode}:${r.track}`, r));
 
@@ -73,8 +104,16 @@ function reconciliation(ratings, indicators) {
     const agreed = byCodeAndTrack.get(`${ind.code}:${AGREED}`) || null;
     const levelOf = (row) => (row ? row.level : null);
     const comparison = compare(levelOf(administration), levelOf(team));
+    const readings = {
+      [ADMINISTRATION]: readingsFor(ind.code, ADMINISTRATION),
+      [TEAM]: readingsFor(ind.code, TEAM),
+    };
 
     return {
+      readings,
+      // How far apart the people on one side are. A side reading of 2 made of
+      // a 1 and a 4 is a conversation the side has to have with itself.
+      spread: { [ADMINISTRATION]: spread(readings[ADMINISTRATION]), [TEAM]: spread(readings[TEAM]) },
       indicator: ind,
       administration,
       team,
@@ -112,20 +151,32 @@ function reconciliation(ratings, indicators) {
  * cannot settle, and so did not write it. Agreeing a level before the team has
  * answered otherwise tells the team what to answer.
  *
+ * Now that readings are kept per person, "answered" means *this person* has
+ * answered — pass `answered`, the set of parameter codes they have rated. A
+ * colleague on the same side having answered does not open the row, and while
+ * it is closed the viewer's own side's reading is hidden too, because it may
+ * be entirely a colleague's. Without `answered` (a cycle nobody has rated
+ * individually) the side's own value decides, as before.
+ *
  * @param {Array} rows      from reconciliation()
  * @param {string} myTrack  the track this viewer writes to
- * @param {{hideAgreed?: boolean}} [options]
+ * @param {{hideAgreed?: boolean, answered?: Set<string>}} [options]
  */
-function maskForTrack(rows, myTrack, { hideAgreed = false } = {}) {
+function maskForTrack(rows, myTrack, { hideAgreed = false, answered } = {}) {
   if (!WORKING_TRACKS.includes(myTrack)) return rows;
   const mine = myTrack === ADMINISTRATION ? 'administrationLevel' : 'teamLevel';
   const theirs = myTrack === ADMINISTRATION ? 'teamLevel' : 'administrationLevel';
 
   return rows.map((row) => {
-    if (row[mine] !== null && row[mine] !== undefined) return row;
+    const hasAnswered = answered
+      ? answered.has(row.indicator.code)
+      : row[mine] !== null && row[mine] !== undefined;
+    if (hasAnswered) return row;
     return {
       ...row,
       [theirs]: null,
+      ...(answered ? { [mine]: null } : {}),
+      readings: { [ADMINISTRATION]: [], [TEAM]: [] },
       // The state and the gap disclose the same thing more quietly — "differ
       // by 3" tells you what the other side wrote as surely as the number
       // does — so they go with it.
@@ -135,6 +186,16 @@ function maskForTrack(rows, myTrack, { hideAgreed = false } = {}) {
       ...(hideAgreed ? { agreedLevel: null, agreedHidden: true } : {}),
     };
   });
+}
+
+/**
+ * The parameters at least one side has not read. Agreeing a level for one of
+ * these is an agreement that side never took part in.
+ */
+function missingReadings(rows) {
+  return rows
+    .filter((r) => r.administrationLevel === null || r.teamLevel === null)
+    .map((r) => r.indicator.code);
 }
 
 /** What still stands between the school and a confirmable assessment. */
@@ -149,5 +210,5 @@ function outstanding(rows) {
 
 module.exports = {
   ADMINISTRATION, TEAM, AGREED, TRACKS, WORKING_TRACKS,
-  trackForRole, compare, reconciliation, outstanding, maskForTrack,
+  trackForRole, compare, reconciliation, outstanding, maskForTrack, sideLevel, missingReadings,
 };

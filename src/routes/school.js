@@ -14,8 +14,12 @@ const { ValidationError, toLevel, toNonNegativeInt } = require('../utils/validat
 const { mentorsForSchool } = require('../services/mentors');
 const { SCHOOL_ROLES, reachesEverySchool } = require('../services/capabilities');
 const {
-  trackForRole, AGREED, reconciliation, outstanding, maskForTrack,
+  trackForRole, AGREED, WORKING_TRACKS, reconciliation, outstanding, maskForTrack, missingReadings,
 } = require('../services/tracks');
+
+// The shortest reason accepted for confirming without both sides' readings.
+// Long enough that "ok" or "n/a" will not do.
+const MIN_REASON = 20;
 const {
   ADVANCE, MAINTAIN, INTENTS, INITIATIVE_STATUSES,
   openPlan, requirementsFor, planRows, planSummary, targetChoices, loadPlan,
@@ -129,6 +133,11 @@ async function loadCycleForSchool(req, res, next) {
       networkChecklist: true,
       plan: { include: { priorities: true } },
       previousCycle: { include: { ratings: { where: { track: AGREED } } } },
+      personalRatings: {
+        include: { user: { select: { id: true, name: true } } },
+        orderBy: { id: 'asc' },
+      },
+      closedBy: { select: { id: true, name: true } },
     },
   });
   if (!cycle || cycle.schoolId !== activeSchoolId(req)) {
@@ -203,10 +212,11 @@ function requireDraftCycle(req, res, next) {
  */
 function reviewError(req, res, indicators) {
   const { error, codes } = req.query;
-  if (error !== 'evidence_missing') return error || null;
+  const keys = { evidence_missing: 'err_evidence_missing', readings_missing: 'err_readings_missing' };
+  if (!keys[error]) return error || null;
   const known = new Set(indicators.map((i) => i.code));
   const named = String(codes || '').split(',').map((c) => c.trim()).filter((c) => known.has(c));
-  return res.locals.t('err_evidence_missing', { n: named.length, codes: named.join(', ') });
+  return res.locals.t(keys[error], { n: named.length, codes: named.join(', '), min: MIN_REASON });
 }
 
 function stepStatusesFor(cycle) {
@@ -229,7 +239,18 @@ router.get('/cycles/:id', loadCycleForSchool, async (req, res) => {
     { mode: 'indicators', t: res.locals.t },
   );
 
+  // For the closing card: what of the cycle's work has been published.
+  const reports = cycle.plan
+    ? await prisma.planReport.findMany({ where: { planId: cycle.plan.id }, select: { kind: true, publishedAt: true } })
+    : [];
+  const published = (kind) => reports.some((r) => r.kind === kind && r.publishedAt);
+
   res.render('school/cycle-overview', {
+    closing: {
+      hasPlan: !!cycle.plan,
+      interimPublished: published(INTERIM),
+      finalPublished: published(FINAL),
+    },
     title: `Cycle ${cycle.cycleNumber}`, wide: true,
     school, cycle, wheelSvg,
     isContinuation: !!cycle.previousCycleId,
@@ -251,11 +272,22 @@ router.get('/cycles/:id/step/:stepKey', loadCycleForSchool, async (req, res) => 
       ? new Map(cycle.previousCycle.ratings.map((r) => [r.indicatorCode, r]))
       : null;
     const assignedTo = await assignmentsByCode(cycle.id);
+    // In a draft, on one of the two sides, the picker shows this person's own
+    // reading, and the side's readings so far are listed beneath it.
+    const personal = cycle.status === 'DRAFT' && WORKING_TRACKS.includes(req.track);
+    const me = req.session.user.id;
+    const onMySide = cycle.personalRatings.filter((p) => p.track === req.track && Number.isInteger(p.level));
     const indicators = localeData.INDICATORS.filter((i) => i.domain === stepKey).map((ind) => ({
       ...ind,
       rating: ratingsByCode.get(ind.code) || null,
       priorRating: priorByCode ? priorByCode.get(ind.code) : null,
       assignees: assignedTo.get(ind.code) || [],
+      ...(personal ? {
+        myReading: cycle.personalRatings.find((p) => p.track === req.track && p.userId === me
+          && p.indicatorCode === ind.code) || null,
+        sideReadings: onMySide.filter((p) => p.indicatorCode === ind.code)
+          .map((p) => ({ userId: p.userId, name: p.user.name, level: p.level })),
+      } : {}),
     }));
     const ratedInDomain = indicators.filter((i) => i.rating && i.rating.level !== null && i.rating.level !== undefined).length;
     return res.render('school/step-domain', {
@@ -298,6 +330,10 @@ router.get('/cycles/:id/step/:stepKey', loadCycleForSchool, async (req, res) => 
       summary: summariseDomains(cycle.ratings, localeData.INDICATORS, localeData.DOMAINS),
       isContinuation: !!cycle.previousCycleId,
       errorMessage: reviewError(req, res, localeData.INDICATORS),
+      // Named before the principal presses Confirm, not only after a refusal.
+      missingReadings: cycle.status === 'DRAFT'
+        ? missingReadings(reconciliation(cycle.allRatings, INDICATORS)) : [],
+      minReason: MIN_REASON,
     });
   }
 
@@ -340,12 +376,22 @@ router.post('/cycles/:id/ratings/:code', loadCycleForSchool, requireDraftCycle, 
     }
   }
 
-  if (cycle.previousCycleId) {
-    await cycleService.setContinuationRating(rating.id, level, comment);
+  if (WORKING_TRACKS.includes(req.track)) {
+    // This person's reading; the side's is derived from everyone's.
+    const side = await cycleService.recordPersonalReading({
+      cycleId: cycle.id, indicatorCode: code, track: req.track,
+      userId: req.session.user.id, level, comment,
+    });
+    await logAction(req.session.user.id, 'SET_RATING', 'IndicatorRating', rating.id,
+      `${code} ${req.track} -> level ${level} (side ${side})`);
   } else {
-    await prisma.indicatorRating.update({ where: { id: rating.id }, data: { level, comment } });
+    if (cycle.previousCycleId) {
+      await cycleService.setContinuationRating(rating.id, level, comment);
+    } else {
+      await prisma.indicatorRating.update({ where: { id: rating.id }, data: { level, comment } });
+    }
+    await logAction(req.session.user.id, 'SET_RATING', 'IndicatorRating', rating.id, `${code} -> level ${level}`);
   }
-  await logAction(req.session.user.id, 'SET_RATING', 'IndicatorRating', rating.id, `${code} -> level ${level}`);
   res.redirect(res.locals.href(`/school/cycles/${cycle.id}/step/${returnStep}#ind-${code}`));
 });
 
@@ -544,13 +590,67 @@ router.post('/cycles/:id/confirm', requireCapability('school.manage'), loadCycle
     return res.redirect(res.locals.href(
       `/school/cycles/${cycle.id}/step/review?error=evidence_missing&codes=${encodeURIComponent(codes)}`));
   }
+  // Both sides are meant to read every parameter before a level is agreed. A
+  // principal could otherwise settle all nineteen alone and sign — which was
+  // tested, and worked, with the team having rated two. It is still allowed,
+  // because a team member falling ill should not stall a school, but not
+  // silently: the reason is recorded and shown beside the assessment.
+  const unread = missingReadings(reconciliation(cycle.allRatings, INDICATORS));
+  const reason = String(req.body.reason || '').trim();
+  if (unread.length && reason.length < MIN_REASON) {
+    return res.redirect(res.locals.href(
+      `/school/cycles/${cycle.id}/step/review?error=readings_missing&codes=${encodeURIComponent(unread.join(','))}#confirm`));
+  }
   await prisma.assessmentCycle.update({
     where: { id: cycle.id },
-    data: { status: 'CONFIRMED', confirmedAt: new Date(), confirmedById: req.session.user.id },
+    data: {
+      status: 'CONFIRMED',
+      confirmedAt: new Date(),
+      confirmedById: req.session.user.id,
+      confirmedWithoutReadings: unread.length ? unread.join(',') : null,
+      confirmationNote: unread.length ? reason : null,
+    },
   });
   await prisma.school.update({ where: { id: school.id }, data: { enrolmentBand: require('../data/order675').bandFor(school.enrolmentTotal) } });
-  await logAction(req.session.user.id, 'CONFIRM_CYCLE', 'AssessmentCycle', cycle.id, null);
+  await logAction(req.session.user.id, 'CONFIRM_CYCLE', 'AssessmentCycle', cycle.id,
+    unread.length ? `without both readings for ${unread.join(',')}: ${reason}` : null);
   res.redirect(res.locals.href(`/school/cycles/${cycle.id}/plan`));
+});
+
+// -------------------- Closing a cycle --------------------
+//
+// The school saying the cycle is finished. Deliberately not a lock: plans and
+// reports stay editable, and a closed cycle can be reopened. It is recorded,
+// dated and attributed, and shown wherever the cycle is.
+
+router.post('/cycles/:id/close', requireCapability('school.manage'), loadCycleForSchool, async (req, res) => {
+  const cycle = req.cycle;
+  if (cycle.status !== 'CONFIRMED') {
+    return res.status(409).render('error', {
+      title: res.locals.t('close_err_title'), message: res.locals.t('close_err_not_confirmed'),
+    });
+  }
+  if (!cycle.closedAt) {
+    const note = String(req.body.note || '').trim() || null;
+    await prisma.assessmentCycle.update({
+      where: { id: cycle.id },
+      data: { closedAt: new Date(), closedById: req.session.user.id, closingNote: note },
+    });
+    await logAction(req.session.user.id, 'CLOSE_CYCLE', 'AssessmentCycle', cycle.id, note);
+  }
+  return res.redirect(res.locals.href(`/school/cycles/${cycle.id}#closing`));
+});
+
+router.post('/cycles/:id/reopen', requireCapability('school.manage'), loadCycleForSchool, async (req, res) => {
+  const cycle = req.cycle;
+  if (cycle.closedAt) {
+    await prisma.assessmentCycle.update({
+      where: { id: cycle.id },
+      data: { closedAt: null, closedById: null, closingNote: null },
+    });
+    await logAction(req.session.user.id, 'REOPEN_CYCLE', 'AssessmentCycle', cycle.id, cycle.closingNote);
+  }
+  return res.redirect(res.locals.href(`/school/cycles/${cycle.id}#closing`));
 });
 
 // -------------------- Reconciliation --------------------
@@ -582,7 +682,7 @@ function reconcileError(req, res, indicators) {
 router.get('/cycles/:id/reconcile', loadCycleForSchool, async (req, res) => {
   const cycle = req.cycle;
   const localeData = getIndicatorData(req.lang);
-  const rows = reconciliation(cycle.allRatings, localeData.INDICATORS);
+  const rows = reconciliation(cycle.allRatings, localeData.INDICATORS, cycle.personalRatings);
 
   // A cycle assessed before the two tracks existed has an agreed level and
   // two empty working columns. Saying "nobody has rated this" beside a real
@@ -601,7 +701,18 @@ router.get('/cycles/:id/reconcile', loadCycleForSchool, async (req, res) => {
   // level before the team has answered was otherwise handing the team the
   // answer. The principal and the deputy wrote it, so it is not hidden from
   // them.
-  const visible = maskForTrack(rows, req.track, { hideAgreed: !canSettle });
+  //
+  // Masking applies while the cycle is being assessed. Once it is confirmed
+  // there is nothing left to answer independently, and the record is read
+  // whole.
+  const mine = cycle.personalRatings
+    .filter((p) => p.track === req.track && p.userId === req.session.user.id && Number.isInteger(p.level))
+    .map((p) => p.indicatorCode);
+  const visible = cycle.status === 'CONFIRMED' ? rows : maskForTrack(rows, req.track, {
+    hideAgreed: !canSettle,
+    // Individual answers decide once anyone in this cycle has given one.
+    answered: cycle.personalRatings.length ? new Set(mine) : undefined,
+  });
 
   return res.render('school/reconcile', {
     title: res.locals.t('reconcile_title'),

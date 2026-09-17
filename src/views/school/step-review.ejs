@@ -85,8 +85,17 @@
   <div class="card">
     <h2 class="plain-heading"><%= t('assessment_confirm_title') %></h2>
     <p class="small"><%= t('assessment_confirm_body') %></p>
-    <form method="POST" data-tour="confirm" action="<%= href('/school/cycles/' + (cycle.id) + '/confirm') %>">
+    <form method="POST" id="confirm" data-tour="confirm" action="<%= href('/school/cycles/' + (cycle.id) + '/confirm') %>">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <% if (locals.missingReadings && missingReadings.length) { %>
+        <div class="flash flash-info" role="note">
+          <p style="margin:0 0 .4rem;"><b><%= t('confirm_readings_missing_title') %></b></p>
+          <p class="small" style="margin:0;"><%= t('confirm_readings_missing_body', { n: missingReadings.length, codes: missingReadings.join(', ') }) %></p>
+        </div>
+        <label for="confirm-reason"><%= t('confirm_reason_label') %></label>
+        <textarea id="confirm-reason" name="reason" required minlength="<%= minReason %>"></textarea>
+        <p class="help"><%= t('confirm_reason_help', { min: minReason }) %></p>
+      <% } %>
       <button class="btn" type="submit"><%= t('assessment_confirm_button') %></button>
     </form>
   </div>

@@ -8,6 +8,8 @@
   <p class="small" style="margin:0;"><%= t('cycle_collaboration_note') %></p>
 </div>
 
+<%- include('../partials/_cycle-record-notes', { cycle }) %>
+
 <%- include('_step-nav', { activeStep: null }) %>
 
 <% if (cycle.status === 'CONFIRMED') { %>
@@ -39,6 +41,48 @@
       <a class="btn btn-sm" href="<%= href('/school/cycles/' + (cycle.id) + '/plan') %>"><%= t('school_view_plan') %></a>
       <a class="btn btn-sm btn-secondary" href="<%= href('/school/cycles/' + (cycle.id) + '/document') %>"><%= t('assessment_doc_link') %></a>
     </div>
+  </div>
+<% } %>
+
+<% if (cycle.status === 'CONFIRMED') { %>
+  <div class="card" id="closing">
+    <h2 class="plain-heading"><%= t('close_title') %></h2>
+    <% if (cycle.closedAt) { %>
+      <p>
+        <span class="badge badge-confirmed"><%= t('status_closed') %></span>
+        <%= t('closed_on', { date: new Date(cycle.closedAt).toLocaleDateString(lang), name: cycle.closedBy ? cycle.closedBy.name : '—' }) %>
+      </p>
+      <% if (cycle.closingNote) { %><p class="small"><%= cycle.closingNote %></p><% } %>
+      <p class="small"><%= t('close_nothing_locked') %></p>
+      <% if (can('school.manage')) { %>
+        <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/reopen') %>">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button class="btn btn-sm btn-secondary" type="submit"><%= t('reopen_button') %></button>
+        </form>
+      <% } %>
+    <% } else { %>
+      <p class="small"><%= t('close_intro') %></p>
+      <% const gaps = [];
+         if (!closing.hasPlan) gaps.push(t('close_no_plan'));
+         else {
+           if (!closing.interimPublished) gaps.push(t('close_interim_missing'));
+           if (!closing.finalPublished) gaps.push(t('close_final_missing'));
+         } %>
+      <% if (gaps.length) { %>
+        <ul class="small"><% gaps.forEach(function (g) { %><li><%= g %></li><% }) %></ul>
+      <% } %>
+      <% if (can('school.manage')) { %>
+        <form method="POST" data-tour="close-cycle" action="<%= href('/school/cycles/' + (cycle.id) + '/close') %>"
+              data-confirm="<%= t('close_confirm') %>">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <label for="close-note"><%= t('close_note_label') %></label>
+          <textarea id="close-note" name="note"></textarea>
+          <div class="btn-row" style="margin-top:.5rem;">
+            <button class="btn btn-sm" type="submit"><%= t('close_button') %></button>
+          </div>
+        </form>
+      <% } %>
+    <% } %>
   </div>
 <% } %>
 

@@ -1,6 +1,6 @@
 const prisma = require('../config/db');
 const { INDICATORS } = require('../data/indicators');
-const { TRACKS, AGREED } = require('./tracks');
+const { TRACKS, AGREED, WORKING_TRACKS, sideLevel } = require('./tracks');
 const {
   DEVICE_FIELDS, NETWORK_FIELDS, checkDeviceCompliance, checkNetworkCompliance,
 } = require('../data/order675');
@@ -176,6 +176,22 @@ async function enforceOrder675Floor(cycleId, school, userId) {
   if (!cycle || cycle.status !== 'DRAFT') return [];
 
   const failing = floorCodes(school, cycle.deviceInventory, cycle.networkChecklist);
+  if (!failing.length) return [];
+
+  // Each person's reading first, so the sides re-derived from them agree with
+  // the floor rather than being lowered and then lifted again.
+  const personal = await prisma.personalRating.findMany({
+    where: { cycleId, indicatorCode: { in: failing }, level: { gt: 0 } },
+  });
+  for (const reading of personal) {
+    await prisma.personalRating.update({ where: { id: reading.id }, data: { level: 0 } });
+  }
+  const touched = new Set(personal.map((p) => `${p.indicatorCode}|${p.track}`));
+  for (const key of touched) {
+    const [code, track] = key.split('|');
+    await recomputeSideReading(cycleId, code, track);
+  }
+
   const lowered = cycle.ratings.filter((r) => failing.includes(r.indicatorCode) && r.level > 0);
   for (const row of lowered) {
     if (cycle.previousCycleId) {
@@ -187,6 +203,42 @@ async function enforceOrder675Floor(cycleId, school, userId) {
       `${row.indicatorCode} ${row.track}: ${row.level} -> 0`);
   }
   return lowered;
+}
+
+/**
+ * Records one person's reading of a parameter and re-derives their side's
+ * reading from everyone's on that side.
+ *
+ * @returns {Promise<number|null>} the side's reading afterwards
+ */
+async function recordPersonalReading({ cycleId, indicatorCode, track, userId, level, comment }) {
+  if (!WORKING_TRACKS.includes(track)) throw new Error(`Not a working track: ${track}`);
+  await prisma.personalRating.upsert({
+    where: { cycleId_indicatorCode_track_userId: { cycleId, indicatorCode, track, userId } },
+    create: { cycleId, indicatorCode, track, userId, level, comment: comment || null },
+    update: { level, comment: comment || null },
+  });
+  return recomputeSideReading(cycleId, indicatorCode, track);
+}
+
+/** Writes a side's reading as derived from the people on it. */
+async function recomputeSideReading(cycleId, indicatorCode, track) {
+  const [readings, side, cycle] = await Promise.all([
+    prisma.personalRating.findMany({ where: { cycleId, indicatorCode, track } }),
+    prisma.indicatorRating.findFirst({ where: { cycleId, indicatorCode, track } }),
+    prisma.assessmentCycle.findUnique({ where: { id: cycleId }, select: { previousCycleId: true } }),
+  ]);
+  if (!side) return null;
+  const level = sideLevel(readings.map((r) => r.level));
+  if (level !== null && cycle && cycle.previousCycleId) {
+    await setContinuationRating(side.id, level, side.comment);
+  } else {
+    await prisma.indicatorRating.update({
+      where: { id: side.id },
+      data: { level, ...(level === null ? { changeState: null } : {}) },
+    });
+  }
+  return level;
 }
 
 /** Which of D1 and D2 the equipment data holds at 0. */
@@ -228,4 +280,5 @@ async function setContinuationRating(ratingId, newLevel, comment) {
 
 module.exports = {
   startFirstCycle, startContinuationCycle, setContinuationRating, enforceOrder675Floor, floorCodes, pick,
+  recordPersonalReading, recomputeSideReading,
 };

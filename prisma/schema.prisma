@@ -82,8 +82,10 @@ model User {
   indicatorDelegations   IndicatorAssignment[] @relation("IndicatorDelegator")
   confirmedCycles        AssessmentCycle[]     @relation("CycleConfirmedBy")
   publishedCycles        AssessmentCycle[]     @relation("CyclePublishedBy")
+  closedCycles           AssessmentCycle[]     @relation("CycleClosedBy")
   publishedReports       PlanReport[]          @relation("ReportPublishedBy")
   evidenceAdded          Evidence[]            @relation("EvidenceAddedBy")
+  personalRatings        PersonalRating[]      @relation("PersonalRatingAuthor")
   publishedReportVersions PlanReportVersion[]  @relation("ReportVersionPublishedBy")
   initiativesResponsible PlanInitiative[]      @relation("InitiativeResponsible")
   initiativesSupervised  PlanInitiative[]      @relation("InitiativeSupervisor")
@@ -282,7 +284,23 @@ model AssessmentCycle {
   publishedById Int?
   publishedBy   User?     @relation("CyclePublishedBy", fields: [publishedById], references: [id])
 
+  // Set when the cycle was confirmed although some parameters lacked a
+  // reading from one of the two sides: which ones, and the reason the
+  // principal gave. Shown to the metamentor and the Ministry beside the
+  // assessment, so an agreement one side never took part in is visible as such.
+  confirmedWithoutReadings String?
+  confirmationNote         String?   @db.Text
+
+  // The school's statement that the cycle is finished — assessment, plan and
+  // reports. A record, not a lock: nothing becomes read-only, and it can be
+  // undone.
+  closedAt    DateTime?
+  closedById  Int?
+  closedBy    User?     @relation("CycleClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
+  closingNote String?   @db.Text
+
   ratings          IndicatorRating[]
+  personalRatings  PersonalRating[]
   assignments      IndicatorAssignment[]
   plan             DevelopmentPlan?
   deviceInventory  DeviceInventory?
@@ -370,6 +388,32 @@ model IndicatorRating {
   evidences Evidence[]
 
   @@unique([cycleId, indicatorCode, track])
+}
+
+// One person's reading of one parameter, on their side.
+//
+// A side used to hold a single value per parameter, written by whoever saved
+// last: two mentors rating A1 at 2 and at 4 left one number and no trace of the
+// other. Each person's reading is now kept, and the side's reading in
+// IndicatorRating is derived from them (see sideLevel in services/tracks.js),
+// so the reconciliation can show who thought what.
+model PersonalRating {
+  id            Int             @id @default(autoincrement())
+  cycleId       Int
+  cycle         AssessmentCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  indicatorCode String
+  // ADMINISTRATION or TEAM. Part of the key, because one person can hold a
+  // post on each side of the same school.
+  track         String
+  userId        Int
+  user          User            @relation("PersonalRatingAuthor", fields: [userId], references: [id])
+  level         Int?
+  comment       String?         @db.Text
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@unique([cycleId, indicatorCode, track, userId])
+  @@index([cycleId])
 }
 
 model Evidence {

@@ -15,6 +15,18 @@ const evidenceTypes = [
   ['external_validation', t('ev_external_validation')],
 ];
 %>
+<%
+/* On one of the two sides of a draft, the picker is this person's own reading
+   (`myReading`); elsewhere it is the record being shown (`rating`). */
+const personal = ind.myReading !== undefined;
+const shownLevel = personal
+  ? (ind.myReading && Number.isInteger(ind.myReading.level) ? ind.myReading.level : null)
+  : (ind.rating && Number.isInteger(ind.rating.level) ? ind.rating.level : null);
+const shownComment = personal
+  ? (ind.myReading ? (ind.myReading.comment || '') : '')
+  : (ind.rating ? (ind.rating.comment || '') : '');
+const sideLevelNow = ind.rating && Number.isInteger(ind.rating.level) ? ind.rating.level : null;
+%>
 <section class="indicator-block" id="ind-<%= ind.code %>" aria-labelledby="ind-<%= ind.code %>-h">
   <h3 id="ind-<%= ind.code %>-h"><%= ind.code %>. <%= ind.name %></h3>
   <p class="small"><%= ind.description %></p>
@@ -23,6 +35,24 @@ const evidenceTypes = [
       the evidence, not a restriction on who may record it. %>
   <% if (ind.assignees && ind.assignees.length) { %>
     <p class="small"><%= t('delegation_taken_by', { names: ind.assignees.map(function (a) { return a.name; }).join(', ') }) %></p>
+  <% } %>
+
+  <%# Who else on this side has answered. Their levels are shown once this
+      person has given their own, so nobody simply copies a colleague. %>
+  <% if (personal && ind.sideReadings && ind.sideReadings.length) {
+       const others = ind.sideReadings.filter(function (r) { return !ind.myReading || r.userId !== ind.myReading.userId; }); %>
+    <% if (others.length || shownLevel !== null) { %>
+      <p class="small">
+        <% if (shownLevel === null) { %>
+          <%= t('side_answered_by', { names: others.map(function (r) { return r.name; }).join(', ') }) %>
+          <span class="help"><%= t('side_levels_after_you') %></span>
+        <% } else { %>
+          <%= t('side_readings_label') %>
+          <%= ind.sideReadings.map(function (r) { return r.name + ' ' + r.level; }).join(' · ') %>
+          <% if (sideLevelNow !== null) { %> — <b><%= t('side_reading_value', { n: sideLevelNow }) %></b><% } %>
+        <% } %>
+      </p>
+    <% } %>
   <% } %>
 
   <% if (ind.priorRating) { %>
@@ -44,9 +74,9 @@ const evidenceTypes = [
       <legend class="visually-hidden"><%= t('level_options_label') %> — <%= ind.code %></legend>
       <div class="level-picker" data-tour="level-picker">
         <% ind.levels.forEach(lv => { %>
-          <label class="level-option<%= ind.rating && ind.rating.level === lv.level ? ' selected' : '' %>">
+          <label class="level-option<%= shownLevel === lv.level ? ' selected' : '' %>">
             <input type="radio" name="level" value="<%= lv.level %>" class="visually-hidden"
-              <%= ind.rating && ind.rating.level === lv.level ? 'checked' : '' %>
+              <%= shownLevel === lv.level ? 'checked' : '' %>
               data-desc="<%= lv.description %>">
             <span class="lv-num"><%= lv.level %></span> — <%= lv.levelName %>
           </label>
@@ -54,10 +84,10 @@ const evidenceTypes = [
       </div>
     </fieldset>
     <div class="level-desc">
-      <span class="level-desc-target" role="status" aria-live="polite"><%= ind.rating && ind.rating.level !== null ? ind.levels[ind.rating.level].description : t('assessment_select_level') %></span>
+      <span class="level-desc-target" role="status" aria-live="polite"><%= shownLevel !== null ? ind.levels[shownLevel].description : t('assessment_select_level') %></span>
     </div>
     <label for="comment-<%= ind.code %>"><%= t('assessment_comment_label') %></label>
-    <textarea id="comment-<%= ind.code %>" name="comment"><%= ind.rating ? (ind.rating.comment || '') : '' %></textarea>
+    <textarea id="comment-<%= ind.code %>" name="comment"><%= shownComment %></textarea>
     <div style="margin-top:0.6rem;">
       <button class="btn btn-sm" type="submit">
         <%= t('assessment_save_rating') %><span class="visually-hidden"> — <%= ind.code %></span>
@@ -67,8 +97,8 @@ const evidenceTypes = [
 
   <%# Evidence can be attached at any level once one is chosen; from level 2
       upward it is required for confirmation. %>
-  <% if (ind.rating && ind.rating.level !== null && ind.rating.level !== undefined) {
-       const evidenceRequired = ind.rating.level >= 2; %>
+  <% if (shownLevel !== null || sideLevelNow !== null) {
+       const evidenceRequired = (shownLevel !== null && shownLevel >= 2) || (sideLevelNow !== null && sideLevelNow >= 2); %>
     <div class="evidence-block" data-tour="evidence">
       <h4 style="font-size:0.95rem;margin:0 0 0.4rem;">
         <%= evidenceRequired ? t('assessment_evidence_required') : t('evidence_heading') %>

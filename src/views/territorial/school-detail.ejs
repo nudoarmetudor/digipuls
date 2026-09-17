@@ -23,6 +23,8 @@
     </figure>
   </div>
 
+  <%- include('../partials/_cycle-record-notes', { cycle: latest }) %>
+
   <div class="card">
     <h2 class="plain-heading" id="ratings-h">
       <%= t('territorial_latest_confirmed') %> (#<%= latest.cycleNumber %>) —

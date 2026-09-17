@@ -222,12 +222,38 @@ function templatesFor(lang) {
     // A school with no mentor assigned yet must render just as happily.
     ['school/dashboard.ejs', { school, cycles: [], latest: null, hasConfirmedPrior: false, mentors: [] }],
     ['school/cycle-overview.ejs', { school, cycle: draftCycle, isContinuation: true, stepStatuses, progress: { rated: 15, total: 19 }, wheelSvg }],
+    // Confirmed and not yet closed, with the plan's reports unpublished; and
+    // closed, having been confirmed without both readings.
+    ['school/cycle-overview.ejs', {
+      school, cycle: confirmedCycle, isContinuation: false, stepStatuses, progress: { rated: 19, total: 19 }, wheelSvg,
+      closing: { hasPlan: true, interimPublished: true, finalPublished: false },
+    }],
+    ['school/cycle-overview.ejs', {
+      school, isContinuation: false, stepStatuses, progress: { rated: 19, total: 19 }, wheelSvg,
+      cycle: Object.assign({}, confirmedCycle, {
+        closedAt: new Date('2028-10-01'), closedBy: { id: 1, name: 'Elena Guriță' }, closingNote: 'Ciclul s-a încheiat.',
+        confirmedWithoutReadings: 'A1,B2', confirmationNote: 'Doi membri ai echipei au fost în concediu medical.',
+      }),
+      closing: { hasPlan: true, interimPublished: true, finalPublished: true },
+    }],
     ['school/step-domain.ejs', {
       school, cycle: draftCycle, stepStatuses, domainCode: 'A', domainName: data.DOMAINS.A,
       domainIntro: 'Intro', ratedInDomain: 4, totalInDomain: 5, errorMessage: 'Something went wrong',
       indicators: indicators.filter((i) => i.domain === 'A').map((ind) => Object.assign({}, ind, {
         rating: { level: 3, comment: '', changeState: 'GREW', evidences },
         priorRating: { level: 2 },
+      })),
+    }],
+    // The same step for someone on one of the two sides, part-way through: one
+    // parameter they have answered, the rest answered only by colleagues.
+    ['school/step-domain.ejs', {
+      school, cycle: draftCycle, stepStatuses, domainCode: 'A', domainName: data.DOMAINS.A,
+      domainIntro: '', ratedInDomain: 2, totalInDomain: 5, errorMessage: null,
+      indicators: indicators.filter((i) => i.domain === 'A').map((ind, i) => Object.assign({}, ind, {
+        rating: { level: i < 2 ? 3 : null, comment: '', changeState: null, evidences: [] },
+        priorRating: null,
+        myReading: i === 0 ? { userId: 1, level: 2, comment: 'Planul există' } : null,
+        sideReadings: i < 2 ? [{ userId: 1, name: 'Test User', level: 2 }, { userId: 5, name: 'Ana Novic', level: 4 }] : [],
       })),
     }],
     ['school/step-infra.ejs', {
@@ -246,6 +272,7 @@ function templatesFor(lang) {
     }],
     ['school/step-review.ejs', {
       school, cycle: draftCycle, stepStatuses, wheelSvg, errorMessage: null, summary,
+      missingReadings: ['A1', 'B2'], minReason: 20,
       domains: ['A', 'B', 'C', 'D'].map((code) => ({
         code,
         indicators: indicators.filter((i) => i.domain === code).map((ind) => Object.assign({}, ind, {
@@ -386,7 +413,12 @@ function templatesFor(lang) {
       cycle: { id: 4, cycleNumber: 1, status: 'DRAFT' },
       rows: [
         { indicator: { code: 'A1', name: 'Viziune' }, administrationLevel: 4, teamLevel: 2,
-          agreedLevel: 3, settled: true, state: 'differ', gap: 2 },
+          agreedLevel: 3, settled: true, state: 'differ', gap: 2,
+          readings: {
+            ADMINISTRATION: [{ userId: 1, name: 'Elena Guriță', level: 4, comment: 'Strategia e aprobată' }],
+            TEAM: [{ userId: 2, name: 'Ana Novic', level: 1, comment: null }, { userId: 3, name: 'Ion Rusu', level: 4, comment: null }],
+          },
+          spread: { ADMINISTRATION: 0, TEAM: 3 } },
         { indicator: { code: 'A2', name: 'Conducere' }, administrationLevel: 1, teamLevel: 1,
           agreedLevel: null, settled: false, state: 'agree', gap: 0 },
         { indicator: { code: 'B1', name: 'Infrastructură' }, administrationLevel: null, teamLevel: 5,
@@ -422,7 +454,12 @@ function templatesFor(lang) {
       cycle: { id: 4, cycleNumber: 1, status: 'DRAFT' },
       rows: [
         { indicator: { code: 'A1', name: 'Viziune' }, administrationLevel: 4, teamLevel: 2,
-          agreedLevel: 3, settled: true, state: 'differ', gap: 2 },
+          agreedLevel: 3, settled: true, state: 'differ', gap: 2,
+          readings: {
+            ADMINISTRATION: [{ userId: 1, name: 'Elena Guriță', level: 4, comment: 'Strategia e aprobată' }],
+            TEAM: [{ userId: 2, name: 'Ana Novic', level: 1, comment: null }, { userId: 3, name: 'Ion Rusu', level: 4, comment: null }],
+          },
+          spread: { ADMINISTRATION: 0, TEAM: 3 } },
       ],
       summary: { unsettled: [], differing: ['A1'], incomplete: [], untouched: [] },
       hiddenCount: 0,

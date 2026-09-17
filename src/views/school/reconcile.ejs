@@ -11,6 +11,7 @@
   </div>
 <% } else { %>
   <p><%= t('reconcile_intro') %></p>
+  <p class="small"><%= t('reconcile_side_rule') %></p>
 <% } %>
 
 <% if (!predatesTracks) { %>
@@ -52,16 +53,28 @@
           <th scope="row" style="background:none;font-weight:400;color:inherit;">
             <b><%= row.indicator.code %></b> — <%= row.indicator.name %>
           </th>
-          <td class="num">
-            <% if (row.hidden && myTrack === 'TEAM') { %>
-              <span class="help" title="<%= t('reconcile_hidden_hint') %>"><%= t('reconcile_hidden') %></span>
-            <% } else { %><%= row.administrationLevel === null ? '—' : row.administrationLevel %><% } %>
-          </td>
-          <td class="num">
-            <% if (row.hidden && myTrack === 'ADMINISTRATION') { %>
-              <span class="help" title="<%= t('reconcile_hidden_hint') %>"><%= t('reconcile_hidden') %></span>
-            <% } else { %><%= row.teamLevel === null ? '—' : row.teamLevel %><% } %>
-          </td>
+          <% ['ADMINISTRATION', 'TEAM'].forEach(function (side) {
+               const sideValue = side === 'ADMINISTRATION' ? row.administrationLevel : row.teamLevel;
+               const people = row.readings ? row.readings[side] : [];
+               const hiddenHere = row.hidden && (myTrack !== side || sideValue === null); %>
+            <td class="num">
+              <% if (hiddenHere) { %>
+                <span class="help" title="<%= t('reconcile_hidden_hint') %>"><%= t('reconcile_hidden') %></span>
+              <% } else { %>
+                <%= sideValue === null ? '—' : sideValue %>
+                <% if (people && people.length) { %>
+                  <ul class="small reconcile-readings">
+                    <% people.forEach(function (p) { %>
+                      <li><%= p.name %>: <b><%= p.level %></b><% if (p.comment) { %> <span class="help" title="<%= p.comment %>">— <%= p.comment.length > 80 ? p.comment.slice(0, 80) + '…' : p.comment %></span><% } %></li>
+                    <% }) %>
+                  </ul>
+                  <% if (row.spread && row.spread[side] >= 2) { %>
+                    <span class="badge badge-unvalidated"><%= t('reconcile_side_split', { n: row.spread[side] }) %></span>
+                  <% } %>
+                <% } %>
+              <% } %>
+            </td>
+          <% }) %>
           <td>
             <% if (row.state === 'agree') { %>
               <span class="badge badge-confirmed"><%= t('reconcile_state_agree') %></span>
