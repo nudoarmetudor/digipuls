@@ -21,8 +21,20 @@ const multer = require('multer');
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
+// The account's home from the password database, not $HOME: the hosting
+// starts the app with HOME set to the domain's own folder, which the host
+// marks as not for uploads, while an SSH session sees the real home. Reading
+// the account record makes both agree on one place.
+function accountHome() {
+  try {
+    return os.userInfo().homedir || os.homedir();
+  } catch (err) {
+    return os.homedir();
+  }
+}
+
 const STORAGE_DIR = process.env.EVIDENCE_DIR
-  || path.join(os.homedir(), 'digipuls-data', 'evidence');
+  || path.join(accountHome(), 'digipuls-data', 'evidence');
 
 const PDF = (b) => b.slice(0, 5).toString('latin1') === '%PDF-';
 const PNG = (b) => b.slice(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
@@ -112,7 +124,11 @@ function sendFile(res, evidence) {
     `${disposition}; filename="${name.replace(/[^\x20-\x7e]/g, '_')}"; filename*=UTF-8''${encodeURIComponent(name)}`);
   res.setHeader('X-Content-Type-Options', 'nosniff');
   // Opened in the browser, a file is still content the school uploaded: it
-  // runs no script and loads nothing.
+  // runs no script and loads nothing. The production host replaces this
+  // header with its own, so it is not what keeps a file harmless there — the
+  // type list is: nothing that a browser would run as a page is accepted, the
+  // contents must match the type, nosniff stops the browser guessing, and
+  // everything but PDFs and images downloads rather than opens.
   res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox");
   fs.createReadStream(full).pipe(res);
   return true;
