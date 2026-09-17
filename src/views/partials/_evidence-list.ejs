@@ -6,7 +6,8 @@
    principal and deputy — the server checks the same rule.
 
    Expects: evidences. Optional: editable, cycle, returnStep, evidenceTypes,
-   canManage, emptyText. */
+   canManage, emptyText, fileBase (where attached files are served from; the
+   file's name is shown without a link when it is absent). */
 const listEditable = !!locals.editable;
 const linkLike = function (s) { return /^https?:\/\/[^\s<>"']+$/i.test(String(s || '').trim()); };
 %>
@@ -22,6 +23,14 @@ const linkLike = function (s) { return /^https?:\/\/[^\s<>"']+$/i.test(String(s 
           <% if (linkLike(ev.source)) { %>
             <a href="<%= ev.source.trim() %>" target="_blank" rel="noopener noreferrer"><%= ev.source.trim() %></a>
           <% } else { %><i><%= ev.source %></i><% } %>
+        <% } %>
+        <% if (ev.filePath) {
+             const size = ev.fileSize < 1024 * 1024 ? Math.max(1, Math.round(ev.fileSize / 1024)) + ' KB' : (ev.fileSize / (1024 * 1024)).toFixed(1) + ' MB'; %>
+          <br><span aria-hidden="true">📎</span>
+          <% if (locals.fileBase) { %>
+            <a href="<%= href(fileBase + ev.id + '/file') %>" target="_blank" rel="noopener"><%= ev.fileName %></a>
+          <% } else { %><%= ev.fileName %><% } %>
+          <span class="help">(<%= size %>)</span>
         <% } %>
         <span class="help">
           (<%= ev.addedBy

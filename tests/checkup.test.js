@@ -200,3 +200,38 @@ test('a colleague having answered does not open the row for you', () => {
   assert.ok(!masked[1].hidden);
   assert.strictEqual(masked[1].administrationLevel, 3);
 });
+
+const evidenceFiles = require('../src/services/evidenceFiles');
+const { DEFERRED_MULTIPART } = require('../src/middleware/csrf');
+
+test('an evidence file must be what its name says', () => {
+  const pdf = Buffer.from('%PDF-1.7\n...');
+  const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0]);
+  const zip = Buffer.from([0x50, 0x4b, 0x03, 0x04, 0, 0]);
+  assert.strictEqual(evidenceFiles.detectType('Plan.PDF', pdf).mime, 'application/pdf');
+  assert.strictEqual(evidenceFiles.detectType('foto.png', png).ext, 'png');
+  assert.ok(evidenceFiles.detectType('proces-verbal.docx', zip));
+  assert.ok(evidenceFiles.detectType('date.csv', Buffer.from('a,b\n1,2')));
+  assert.strictEqual(evidenceFiles.detectType('plan.pdf', png), null, 'contents must match the name');
+  assert.strictEqual(evidenceFiles.detectType('pagina.html', Buffer.from('<script>')), null, 'not on the list');
+  assert.strictEqual(evidenceFiles.detectType('run.exe', Buffer.from('MZ')), null);
+  assert.strictEqual(evidenceFiles.detectType('notes.txt', Buffer.from([0x61, 0x00, 0x62])), null, 'binary is not text');
+  assert.strictEqual(evidenceFiles.detectType('empty.pdf', Buffer.alloc(0)), null);
+});
+
+test('stored names are ours alone', async () => {
+  assert.strictEqual(evidenceFiles.cleanName('../../etc/passwd'), 'passwd');
+  assert.ok(!/["\/]/.test(evidenceFiles.cleanName('a"b\c.pdf')));
+  // A name that is not one of ours is never resolved to a path.
+  await evidenceFiles.removeFile('../../../app.js');
+  assert.ok(fs.existsSync(path.join(__dirname, '..', 'src', 'app.js')));
+  assert.strictEqual(evidenceFiles.sendFile({ setHeader() {} }, { filePath: '../src/app.js' }), false);
+});
+
+test('only the evidence upload defers its CSRF check', () => {
+  assert.ok(DEFERRED_MULTIPART.test('/school/cycles/12/ratings/A1/evidence'));
+  ['/school/cycles/12/confirm', '/school/cycles/12/ratings/A1', '/school/cycles/12/evidence/5',
+    '/school/cycles/12/ratings/A1/evidence/x', '/admin/users'].forEach((p) => {
+    assert.ok(!DEFERRED_MULTIPART.test(p), p);
+  });
+});

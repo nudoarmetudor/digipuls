@@ -42,7 +42,7 @@
             <tr>
               <th scope="row" style="background:none;font-weight:400;color:inherit;"><%= ind.code %> — <%= ind.name %></th>
               <td><% if (r && r.level !== null) { %><span class="badge badge-level<%= r.level %>"><%= t('level_label') %> <%= r.level %></span><% } else { %>—<% } %></td>
-              <td><%- include('../partials/_evidence-list', { evidences: r ? r.evidences : [], emptyText: '—' }) %></td>
+              <td><%- include('../partials/_evidence-list', { evidences: r ? r.evidences : [], emptyText: '—', fileBase: docBase + '/evidence/' }) %></td>
             </tr>
           <% }) %>
         </tbody>

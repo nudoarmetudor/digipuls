@@ -67,6 +67,17 @@ function matches(expected, given) {
   return crypto.timingSafeEqual(a, b);
 }
 
+// The one form that sends a file. A multipart body is not parsed by the time
+// this middleware runs, so its token cannot be read here; the route parses the
+// upload and then calls verifyCsrf itself. Deferral applies only to this path
+// and only to a multipart request — anything else posted to it is checked
+// here as usual, and no other route is ever deferred.
+const DEFERRED_MULTIPART = /^\/school\/cycles\/\d+\/ratings\/[A-Z]\d+\/evidence$/;
+
+function isMultipart(req) {
+  return /^multipart\/form-data/i.test(req.get('content-type') || '');
+}
+
 function submittedToken(req) {
   return (req.body && req.body._csrf)
     || req.get('x-csrf-token')
@@ -84,6 +95,11 @@ function csrf(req, res, next) {
   res.locals.csrfToken = token || '';
 
   if (SAFE_METHODS.has(req.method) || EXEMPT.test(req.path)) return next();
+
+  if (req.method === 'POST' && DEFERRED_MULTIPART.test(req.path) && isMultipart(req)) {
+    req.csrfDeferred = true;
+    return next();
+  }
 
   if (!matches(token, submittedToken(req))) {
     const t = res.locals.t || ((k) => k);
@@ -111,4 +127,16 @@ function rotateToken(req) {
   return issueToken(req);
 }
 
-module.exports = { csrf, rotateToken, issueToken, needsToken };
+/**
+ * The deferred check, for the upload route: call once the body is parsed.
+ * Responds and returns false when the token does not match.
+ */
+function verifyCsrf(req, res) {
+  const token = (req.session && req.session.csrfToken) || null;
+  if (matches(token, submittedToken(req))) return true;
+  const t = res.locals.t || ((k) => k);
+  res.status(403).render('error', { title: t('err_access_denied'), message: t('err_csrf') });
+  return false;
+}
+
+module.exports = { csrf, rotateToken, issueToken, needsToken, verifyCsrf, DEFERRED_MULTIPART };

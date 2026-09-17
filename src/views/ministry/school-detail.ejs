@@ -59,7 +59,7 @@
                 <td><% if (r && r.level !== null) { %><span class="badge badge-level<%= r.level %>"><%= t('level_label') %> <%= r.level %></span><% } else { %>—<% } %></td>
                 <td><% if (r && r.changeState) { %><span class="badge badge-<%= r.changeState.toLowerCase() %>"><%= CHANGE_STATE_LABELS[r.changeState] %></span><% } %></td>
                 <td class="small"><%= r ? (r.comment || '') : '' %></td>
-                <td><%- include('../partials/_evidence-list', { evidences: r ? r.evidences : [], emptyText: '—' }) %></td>
+                <td><%- include('../partials/_evidence-list', { evidences: r ? r.evidences : [], emptyText: '—', fileBase: docBase + '/evidence/' }) %></td>
               </tr>
             <% }) %>
           <% }) %>

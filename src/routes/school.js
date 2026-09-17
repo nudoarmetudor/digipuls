@@ -26,6 +26,8 @@ const {
 } = require('../services/planService');
 const { summariseDomains, isEvidenceLink } = require('../services/assessmentSummary');
 const { reportVersionFor } = require('../services/reportVersions');
+const evidenceFiles = require('../services/evidenceFiles');
+const { verifyCsrf } = require('../middleware/csrf');
 const {
   INTERIM, FINAL, REPORT_KINDS,
   reportTiming, reportLines, reportProgress, buildSnapshot,
@@ -219,6 +221,14 @@ function reviewError(req, res, indicators) {
   return res.locals.t(keys[error], { n: named.length, codes: named.join(', '), min: MIN_REASON });
 }
 
+/** A step page's error line: a known key worded here, or passed through as before. */
+function stepError(req, res) {
+  const keys = { file_type: 'evidence_err_file_type', file_size: 'evidence_err_file_size' };
+  const { error } = req.query;
+  if (keys[error]) return res.locals.t(keys[error], { mb: evidenceFiles.MAX_BYTES / (1024 * 1024) });
+  return error || null;
+}
+
 function stepStatusesFor(cycle) {
   return finalizeReviewStatus(computeStepStatuses(cycle));
 }
@@ -295,7 +305,9 @@ router.get('/cycles/:id/step/:stepKey', loadCycleForSchool, async (req, res) => 
       school, cycle, stepStatuses, domainCode: stepKey, domainName: localeData.DOMAINS[stepKey],
       domainIntro: '', indicators, ratedInDomain, totalInDomain: indicators.length,
       isContinuation: !!cycle.previousCycleId,
-      errorMessage: req.query.error || null,
+      errorMessage: stepError(req, res),
+      fileBase: `/school/cycles/${cycle.id}/evidence/`,
+      evidenceAccept: evidenceFiles.ACCEPT,
     });
   }
 
@@ -395,7 +407,10 @@ router.post('/cycles/:id/ratings/:code', loadCycleForSchool, requireDraftCycle, 
   res.redirect(res.locals.href(`/school/cycles/${cycle.id}/step/${returnStep}#ind-${code}`));
 });
 
-router.post('/cycles/:id/ratings/:code/evidence', loadCycleForSchool, requireDraftCycle, async (req, res) => {
+router.post('/cycles/:id/ratings/:code/evidence', loadCycleForSchool, requireDraftCycle,
+  evidenceFiles.receiveFile, async (req, res) => {
+  // A form with a file arrives multipart, and its token is only readable now.
+  if (req.csrfDeferred && !verifyCsrf(req, res)) return undefined;
   const cycle = req.cycle;
   const { code } = req.params;
   // Evidence hangs off the agreed row, not off the track of whoever uploaded
@@ -406,10 +421,23 @@ router.post('/cycles/:id/ratings/:code/evidence', loadCycleForSchool, requireDra
   if (!rating) return res.status(400).send(res.locals.t('err_unknown_indicator'));
 
   const { type, description, source } = req.body;
+  const returnTo = req.body.returnStep || code[0];
+  const back = (error) => res.redirect(res.locals.href(
+    `/school/cycles/${cycle.id}/step/${returnTo}${error ? `?error=${error}` : ''}#ind-${code}`));
   // The form offers nine types; the server used to store whatever arrived.
-  if (!EVIDENCE_TYPES.includes(type) || !String(description || '').trim()) {
-    const returnTo = req.body.returnStep || code[0];
-    return res.redirect(res.locals.href(`/school/cycles/${cycle.id}/step/${returnTo}#ind-${code}`));
+  if (!EVIDENCE_TYPES.includes(type) || !String(description || '').trim()) return back(null);
+
+  let file = null;
+  if (req.uploadError) return back(req.uploadError);
+  if (req.file && req.file.size > 0) {
+    const detected = evidenceFiles.detectType(req.file.originalname, req.file.buffer);
+    if (!detected) return back('file_type');
+    file = {
+      filePath: await evidenceFiles.storeFile(req.file.buffer, detected.ext),
+      fileName: evidenceFiles.cleanName(req.file.originalname),
+      fileMime: detected.mime,
+      fileSize: req.file.size,
+    };
   }
   await prisma.evidence.create({
     data: {
@@ -418,11 +446,26 @@ router.post('/cycles/:id/ratings/:code/evidence', loadCycleForSchool, requireDra
       description: String(description).trim(),
       source: (source || '').trim() || null,
       addedById: req.session.user.id,
+      ...(file || {}),
     },
   });
-  await logAction(req.session.user.id, 'ADD_EVIDENCE', 'IndicatorRating', rating.id, `${type}: ${description}`);
-  const returnStep = req.body.returnStep || code[0];
-  res.redirect(res.locals.href(`/school/cycles/${cycle.id}/step/${returnStep}#ind-${code}`));
+  await logAction(req.session.user.id, 'ADD_EVIDENCE', 'IndicatorRating', rating.id,
+    `${type}: ${description}${file ? ` [file ${file.fileName}, ${file.fileSize} B]` : ''}`);
+  return back(null);
+});
+
+// A file attached to evidence, for anyone in the school.
+router.get('/cycles/:id/evidence/:eid/file', loadCycleForSchool, async (req, res) => {
+  const id = Number(req.params.eid);
+  const evidence = Number.isInteger(id) && id > 0
+    ? await prisma.evidence.findUnique({ where: { id }, include: { rating: true } })
+    : null;
+  if (!evidence || evidence.rating.cycleId !== req.cycle.id || !evidenceFiles.sendFile(res, evidence)) {
+    return res.status(404).render('error', {
+      title: res.locals.t('err_not_found'), message: res.locals.t('evidence_err_not_found'),
+    });
+  }
+  return undefined;
 });
 
 /**
@@ -476,10 +519,11 @@ router.post('/cycles/:id/evidence/:eid/delete', loadCycleForSchool, requireDraft
   if (!evidence) return undefined;
   const code = evidence.rating.indicatorCode;
   await prisma.evidence.delete({ where: { id: evidence.id } });
+  await evidenceFiles.removeFile(evidence.filePath);
   // The description goes into the audit entry, so what was withdrawn is still
   // on the record after the row itself is gone.
   await logAction(req.session.user.id, 'REMOVE_EVIDENCE', 'IndicatorRating', evidence.ratingId,
-    `${code} ${evidence.type}: ${evidence.description}`);
+    `${code} ${evidence.type}: ${evidence.description}${evidence.fileName ? ` [file ${evidence.fileName}]` : ''}`);
   return res.redirect(res.locals.href(
     `/school/cycles/${req.cycle.id}/step/${req.body.returnStep || code[0]}#ind-${code}`));
 });
@@ -502,6 +546,7 @@ router.get('/cycles/:id/document', loadCycleForSchool, async (req, res) => {
     deviceCompliance: cycle.deviceInventory ? checkDeviceCompliance(req.school, cycle.deviceInventory) : null,
     networkCompliance: checkNetworkCompliance(cycle.networkChecklist),
     isEvidenceLink,
+    fileBase: `/school/cycles/${cycle.id}/evidence/`,
   });
 });
 

@@ -81,7 +81,7 @@
               <% } %>
             </td>
             <td style="vertical-align:top;">
-              <%- include('../partials/_evidence-list', { evidences: item.evidences, emptyText: '—' }) %>
+              <%- include('../partials/_evidence-list', { evidences: item.evidences, emptyText: '—', fileBase: locals.fileBase }) %>
             </td>
           </tr>
         <% }) %>

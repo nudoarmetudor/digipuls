@@ -19,6 +19,7 @@ const { REPORT_KINDS } = require('../services/reportService');
 const { summariseDomains, isEvidenceLink } = require('../services/assessmentSummary');
 const { renderWheel, itemsFromRatings } = require('../services/wheelChart');
 const { reportVersionFor } = require('../services/reportVersions');
+const evidenceFiles = require('../services/evidenceFiles');
 
 module.exports = function oversightDocuments({ deniedKey }) {
   const router = express.Router();
@@ -79,7 +80,22 @@ module.exports = function oversightDocuments({ deniedKey }) {
       deviceCompliance: cycle.deviceInventory ? checkDeviceCompliance(cycle.school, cycle.deviceInventory) : null,
       networkCompliance: checkNetworkCompliance(cycle.networkChecklist),
       isEvidenceLink,
+      fileBase: `${req.baseUrl}/schools/${cycle.schoolId}/cycles/${cycle.id}/evidence/`,
     });
+  });
+
+  // A file behind the official record, within the same scope as the page.
+  router.get('/schools/:id/cycles/:cycleId/evidence/:eid/file', async (req, res) => {
+    const cycle = await loadCycle(req, res);
+    if (!cycle) return undefined;
+    const id = Number(req.params.eid);
+    const evidence = Number.isInteger(id) && id > 0
+      ? await prisma.evidence.findUnique({ where: { id }, include: { rating: true } })
+      : null;
+    // Only evidence on the agreed record of this confirmed cycle.
+    const onRecord = evidence && evidence.rating.cycleId === cycle.id && evidence.rating.track === 'AGREED';
+    if (!onRecord || !evidenceFiles.sendFile(res, evidence)) return notFound(res);
+    return undefined;
   });
 
   router.get('/schools/:id/cycles/:cycleId/plan', async (req, res) => {

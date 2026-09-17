@@ -49,9 +49,10 @@ if (process.env.NODE_ENV !== 'production') app.use(morgan('dev'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use('/static', express.static(path.join(__dirname, '..', 'public')));
-// No /uploads mount: nothing in the app writes there. Serving an empty
-// directory only creates somewhere for a future bug to drop a file and have
-// it served straight back.
+// No /uploads mount. Evidence files are stored outside the application and
+// the web root, and reach a browser only through routes that check who is
+// asking (see src/services/evidenceFiles.js). A static mount would serve them
+// to anyone with the name.
 
 app.use(
   session({

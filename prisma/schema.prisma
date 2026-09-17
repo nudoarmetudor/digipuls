@@ -423,7 +423,13 @@ model Evidence {
   type        String // document | observation_log | survey | usage_data | it_audit | photo | minutes | certification | external_validation
   description String          @db.Text
   source      String?
+  // An attached file, when there is one. filePath is the stored name inside
+  // the private evidence directory (see services/evidenceFiles.js) — never a
+  // path a client supplied. fileName is what the school called it.
   filePath    String?
+  fileName    String?
+  fileMime    String?
+  fileSize    Int?
   createdAt   DateTime        @default(now())
   // Who added it. Evidence is the school's, not one person's, but a principal
   // tidying the record before confirmation needs to know whom to ask — and a
