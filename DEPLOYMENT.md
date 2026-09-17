@@ -1,5 +1,22 @@
 # Deploying DigiPuls
 
+> **Production, since 17 September 2026:** `https://digipuls.lappsus.com` runs
+> on the Lappsus VPS (Hostinger KVM, Ubuntu 24.04, Germany) as a Docker Compose
+> stack with its own MariaDB 11.8 database — see **`infra/README.md`**, which
+> is the runbook. A push to `main` deploys within a minute (`infra/poll.sh`).
+>
+> It moved off Hostinger shared hosting because of what that hosting imposed:
+> 500 database connections an hour for everything, a remote database that
+> blocked the web server's address after failed connections (a full outage
+> on 17 September), app processes restarted at the host's discretion (which
+> signed people out), a CDN and a web server that rewrote the app's headers,
+> and no way to run anything but short requests.
+>
+> The old Hostinger app stays up for a week as a fallback, **read-only**: its
+> database carries `AppSetting.read_only = true`, so it shows every page and
+> refuses every change. Its DNS no longer points at it. The rest of this
+> document describes that shared-hosting setup and is kept for reference.
+
 DigiPuls is a server-rendered Node.js/Express app with a MySQL database
 (via Prisma). It needs a host that can run a persistent Node process — it
 cannot run on static hosting (e.g. GitHub Pages).
