@@ -56,15 +56,29 @@ let client = null;
 // validate, DB_SSL_INSECURE=true still encrypts the connection — which is
 // strictly better than cleartext — while being honest in its name about what
 // it does not do.
-function sslConfig() {
+function sslConfig(hostname) {
   if (process.env.DB_SSL === 'false') return undefined;
+  // A connection to the database on this same machine never touches a
+  // network, so there is nothing for TLS to protect — and on the production
+  // host the database *is* on the same machine, reachable as localhost.
+  // Connecting that way (rather than through the public srv2025.hstgr.io
+  // name) also means the app is never subject to the server blocking the web
+  // server's public address after a burst of failed connections, which took
+  // the site down on 17 September. DB_SSL=true forces TLS even here.
+  if (isLoopback(hostname) && process.env.DB_SSL !== 'true') return undefined;
   if (process.env.DB_SSL_INSECURE === 'true') return { rejectUnauthorized: false };
   return { rejectUnauthorized: true };
 }
 
+/** localhost, 127.x.x.x or ::1. */
+function isLoopback(hostname) {
+  const h = String(hostname || '').replace(/^\[|\]$/g, '').toLowerCase();
+  return h === 'localhost' || h === '::1' || /^127(\.\d{1,3}){3}$/.test(h);
+}
+
 function poolConfig() {
   const url = new URL(process.env.DATABASE_URL);
-  const ssl = sslConfig();
+  const ssl = sslConfig(url.hostname);
   return {
     host: url.hostname,
     port: url.port ? Number(url.port) : 3306,
@@ -83,8 +97,11 @@ function getClient() {
   return client;
 }
 
-module.exports = new Proxy({}, {
-  get(_target, prop) {
+module.exports = new Proxy({ isLoopback, sslConfig, poolConfig }, {
+  get(target, prop) {
+    // The configuration helpers are answered without building a client, so
+    // they can be tested with no database.
+    if (Object.prototype.hasOwnProperty.call(target, prop)) return target[prop];
     const value = getClient()[prop];
     return typeof value === 'function' ? value.bind(getClient()) : value;
   },

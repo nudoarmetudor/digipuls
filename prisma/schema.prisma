@@ -390,6 +390,17 @@ model IndicatorRating {
   @@unique([cycleId, indicatorCode, track])
 }
 
+// A signed-in browser session. Kept here rather than in the server's memory,
+// because the host restarts the app's processes on its own and a session held
+// in memory ended with them. See src/services/sessionStore.js.
+model Session {
+  sid       String   @id @db.VarChar(128)
+  data      String   @db.Text
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
+
 // One person's reading of one parameter, on their side.
 //
 // A side used to hold a single value per parameter, written by whoever saved

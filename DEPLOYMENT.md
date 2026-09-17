@@ -195,20 +195,32 @@ and redeploys automatically.
   CDN off for this domain in hPanel, or configure it to pass a client-IP
   header — then set `TRUST_CLIENT_IP=true`. Until then the limits are honest
   about being shared; see `src/utils/clientId.js`.
-- **Sessions live in memory.** With one Passenger process that is consistent,
-  and anonymous visitors are given no session at all, so the public tier
-  cannot grow it. Two things follow: every deploy signs everyone out, and a
-  second process would split the session store. Moving to a database-backed
-  store is on ROADMAP.md and is worth doing before the pilot grows.
+- **Sessions** are stored in the database (the `Session` table, see
+  `src/services/sessionStore.js`). The host starts and stops the app's
+  processes on its own — at every deploy and when it recycles idle ones — and
+  sessions held in memory were lost each time, signing everyone out. They now
+  survive restarts and are shared by every process. `SESSION_STORE=memory`
+  forces the old in-memory store for local development.
 - **SESSION_SECRET** must be a long random value in production — sessions
   signed with the default dev secret are not secure. The app refuses to start
   in production without it.
-- **DB_SSL**: the database connection is TLS-encrypted with certificate
-  verification by default, which matters because the database is on a
-  different host from the app and the traffic carries credentials and
-  personal data. Set `DB_SSL=false` only for a local container that has no
-  certificate. `DB_SSL_INSECURE=true` keeps encryption but skips certificate
-  verification — a fallback, not a destination.
+- **Database host**: on Hostinger the MySQL server is reachable from the web
+  server as `127.0.0.1`. Use that in `DATABASE_URL` in production rather than
+  the public `srv2025.hstgr.io` name. Over the public name, a burst of failed
+  connections (for example when the 500-connections-per-hour limit is hit)
+  makes MySQL block the web server's address, and the site stays down until
+  the block clears; a loopback connection is not subject to that.
+- **Connection budget**: the database user may open at most 500 connections
+  per hour, shared by the app, every build's `prisma migrate deploy`, and any
+  script run against the database. Test through the website rather than with
+  scripts that connect to production directly.
+- **DB_SSL**: a connection to a remote database host is TLS-encrypted with
+  certificate verification by default, because the traffic carries
+  credentials and personal data. A loopback connection (`localhost`,
+  `127.0.0.1`) never leaves the machine and is made without TLS unless
+  `DB_SSL=true`. `DB_SSL=false` disables TLS everywhere — only for a local
+  container with no certificate. `DB_SSL_INSECURE=true` keeps encryption to a
+  remote host but skips certificate verification.
 - **Backups**: use your database host's normal MySQL backup mechanism
   (Hostinger's hPanel has a database backup/export option; a self-managed
   server should run `mysqldump` on a cron schedule).
