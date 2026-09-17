@@ -14,6 +14,11 @@
             Said on every page rather than only on the way in, because the one
             thing that must never happen is someone editing a school's record
             without noticing whose record it is. %>
+        <% if (typeof readOnly !== 'undefined' && readOnly) { %>
+          <div class="flash flash-info" role="status">
+            <b><%= t('read_only_title') %></b> — <%= t('read_only_notice') %>
+          </div>
+        <% } %>
         <% if (workspace && workspace.inEverySchool) { %>
           <div class="flash flash-info" role="status">
             <b><%= workspace.schoolName %></b> — <%= t('school_admin_notice') %>

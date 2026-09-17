@@ -15,6 +15,7 @@ const { throttle } = require('./middleware/rateLimit');
 const { safeRedirect } = require('./utils/safeRedirect');
 const { clientId, limitsAreGlobal } = require('./utils/clientId');
 const { PrismaSessionStore } = require('./services/sessionStore');
+const { createReadOnlySwitch } = require('./services/readOnly');
 
 // No silent fallback in production — sessions signed with the checked-in
 // dev secret are not secure once real accounts/data exist on this instance.
@@ -50,6 +51,18 @@ if (process.env.NODE_ENV !== 'production') app.use(morgan('dev'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use('/static', express.static(path.join(__dirname, '..', 'public')));
+
+// For the container's health check and the deploy script: answers whether the
+// app is up *and* can reach its database. Before sessions, so a probe every
+// thirty seconds creates none.
+app.get('/healthz', async (req, res) => {
+  try {
+    await require('./config/db').$queryRawUnsafe('SELECT 1');
+    res.set('Cache-Control', 'no-store').json({ ok: true });
+  } catch (err) {
+    res.status(503).set('Cache-Control', 'no-store').json({ ok: false });
+  }
+});
 // No /uploads mount. Evidence files are stored outside the application and
 // the web root, and reach a browser only through routes that check who is
 // asking (see src/services/evidenceFiles.js). A static mount would serve them
@@ -234,6 +247,14 @@ app.use((req, res, next) => {
     message: res.locals.t('err_workspace_not_found'),
   });
 });
+
+// Read-only while the platform moves between servers: every page still
+// renders, with a notice, and every change is refused. Off unless an operator
+// sets it in the database. See src/services/readOnly.js.
+const readOnlySwitch = /^mysql:/.test(process.env.DATABASE_URL || '')
+  ? createReadOnlySwitch({ client: require('./config/db') })
+  : null;
+app.use((req, res, next) => (readOnlySwitch ? readOnlySwitch.middleware(req, res, next) : next()));
 
 app.use('/', require('./routes/auth'));
 // Mounted before /school so it keeps its own guards: managing the school's

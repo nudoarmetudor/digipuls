@@ -1,0 +1,95 @@
+# DigiPuls on the Lappsus VPS — infra/README.md.
+#
+#   docker compose --env-file .env -f infra/compose.yml up -d
+#
+# Three services: the app, its MariaDB database, and a nightly backup. Caddy,
+# which terminates TLS for every site on the box, belongs to the Lappsus stack;
+# it reaches the app over the shared `edge` network.
+
+name: digipuls
+
+services:
+  mariadb:
+    image: mariadb:11.4
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: digipuls
+      MARIADB_USER: digipuls
+      MARIADB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD must be set in .env}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --innodb-buffer-pool-size=256M
+    volumes:
+      - dbdata:/var/lib/mysql
+    # Loopback only: reachable from the box (and through an SSH tunnel), never
+    # from the internet.
+    ports:
+      - "127.0.0.1:3307:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+    image: digipuls-app:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      # A private network between two containers on one machine: nothing for
+      # TLS to protect, and the database container has no certificate.
+      DATABASE_URL: mysql://digipuls:${DB_PASSWORD}@mariadb:3306/digipuls
+      DB_SSL: "false"
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET must be set in .env}
+      DEMO_MODE: ${DEMO_MODE:-false}
+      # Caddy sets X-Forwarded-For from the connection it received, so the
+      # address the app sees is the visitor's own.
+      TRUST_CLIENT_IP: ${TRUST_CLIENT_IP:-true}
+      SIME_PROVIDER: ${SIME_PROVIDER:-mock}
+      EVIDENCE_DIR: /data/evidence
+    volumes:
+      - evidence:/data/evidence
+    ports:
+      - "127.0.0.1:3100:3000"
+    networks:
+      default:
+      edge:
+        aliases: [digipuls-app]
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
+  # Nightly: a database dump and an archive of the evidence files, kept
+  # 14 days in /var/backups/digipuls on the box.
+  backup:
+    image: mariadb:11.4
+    restart: unless-stopped
+    entrypoint: ["/bin/bash", "/opt/backup/backup.sh"]
+    environment:
+      DB_HOST: mariadb
+      DB_USER: digipuls
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: digipuls
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+    volumes:
+      - ./backup:/opt/backup:ro
+      - /var/backups/digipuls:/backups
+      - evidence:/evidence:ro
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
+networks:
+  edge:
+    external: true
+
+volumes:
+  dbdata:
+  evidence:

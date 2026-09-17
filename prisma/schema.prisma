@@ -390,6 +390,14 @@ model IndicatorRating {
   @@unique([cycleId, indicatorCode, track])
 }
 
+// Platform-wide switches an operator sets in the database. Today one:
+// `read_only`, see src/services/readOnly.js.
+model AppSetting {
+  key       String   @id @db.VarChar(64)
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}
+
 // A signed-in browser session. Kept here rather than in the server's memory,
 // because the host restarts the app's processes on its own and a session held
 // in memory ended with them. See src/services/sessionStore.js.
