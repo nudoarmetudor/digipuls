@@ -8,7 +8,7 @@ reasons are in `DEPLOYMENT.md`.
 |---|---|
 | Checkout | `/srv/digipuls` (the public GitHub repository, `main`) |
 | Secrets | `/srv/digipuls/.env`, mode 600, never in git |
-| Services | `app` (Node), `mariadb` (MariaDB 11.4), `backup` |
+| Services | `app` (Node), `mariadb` (MariaDB 11.8), `backup` |
 | Public address | `https://digipuls.lappsus.com`, through the Lappsus Caddy |
 | Evidence files | Docker volume `digipuls_evidence`, mounted at `/data/evidence` |
 | Backups | `/var/backups/digipuls`, nightly, 14 days |

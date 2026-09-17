@@ -10,7 +10,7 @@ name: digipuls
 
 services:
   mariadb:
-    image: mariadb:11.4
+    image: mariadb:11.8
     restart: unless-stopped
     environment:
       MARIADB_DATABASE: digipuls
@@ -68,7 +68,7 @@ services:
   # Nightly: a database dump and an archive of the evidence files, kept
   # 14 days in /var/backups/digipuls on the box.
   backup:
-    image: mariadb:11.4
+    image: mariadb:11.8
     restart: unless-stopped
     entrypoint: ["/bin/bash", "/opt/backup/backup.sh"]
     environment:
