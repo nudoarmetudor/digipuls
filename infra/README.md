@@ -8,7 +8,7 @@ reasons are in `DEPLOYMENT.md`.
 |---|---|
 | Checkout | `/srv/digipuls` (the public GitHub repository, `main`) |
 | Secrets | `/srv/digipuls/.env`, mode 600, never in git |
-| Services | `app` (Node), `mariadb` (MariaDB 11.8), `backup` |
+| Services | `digipuls` (the Node app), `mariadb` (MariaDB 11.8), `backup` |
 | Public address | `https://digipuls.lappsus.com`, through the Lappsus Caddy |
 | Evidence files | Docker volume `digipuls_evidence`, mounted at `/data/evidence` |
 | Backups | `/var/backups/digipuls`, nightly, 14 days |
@@ -17,7 +17,8 @@ reasons are in `DEPLOYMENT.md`.
 ## How a request arrives
 
 The Lappsus Caddy owns ports 80 and 443 for every site on the box. It joins the
-external Docker network `edge`, as does the DigiPuls app (alias `digipuls-app`),
+external Docker network `edge`, as does the DigiPuls app (alias `digipuls-app`;
+the service is named `digipuls` because Lappsus Ops is already `app` on that network),
 and its `digipuls.lappsus.com` block proxies to `digipuls-app:3000`. The route
 lives in the Lappsus repository, `infra/caddy/Caddyfile`, and changes only
 through that repository's deploy.
@@ -44,7 +45,7 @@ docker compose --env-file .env -f infra/compose.yml up -d --build
 cd /srv/digipuls
 COMPOSE="docker compose --env-file .env -f infra/compose.yml"
 $COMPOSE ps
-$COMPOSE logs --tail 100 app
+$COMPOSE logs --tail 100 digipuls
 tail -50 ~/digipuls-deploy.log          # what the poller deployed
 curl -s http://127.0.0.1:3100/healthz   # {"ok":true}
 ```

@@ -33,7 +33,11 @@ services:
       timeout: 5s
       retries: 10
 
-  app:
+  # Named `digipuls`, not `app`: Compose registers a service's name on every
+  # network it joins, and on the shared `edge` network the Lappsus Ops service
+  # is already `app`. Both answering to one name sent Caddy's Ops traffic here
+  # and took ops.lappsus.com down on 17 September.
+  digipuls:
     build:
       context: ..
       dockerfile: infra/Dockerfile

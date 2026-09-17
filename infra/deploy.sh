@@ -45,7 +45,7 @@ echo "==> up"
 $COMPOSE up -d --remove-orphans
 if [ "$IMAGE_BEFORE" != "$IMAGE_AFTER" ]; then
   echo "==> app image changed - recreating the app"
-  $COMPOSE up -d --force-recreate app
+  $COMPOSE up -d --force-recreate digipuls
 fi
 
 docker image prune -f >/dev/null
@@ -60,5 +60,5 @@ for _ in $(seq 1 45); do
   fi
   sleep 2
 done
-echo "    NOT HEALTHY after 90s - see: $COMPOSE logs --tail 50 app" >&2
+echo "    NOT HEALTHY after 90s - see: $COMPOSE logs --tail 50 digipuls" >&2
 exit 1
