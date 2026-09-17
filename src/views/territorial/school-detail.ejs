@@ -31,7 +31,7 @@
     <div class="table-scroll">
       <table aria-labelledby="ratings-h">
         <thead>
-          <tr><th scope="col"><%= t('th_indicator') %></th><th scope="col"><%= t('level_label') %></th></tr>
+          <tr><th scope="col"><%= t('th_indicator') %></th><th scope="col"><%= t('level_label') %></th><th scope="col"><%= t('evidence_heading') %></th></tr>
         </thead>
         <tbody>
           <% INDICATORS.forEach(ind => {
@@ -40,12 +40,21 @@
             <tr>
               <th scope="row" style="background:none;font-weight:400;color:inherit;"><%= ind.code %> — <%= ind.name %></th>
               <td><% if (r && r.level !== null) { %><span class="badge badge-level<%= r.level %>"><%= t('level_label') %> <%= r.level %></span><% } else { %>—<% } %></td>
+              <td><%- include('../partials/_evidence-list', { evidences: r ? r.evidences : [], emptyText: '—' }) %></td>
             </tr>
           <% }) %>
         </tbody>
       </table>
     </div>
   </div>
+
+  <div class="btn-row">
+    <a class="btn btn-sm btn-secondary" href="<%= href(docBase + '/assessment') %>"><%= t('assessment_doc_link') %></a>
+  </div>
+
+  <% if (planView) { %>
+    <%- include('../partials/_plan-oversight', { planView, docBase }) %>
+  <% } %>
 <% } else { %>
   <div class="card"><p><%= currentCycle ? t('territorial_no_confirmed') : t('territorial_no_cycle') %></p></div>
 <% } %>

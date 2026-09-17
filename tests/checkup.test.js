@@ -120,3 +120,35 @@ test('the evidence refusal exists in every language', () => {
     assert.notStrictEqual(i18n.t(lang)(key), key, `${lang} ${key}`);
   }));
 });
+
+const { summariseDomains, isEvidenceLink } = require('../src/services/assessmentSummary');
+
+test('domain averages leave unrated parameters out and name the strongest and weakest', () => {
+  const indicators = [
+    { code: 'A1', domain: 'A', levels: [] }, { code: 'A2', domain: 'A', levels: [] },
+    { code: 'B1', domain: 'B', levels: [] }, { code: 'C1', domain: 'C', levels: [] },
+  ];
+  const ratings = [
+    { indicatorCode: 'A1', level: 3 }, { indicatorCode: 'A2', level: null },
+    { indicatorCode: 'B1', level: 0 }, { indicatorCode: 'C1', level: 2 },
+  ];
+  const s = summariseDomains(ratings, indicators, { A: 'Leadership' });
+  const a = s.domains.find((d) => d.code === 'A');
+  assert.strictEqual(a.average, 3, 'a blank is not a 0');
+  assert.strictEqual(a.rated, 1);
+  assert.strictEqual(s.domains.find((d) => d.code === 'B').average, 0, 'a 0 is an answer');
+  assert.strictEqual(s.domains.find((d) => d.code === 'D').average, null);
+  assert.deepStrictEqual(s.strongest, ['A']);
+  assert.deepStrictEqual(s.weakest, ['B']);
+
+  const level = summariseDomains([{ indicatorCode: 'A1', level: 2 }, { indicatorCode: 'B1', level: 2 }], indicators);
+  assert.deepStrictEqual(level.strongest, [], 'domains level with each other have no strongest');
+});
+
+test('only http and https sources become links', () => {
+  assert.ok(isEvidenceLink('https://drive.google.com/file/d/abc/view'));
+  assert.ok(isEvidenceLink(' http://school.md/plan.pdf '));
+  assert.ok(!isEvidenceLink('javascript:alert(1)'));
+  assert.ok(!isEvidenceLink('dosarul nr. 3, cabinetul directorului'));
+  assert.ok(!isEvidenceLink('https://x.md/"onmouseover="alert(1)'));
+});

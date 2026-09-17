@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="<%= lang %>" <%- prefsAttrs %>>
+<head>
+<%- include('../partials/head') %>
+<style>
+  /* An official school document, like the plan: prints on white whatever
+     theme the reader chose. */
+  body { background: #ffffff; color: #000000; }
+  .container { max-width: 56rem; }
+  .doc-wheel { text-align: center; }
+  @media print { .no-print { display: none; } details { display: none; } }
+</style>
+</head>
+<body>
+<main id="main" class="container">
+  <div class="no-print" style="margin-bottom:1rem;">
+    <button class="btn btn-sm" type="button" data-print><%= t('print_save_pdf') %></button>
+  </div>
+
+  <h1><%= t('assessment_doc_title') %></h1>
+  <h2 class="plain-heading"><%= school.name %></h2>
+  <p class="small">
+    <%= t('cycle') %> <%= cycle.cycleNumber %> ·
+    <% if (draft) { %>
+      <%= STATUS_LABELS.DRAFT %>
+    <% } else { %>
+      <%= t('school_confirmed_on') %> <%= new Date(cycle.confirmedAt).toLocaleDateString(lang) %>
+      · <%= cycle.publishedAt ? t('publish_state_published') : t('publish_state_unpublished') %>
+    <% } %>
+  </p>
+  <% if (draft) { %><p class="small"><b><%= t('assessment_doc_draft_note') %></b></p><% } %>
+
+  <div class="doc-wheel"><%- wheelSvg %></div>
+
+  <h2><%= t('domain_averages_title') %></h2>
+  <table>
+    <thead>
+      <tr>
+        <th scope="col"><%= t('domain_label') %></th>
+        <th scope="col"><%= t('domain_average') %></th>
+        <th scope="col"><%= t('domain_rated_heading') %></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% summary.domains.forEach(function (d) { %>
+        <tr>
+          <th scope="row" style="background:none;font-weight:400;color:inherit;">
+            <%= d.code %> — <%= d.name %>
+            <% if (summary.strongest.includes(d.code)) { %> · <b><%= t('domain_strongest') %></b><% } %>
+            <% if (summary.weakest.includes(d.code)) { %> · <b><%= t('domain_weakest') %></b><% } %>
+          </th>
+          <td class="num"><%= d.average === null ? '—' : d.average.toFixed(1) %></td>
+          <td class="num"><%= d.rated %>/<%= d.total %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+
+  <% summary.domains.forEach(function (d) { %>
+    <h2><%= t('domain_label') %> <%= d.code %> — <%= d.name %></h2>
+    <table>
+      <thead>
+        <tr>
+          <th scope="col"><%= t('th_indicator') %></th>
+          <th scope="col"><%= t('level_label') %></th>
+          <th scope="col"><%= t('evidence_heading') %></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% d.items.forEach(function (item) { %>
+          <tr>
+            <th scope="row" style="background:none;font-weight:400;color:inherit;vertical-align:top;">
+              <b><%= item.indicator.code %></b> — <%= item.indicator.name %>
+              <% if (item.rating && item.rating.comment) { %><br><span class="small"><%= item.rating.comment %></span><% } %>
+            </th>
+            <td style="vertical-align:top;">
+              <% if (item.level === null) { %>—<% } else { %>
+                <b><%= item.level %></b><% if (item.levelName) { %> — <%= item.levelName %><% } %>
+                <% if (item.rating && item.rating.changeState) { %><br><span class="small"><%= CHANGE_STATE_LABELS[item.rating.changeState] %></span><% } %>
+              <% } %>
+            </td>
+            <td style="vertical-align:top;">
+              <%- include('../partials/_evidence-list', { evidences: item.evidences, emptyText: '—' }) %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% }) %>
+
+  <h2><%= t('order675_heading_doc') %></h2>
+  <p>
+    <b>D1 — <%= t('network_checklist') %>:</b>
+    <%= networkCompliance.compliant ? t('compliant') : t('non_compliant') %>
+    <% const missingNet = networkCompliance.checks.filter(function (c) { return !c.pass; }); %>
+    <% if (missingNet.length) { %>(<%= missingNet.map(function (c) { return t(c.labelKey); }).join('; ') %>)<% } %>
+  </p>
+  <p>
+    <b>D2 — <%= t('d2_heading') %>:</b>
+    <% if (!deviceCompliance) { %>—<% } else { %>
+      <%= deviceCompliance.compliant ? t('compliant') : t('non_compliant') %>
+      <% const shortDev = deviceCompliance.checks.filter(function (c) { return !c.pass; }); %>
+      <% if (shortDev.length) { %>(<%= shortDev.map(function (c) { return t(c.labelKey, c.labelParams) + ': ' + c.actual + '/' + c.required; }).join('; ') %>)<% } %>
+    <% } %>
+  </p>
+
+  <p class="small" style="margin-top:2rem;"><%= t('doc_generated_note') %></p>
+</main>
+<script src="/static/js/ui.js" defer></script>
+</body>
+</html>

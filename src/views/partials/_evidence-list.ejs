@@ -1,0 +1,68 @@
+<%
+/* One parameter's evidence.
+
+   Read-only for supervisors. Inside the school, while the cycle is a draft,
+   each item can be corrected or withdrawn by whoever added it and by the
+   principal and deputy — the server checks the same rule.
+
+   Expects: evidences. Optional: editable, cycle, returnStep, evidenceTypes,
+   canManage, emptyText. */
+const listEditable = !!locals.editable;
+const linkLike = function (s) { return /^https?:\/\/[^\s<>"']+$/i.test(String(s || '').trim()); };
+%>
+<% if (!evidences || !evidences.length) { %>
+  <% if (locals.emptyText) { %><span class="small"><%= locals.emptyText %></span><% } %>
+<% } else { %>
+  <ul class="small evidence-list">
+    <% evidences.forEach(function (ev) { %>
+      <li id="ev-<%= ev.id %>">
+        <b><%= t('ev_' + ev.type) %></b>: <%= ev.description %>
+        <% if (ev.source) { %>
+          —
+          <% if (linkLike(ev.source)) { %>
+            <a href="<%= ev.source.trim() %>" target="_blank" rel="noopener noreferrer"><%= ev.source.trim() %></a>
+          <% } else { %><i><%= ev.source %></i><% } %>
+        <% } %>
+        <span class="help">
+          (<%= ev.addedBy
+            ? t('evidence_added_by', { name: ev.addedBy.name, date: new Date(ev.createdAt).toLocaleDateString(lang) })
+            : new Date(ev.createdAt).toLocaleDateString(lang) %>)
+        </span>
+        <% if (listEditable && (locals.canManage || (currentUser && ev.addedById === currentUser.id))) { %>
+          <details class="evidence-edit">
+            <summary><%= t('evidence_edit') %><span class="visually-hidden"> — <%= t('ev_' + ev.type) %></span></summary>
+            <form method="POST" action="<%= href('/school/cycles/' + cycle.id + '/evidence/' + ev.id) %>">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <input type="hidden" name="returnStep" value="<%= locals.returnStep || '' %>">
+              <div class="inline-fields">
+                <div>
+                  <label for="ev-type-e<%= ev.id %>"><%= t('evidence_type_label') %></label>
+                  <select id="ev-type-e<%= ev.id %>" name="type">
+                    <% (locals.evidenceTypes || []).forEach(function (et) { %>
+                      <option value="<%= et[0] %>" <%- et[0] === ev.type ? 'selected' : '' %>><%= et[1] %></option>
+                    <% }) %>
+                  </select>
+                </div>
+                <div>
+                  <label for="ev-source-e<%= ev.id %>"><%= t('evidence_source_label') %></label>
+                  <input type="text" id="ev-source-e<%= ev.id %>" name="source" value="<%= ev.source || '' %>">
+                </div>
+              </div>
+              <label for="ev-desc-e<%= ev.id %>"><%= t('evidence_description_label') %></label>
+              <textarea id="ev-desc-e<%= ev.id %>" name="description" required><%= ev.description %></textarea>
+              <div class="btn-row" style="margin-top:.5rem;">
+                <button class="btn btn-sm" type="submit"><%= t('evidence_save') %></button>
+              </div>
+            </form>
+            <form method="POST" action="<%= href('/school/cycles/' + cycle.id + '/evidence/' + ev.id + '/delete') %>"
+                  data-confirm="<%= t('evidence_remove_confirm') %>" style="margin-top:.4rem;">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <input type="hidden" name="returnStep" value="<%= locals.returnStep || '' %>">
+              <button class="btn btn-sm btn-danger" type="submit"><%= t('evidence_remove') %></button>
+            </form>
+          </details>
+        <% } %>
+      </li>
+    <% }) %>
+  </ul>
+<% } %>

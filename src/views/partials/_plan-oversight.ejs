@@ -1,0 +1,79 @@
+<%
+/* The DigiPlan as the school's supervisors read it: what it advances, the
+   initiatives and measures under each target, and the documents the school
+   has produced. Read-only.
+
+   Expects: planView ({ plan, rows, summary, reports }), docBase. */
+const advancingRows = planView.rows.filter(function (r) { return r.advancing; });
+const publishedReports = planView.reports.filter(function (r) { return r.publishedAt; });
+%>
+<div class="card">
+  <h2 class="plain-heading"><%= t('digital_dev_plan') %></h2>
+  <p class="small">
+    <%= planView.plan.publishedAt ? t('published_on') + ' ' + new Date(planView.plan.publishedAt).toLocaleDateString(lang) : STATUS_LABELS.DRAFT %>
+    · <%= t('plan_summary', { advancing: planView.summary.advancing, maintaining: planView.summary.maintaining, initiatives: planView.summary.initiatives }) %>
+  </p>
+  <div class="btn-row">
+    <a class="btn btn-sm btn-secondary" href="<%= href(docBase + '/plan') %>"><%= t('oversight_plan_document') %></a>
+    <% ['INTERIM', 'FINAL'].forEach(function (kind) {
+         const rep = publishedReports.find(function (r) { return r.kind === kind; }); %>
+      <% if (rep) { %>
+        <a class="btn btn-sm btn-secondary" href="<%= href(docBase + '/report/' + kind) %>">
+          <%= t('report_title_' + kind) %> (<%= new Date(rep.publishedAt).toLocaleDateString(lang) %>)
+        </a>
+      <% } %>
+    <% }) %>
+  </div>
+  <% if (!publishedReports.length) { %><p class="help"><%= t('oversight_no_reports') %></p><% } %>
+
+  <% if (!advancingRows.length) { %>
+    <p><%= t('plan_none_advancing') %></p>
+  <% } %>
+  <% advancingRows.forEach(function (row) { %>
+    <section style="margin-top:1rem;">
+      <h3 class="plain-heading" style="font-size:1rem;">
+        <%= row.indicator.code %> — <%= row.indicator.name %>:
+        <%= row.currentLevel %> <span aria-hidden="true">→</span><span class="visually-hidden"><%= t('target_level_label') %></span> <%= row.targetLevel %>
+      </h3>
+      <% if (row.priority && row.priority.rationale) { %><p class="small"><%= row.priority.rationale %></p><% } %>
+      <% if (!row.initiatives.length) { %>
+        <p class="small text-bad"><%= t('plan_no_initiatives') %></p>
+      <% } %>
+      <ul>
+        <% row.initiatives.forEach(function (ini) { %>
+          <li>
+            <b><%= ini.title %></b> — <%= t('plan_status_' + ini.status) %>
+            <span class="small">
+              · <%= t('plan_ini_responsible') %>: <%= ini.responsibleUser ? ini.responsibleUser.name : (ini.responsibleName || '—') %>
+              <% if (ini.dueOn) { %> · <%= t('plan_ini_due') %>: <%= new Date(ini.dueOn).toLocaleDateString(lang) %><% } %>
+            </span>
+            <% if (ini.kpis && ini.kpis.length) { %>
+              <div class="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th scope="col"><%= t('plan_kpi_measure') %></th>
+                      <th scope="col"><%= t('plan_kpi_target') %></th>
+                      <th scope="col"><%= t('report_year_one') %></th>
+                      <th scope="col"><%= t('report_year_two') %></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% ini.kpis.forEach(function (k) { %>
+                      <tr>
+                        <td><%= k.measure %></td>
+                        <td><%= k.target %></td>
+                        <td><%= k.actual || '—' %></td>
+                        <td><%= k.finalActual || '—' %></td>
+                      </tr>
+                    <% }) %>
+                  </tbody>
+                </table>
+              </div>
+            <% } %>
+          </li>
+        <% }) %>
+      </ul>
+    </section>
+  <% }) %>
+</div>

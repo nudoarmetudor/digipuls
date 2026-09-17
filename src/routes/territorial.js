@@ -14,6 +14,7 @@ const { flagsForSchool } = require('../services/flags');
 const { getIndicatorData } = require('../data/indicatorsI18n');
 const { schoolsWithLatestCycle, selectOfficialAndCurrentCycle } = require('../services/schoolOverview');
 const { renderWheel, itemsFromRatings } = require('../services/wheelChart');
+const { planInclude, planRows, planSummary } = require('../services/planService');
 
 const router = express.Router();
 router.use(requireCapability('view.regional'));
@@ -54,12 +55,17 @@ router.get('/schools/:id', async (req, res) => {
         // what is actually blocking confirmation rather than only counting
         // ratings.
         include: {
-          ratings: { where: { track: 'AGREED' }, include: { evidences: true } },
+          ratings: {
+            where: { track: 'AGREED' },
+            include: {
+              evidences: { include: { addedBy: { select: { id: true, name: true } } }, orderBy: { id: 'asc' } },
+            },
+          },
           deviceInventory: true,
           networkChecklist: true,
-          // For the plan's targets on the wheel — the district reads what the
-          // school intends, not only what it measured.
-          plan: { include: { priorities: true } },
+          // The plan's targets for the wheel, and everything written under
+          // them — the district reads what the school intends and how.
+          plan: { include: { ...planInclude(), reports: true } },
         },
       },
     },
@@ -87,6 +93,10 @@ router.get('/schools/:id', async (req, res) => {
     // Concerns raised from this page used to vanish into the audit log, which
     // this role cannot read.
     flags,
+    planView: latest && latest.plan
+      ? (() => { const rows = planRows(latest.plan, INDICATORS); return { plan: latest.plan, rows, summary: planSummary(rows), reports: latest.plan.reports || [] }; })()
+      : null,
+    docBase: latest ? `/territorial/schools/${school.id}/cycles/${latest.id}` : null,
   });
 });
 
@@ -103,5 +113,7 @@ router.post('/schools/:id/flag', async (req, res) => {
   await logAction(req.session.user.id, 'TERRITORIAL_FLAG', 'School', req.params.id, req.body.reason);
   res.redirect(res.locals.href(`/territorial/schools/${req.params.id}`));
 });
+
+router.use(require('./oversightDocuments')({ deniedKey: 'err_outside_territory' }));
 
 module.exports = router;

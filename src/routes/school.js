@@ -18,8 +18,9 @@ const {
 } = require('../services/tracks');
 const {
   ADVANCE, MAINTAIN, INTENTS, INITIATIVE_STATUSES,
-  openPlan, requirementsFor, planRows, planSummary, targetChoices,
+  openPlan, requirementsFor, planRows, planSummary, targetChoices, loadPlan,
 } = require('../services/planService');
+const { summariseDomains, isEvidenceLink } = require('../services/assessmentSummary');
 const {
   INTERIM, FINAL, REPORT_KINDS,
   reportTiming, reportLines, reportProgress, buildSnapshot,
@@ -112,7 +113,14 @@ async function loadCycleForSchool(req, res, next) {
     include: {
       // Every track. Which of them a given page means is decided below, not
       // by the query, because one page needs all three.
-      ratings: { include: { evidences: true } },
+      ratings: {
+        include: {
+          evidences: {
+            include: { addedBy: { select: { id: true, name: true } } },
+            orderBy: { id: 'asc' },
+          },
+        },
+      },
       deviceInventory: true,
       networkChecklist: true,
       plan: { include: { priorities: true } },
@@ -283,6 +291,7 @@ router.get('/cycles/:id/step/:stepKey', loadCycleForSchool, async (req, res) => 
     return res.render('school/step-review', {
       title: `Cycle ${cycle.cycleNumber} — Review`, wide: true,
       school, cycle, stepStatuses, domains, wheelSvg,
+      summary: summariseDomains(cycle.ratings, localeData.INDICATORS, localeData.DOMAINS),
       isContinuation: !!cycle.previousCycleId,
       errorMessage: reviewError(req, res, localeData.INDICATORS),
     });
@@ -353,11 +362,97 @@ router.post('/cycles/:id/ratings/:code/evidence', loadCycleForSchool, requireDra
     return res.redirect(res.locals.href(`/school/cycles/${cycle.id}/step/${returnTo}#ind-${code}`));
   }
   await prisma.evidence.create({
-    data: { ratingId: rating.id, type, description, source: source || null },
+    data: {
+      ratingId: rating.id,
+      type,
+      description: String(description).trim(),
+      source: (source || '').trim() || null,
+      addedById: req.session.user.id,
+    },
   });
   await logAction(req.session.user.id, 'ADD_EVIDENCE', 'IndicatorRating', rating.id, `${type}: ${description}`);
   const returnStep = req.body.returnStep || code[0];
   res.redirect(res.locals.href(`/school/cycles/${cycle.id}/step/${returnStep}#ind-${code}`));
+});
+
+/**
+ * One piece of this cycle's evidence, and whether this person may change it:
+ * whoever added it, or the principal and deputy. Without the cycle check, an
+ * id typed into the URL would reach another school's evidence.
+ */
+async function loadEvidence(req, res) {
+  const id = Number(req.params.eid);
+  const evidence = Number.isInteger(id) && id > 0
+    ? await prisma.evidence.findUnique({ where: { id }, include: { rating: true } })
+    : null;
+  if (!evidence || evidence.rating.cycleId !== req.cycle.id) {
+    res.status(404).render('error', {
+      title: res.locals.t('err_not_found'), message: res.locals.t('evidence_err_not_found'),
+    });
+    return null;
+  }
+  const mayChange = res.locals.can('school.manage') || evidence.addedById === req.session.user.id;
+  if (!mayChange) {
+    res.status(403).render('error', {
+      title: res.locals.t('err_access_denied'), message: res.locals.t('evidence_err_not_yours'),
+    });
+    return null;
+  }
+  return evidence;
+}
+
+// Correcting evidence before the school signs. It could only ever be added,
+// so a wrong file name or a description pasted into the wrong parameter stayed
+// on the record for good.
+router.post('/cycles/:id/evidence/:eid', loadCycleForSchool, requireDraftCycle, async (req, res) => {
+  const evidence = await loadEvidence(req, res);
+  if (!evidence) return undefined;
+  const code = evidence.rating.indicatorCode;
+  const back = res.locals.href(`/school/cycles/${req.cycle.id}/step/${req.body.returnStep || code[0]}#ind-${code}`);
+
+  const { type, description, source } = req.body;
+  if (!EVIDENCE_TYPES.includes(type) || !String(description || '').trim()) return res.redirect(back);
+  await prisma.evidence.update({
+    where: { id: evidence.id },
+    data: { type, description: String(description).trim(), source: (source || '').trim() || null },
+  });
+  await logAction(req.session.user.id, 'UPDATE_EVIDENCE', 'IndicatorRating', evidence.ratingId,
+    `${code} ${type}: ${String(description).trim()}`);
+  return res.redirect(back);
+});
+
+router.post('/cycles/:id/evidence/:eid/delete', loadCycleForSchool, requireDraftCycle, async (req, res) => {
+  const evidence = await loadEvidence(req, res);
+  if (!evidence) return undefined;
+  const code = evidence.rating.indicatorCode;
+  await prisma.evidence.delete({ where: { id: evidence.id } });
+  // The description goes into the audit entry, so what was withdrawn is still
+  // on the record after the row itself is gone.
+  await logAction(req.session.user.id, 'REMOVE_EVIDENCE', 'IndicatorRating', evidence.ratingId,
+    `${code} ${evidence.type}: ${evidence.description}`);
+  return res.redirect(res.locals.href(
+    `/school/cycles/${req.cycle.id}/step/${req.body.returnStep || code[0]}#ind-${code}`));
+});
+
+// The assessment as a document: for the staff meeting, the pedagogical
+// council, the founder. The plan and the reports had one; the assessment the
+// plan is built on did not.
+router.get('/cycles/:id/document', loadCycleForSchool, async (req, res) => {
+  const cycle = req.cycle;
+  const localeData = getIndicatorData(req.lang);
+  return res.render('school/assessment-document', {
+    title: res.locals.t('assessment_doc_title'),
+    layout: false,
+    school: req.school,
+    cycle,
+    draft: cycle.status !== 'CONFIRMED',
+    summary: summariseDomains(cycle.ratings, localeData.INDICATORS, localeData.DOMAINS),
+    wheelSvg: renderWheel(itemsFromRatings(cycle.ratings, localeData.INDICATORS,
+      cycle.plan ? cycle.plan.priorities : null), { mode: 'indicators', t: res.locals.t }),
+    deviceCompliance: cycle.deviceInventory ? checkDeviceCompliance(req.school, cycle.deviceInventory) : null,
+    networkCompliance: checkNetworkCompliance(cycle.networkChecklist),
+    isEvidenceLink,
+  });
 });
 
 router.post('/cycles/:id/device', loadCycleForSchool, requireDraftCycle, async (req, res) => {
@@ -569,28 +664,6 @@ router.post('/cycles/:id/reconcile/:code',
 // Every parameter is in the plan, either advancing to a named level or being
 // held where it is. What the plan aims at is the principal's decision; writing
 // the initiatives that get there is the whole team's work, and is not gated.
-
-/** The plan, with everything hanging off it, for one cycle. */
-function planInclude() {
-  return {
-    priorities: {
-      include: {
-        initiatives: {
-          include: {
-            kpis: true,
-            responsibleUser: { select: { id: true, name: true } },
-            supervisorUser: { select: { id: true, name: true } },
-          },
-          orderBy: { id: 'asc' },
-        },
-      },
-    },
-  };
-}
-
-async function loadPlan(cycleId) {
-  return prisma.developmentPlan.findUnique({ where: { cycleId }, include: planInclude() });
-}
 
 /** The school's own people, for the responsible/supervisor pickers. */
 async function schoolPeople(schoolId) {

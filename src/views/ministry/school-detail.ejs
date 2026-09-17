@@ -44,6 +44,7 @@
             <th scope="col"><%= t('level_label') %></th>
             <th scope="col"><%= t('change') %></th>
             <th scope="col"><%= t('comment') %></th>
+            <th scope="col"><%= t('evidence_heading') %></th>
           </tr>
         </thead>
         <tbody>
@@ -56,6 +57,7 @@
                 <td><% if (r && r.level !== null) { %><span class="badge badge-level<%= r.level %>"><%= t('level_label') %> <%= r.level %></span><% } else { %>—<% } %></td>
                 <td><% if (r && r.changeState) { %><span class="badge badge-<%= r.changeState.toLowerCase() %>"><%= CHANGE_STATE_LABELS[r.changeState] %></span><% } %></td>
                 <td class="small"><%= r ? (r.comment || '') : '' %></td>
+                <td><%- include('../partials/_evidence-list', { evidences: r ? r.evidences : [], emptyText: '—' }) %></td>
               </tr>
             <% }) %>
           <% }) %>
@@ -125,16 +127,12 @@
     </div>
   <% } %>
 
-  <% if (latest.plan) { %>
-    <div class="card">
-      <h2 class="plain-heading"><%= t('digital_dev_plan') %></h2>
-      <p class="small"><%= latest.plan.publishedAt ? t('published_on') + ' ' + new Date(latest.plan.publishedAt).toLocaleDateString(lang) : STATUS_LABELS.DRAFT %></p>
-      <ul>
-        <% latest.plan.priorities.forEach(p => { %>
-          <li><%= p.indicatorCode %>: <%= t('level_label') %> <%= p.currentLevel %> <span aria-hidden="true">→</span> <%= p.targetLevel %> — <%= p.rationale %></li>
-        <% }) %>
-      </ul>
-    </div>
+  <div class="btn-row">
+    <a class="btn btn-sm btn-secondary" href="<%= href(docBase + '/assessment') %>"><%= t('assessment_doc_link') %></a>
+  </div>
+
+  <% if (planView) { %>
+    <%- include('../partials/_plan-oversight', { planView, docBase }) %>
   <% } %>
 
   <h2 id="cycles-h"><%= t('school_cycle_history') %></h2>

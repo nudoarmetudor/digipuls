@@ -83,6 +83,7 @@ model User {
   confirmedCycles        AssessmentCycle[]     @relation("CycleConfirmedBy")
   publishedCycles        AssessmentCycle[]     @relation("CyclePublishedBy")
   publishedReports       PlanReport[]          @relation("ReportPublishedBy")
+  evidenceAdded          Evidence[]            @relation("EvidenceAddedBy")
   initiativesResponsible PlanInitiative[]      @relation("InitiativeResponsible")
   initiativesSupervised  PlanInitiative[]      @relation("InitiativeSupervisor")
   capabilities           UserCapability[]
@@ -379,6 +380,12 @@ model Evidence {
   source      String?
   filePath    String?
   createdAt   DateTime        @default(now())
+  // Who added it. Evidence is the school's, not one person's, but a principal
+  // tidying the record before confirmation needs to know whom to ask — and a
+  // mentor may correct or withdraw only what they added themselves. Null for
+  // everything recorded before this existed.
+  addedById   Int?
+  addedBy     User?           @relation("EvidenceAddedBy", fields: [addedById], references: [id], onDelete: SetNull)
   // set true once a peer/meta-mentor validation record exists for this
   // indicator/cycle — this is the flag the donation-matching eligibility
   // gate (Process 5, step 3) checks. See ValidationRecord below.

@@ -14,6 +14,7 @@ const { schoolsWithLatestCycle, filterRows, toCsv, ENROLMENT_BANDS, selectOffici
 const { renderWheel, itemsFromRatings } = require('../services/wheelChart');
 const { progressSummary } = require('../services/stepStatus');
 const { flagsForSchool } = require('../services/flags');
+const { planInclude, planRows, planSummary } = require('../services/planService');
 
 const router = express.Router();
 router.use(requireCapability('view.national', 'view.compliance'));
@@ -81,10 +82,16 @@ router.get('/schools/:id', async (req, res) => {
           // actually blocks a school from confirming.
           // The agreed track: the official record, not either side's working
           // draft. Every reader outside the school sees only this.
-          ratings: { where: { track: 'AGREED' }, include: { evidences: true } },
+          ratings: {
+            where: { track: 'AGREED' },
+            include: {
+              evidences: { include: { addedBy: { select: { id: true, name: true } } }, orderBy: { id: 'asc' } },
+            },
+          },
           deviceInventory: true,
           networkChecklist: true,
-          plan: { include: { priorities: true } },
+          // Everything the school wrote into the plan, and its reports.
+          plan: { include: { ...planInclude(), reports: true } },
         },
       },
     },
@@ -125,13 +132,23 @@ router.get('/schools/:id', async (req, res) => {
     // a school midway through its first assessment says almost nothing.
     progress: currentCycle && currentCycle.status === 'DRAFT' ? progressSummary(currentCycle) : null,
     flags,
+    planView: latest && latest.plan ? planViewFor(latest.plan, INDICATORS) : null,
+    docBase: latest ? `/ministry/schools/${school.id}/cycles/${latest.id}` : null,
   });
 });
+
+/** The plan as the oversight pages show it. */
+function planViewFor(plan, indicators) {
+  const rows = planRows(plan, indicators);
+  return { plan, rows, summary: planSummary(rows), reports: plan.reports || [] };
+}
 
 router.get('/compliance', async (req, res) => {
   const rows = await schoolsWithLatestCycle(oversightFilter(req));
   const nonCompliant = rows.filter((r) => r.confirmed && (!r.deviceCompliance?.compliant || !r.networkCompliance?.compliant));
   res.render('ministry/compliance', { title: res.locals.t('compliance_title'), wide: true, rows: nonCompliant, allCount: rows.filter(r => r.confirmed).length });
 });
+
+router.use(require('./oversightDocuments')({ deniedKey: 'err_outside_school_scope' }));
 
 module.exports = router;

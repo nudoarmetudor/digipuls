@@ -16,6 +16,7 @@ const {
 } = require('../src/services/capabilities');
 const { developerBlock, SEVERITIES, STATUSES } = require('../src/services/feedbackContext');
 const { buildTour } = require('../src/services/tour');
+const { summariseDomains } = require('../src/services/assessmentSummary');
 const {
   describe: describeWorkspace, describeInSchool,
 } = require('../src/middleware/workspace');
@@ -194,6 +195,20 @@ function templatesFor(lang) {
     resolvedAt: null, developerNote: null, triagedBy: null,
   };
   const withIndicators = (extra) => Object.assign({ INDICATORS: indicators }, extra);
+  const summary = summariseDomains(confirmedCycle.ratings, indicators, data.DOMAINS);
+  // One linked, attributed item and one plain one, so both branches of the
+  // evidence list render.
+  const evidences = [
+    { id: 1, type: 'document', description: 'Planul de dezvoltare aprobat', source: 'https://drive.google.com/file/d/x',
+      createdAt: new Date('2026-09-10'), addedById: 1, addedBy: { id: 1, name: 'Test User' } },
+    { id: 2, type: 'minutes', description: 'Proces-verbal', source: 'dosarul 3', createdAt: new Date('2026-09-11'), addedById: null, addedBy: null },
+  ];
+  const planView = {
+    plan: samplePlan, rows: planRowsFixture,
+    summary: { total: 2, advancing: 1, maintaining: 1, initiatives: 1, withoutInitiatives: [] },
+    reports: [{ kind: 'INTERIM', publishedAt: new Date('2027-09-15') }, { kind: 'FINAL', publishedAt: null }],
+  };
+  const docBase = '/ministry/schools/1/cycles/2';
 
   return [
     ['error.ejs', { title: 'T', message: 'M' }],
@@ -211,7 +226,7 @@ function templatesFor(lang) {
       school, cycle: draftCycle, stepStatuses, domainCode: 'A', domainName: data.DOMAINS.A,
       domainIntro: 'Intro', ratedInDomain: 4, totalInDomain: 5, errorMessage: 'Something went wrong',
       indicators: indicators.filter((i) => i.domain === 'A').map((ind) => Object.assign({}, ind, {
-        rating: { level: 3, comment: '', changeState: 'GREW', evidences: [] },
+        rating: { level: 3, comment: '', changeState: 'GREW', evidences },
         priorRating: { level: 2 },
       })),
     }],
@@ -220,8 +235,17 @@ function templatesFor(lang) {
       deviceCompliance: checkDeviceCompliance(school, DEVICE_INVENTORY),
       networkCompliance: checkNetworkCompliance(NETWORK_CHECKLIST),
     }],
+    ['school/assessment-document.ejs', {
+      school, cycle: confirmedCycle, draft: false, summary, wheelSvg, title: 'Summary',
+      deviceCompliance: checkDeviceCompliance(school, DEVICE_INVENTORY),
+      networkCompliance: checkNetworkCompliance(NETWORK_CHECKLIST),
+    }],
+    ['school/assessment-document.ejs', {
+      school, cycle: draftCycle, draft: true, summary: summariseDomains([], indicators, data.DOMAINS),
+      wheelSvg, title: 'Summary', deviceCompliance: null, networkCompliance: checkNetworkCompliance(null),
+    }],
     ['school/step-review.ejs', {
-      school, cycle: draftCycle, stepStatuses, wheelSvg, errorMessage: null,
+      school, cycle: draftCycle, stepStatuses, wheelSvg, errorMessage: null, summary,
       domains: ['A', 'B', 'C', 'D'].map((code) => ({
         code,
         indicators: indicators.filter((i) => i.domain === code).map((ind) => Object.assign({}, ind, {
@@ -315,12 +339,13 @@ function templatesFor(lang) {
     ['ministry/school-detail.ejs', withIndicators({
       school, latest: confirmedCycle, currentCycle: draftCycle, hasNewerDraft: true, wheelSvg,
       deviceCompliance: row.deviceCompliance, networkCompliance: row.networkCompliance,
-      validations: [], progress, flags,
+      validations: [], progress, flags, planView, docBase,
     })],
     // The case half the pilot is in: work under way, nothing confirmed yet.
     ['ministry/school-detail.ejs', withIndicators({
       school, latest: null, currentCycle: draftCycle, hasNewerDraft: false, wheelSvg: null,
       deviceCompliance: null, networkCompliance: null, validations: [], progress, flags: [],
+      planView: null, docBase: null,
     })],
 
     ['territorial/dashboard.ejs', { rows: [row], totalSchools: 3, confirmedCount: 2, territoryName: 'Chișinău', scopedToOneDistrict: true }],
@@ -329,11 +354,11 @@ function templatesFor(lang) {
     ['territorial/dashboard.ejs', { rows: [row], totalSchools: 14, confirmedCount: 7, territoryName: null, scopedToOneDistrict: false }],
     ['territorial/school-detail.ejs', withIndicators({
       school, latest: confirmedCycle, currentCycle: draftCycle, hasNewerDraft: true, wheelSvg,
-      progress, flags,
+      progress, flags, planView, docBase: '/territorial/schools/1/cycles/2',
     })],
     ['territorial/school-detail.ejs', withIndicators({
       school, latest: null, currentCycle: null, hasNewerDraft: false, wheelSvg: null,
-      progress: null, flags: [],
+      progress: null, flags: [], planView: null, docBase: null,
     })],
 
     ['partner/dashboard.ejs', { rows: [row], totalSchools: 8, filteredCount: 1, bands: ENROLMENT_BANDS, query: {} }],

@@ -10,6 +10,37 @@
 </div>
 
 <div class="card">
+  <h2 class="plain-heading" id="domain-avg"><%= t('domain_averages_title') %></h2>
+  <div class="table-scroll">
+    <table aria-labelledby="domain-avg">
+      <thead>
+        <tr>
+          <th scope="col"><%= t('domain_label') %></th>
+          <th scope="col"><%= t('domain_average') %></th>
+          <th scope="col"><%= t('domain_rated_heading') %></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% summary.domains.forEach(function (d) { %>
+          <tr>
+            <th scope="row" style="background:none;font-weight:400;color:inherit;">
+              <%= d.code %> — <%= d.name %>
+              <% if (summary.strongest.includes(d.code)) { %> <span class="badge badge-grew"><%= t('domain_strongest') %></span><% } %>
+              <% if (summary.weakest.includes(d.code)) { %> <span class="badge badge-decayed"><%= t('domain_weakest') %></span><% } %>
+            </th>
+            <td class="num"><%= d.average === null ? '—' : d.average.toFixed(1) %></td>
+            <td class="num"><%= d.rated %>/<%= d.total %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <div class="btn-row" style="margin-top:.6rem;">
+    <a class="btn btn-sm btn-secondary" href="<%= href('/school/cycles/' + (cycle.id) + '/document') %>"><%= t('assessment_doc_link') %></a>
+  </div>
+</div>
+
+<div class="card">
   <h2 class="plain-heading" id="review-summary"><%= t('summary_all_indicators') %></h2>
   <div class="table-scroll">
     <table aria-labelledby="review-summary">

@@ -73,6 +73,33 @@ async function openPlan(cycle) {
 }
 
 /**
+ * The plan with everything hanging off it: priorities, their initiatives, the
+ * people on those, and the measures. One definition, read by the school's own
+ * pages and by the supervisors' — which used to see targets and nothing about
+ * how the school meant to reach them.
+ */
+function planInclude() {
+  return {
+    priorities: {
+      include: {
+        initiatives: {
+          include: {
+            kpis: { orderBy: { id: 'asc' } },
+            responsibleUser: { select: { id: true, name: true } },
+            supervisorUser: { select: { id: true, name: true } },
+          },
+          orderBy: { id: 'asc' },
+        },
+      },
+    },
+  };
+}
+
+async function loadPlan(cycleId) {
+  return prisma.developmentPlan.findUnique({ where: { cycleId }, include: planInclude() });
+}
+
+/**
  * What reaching a level means, in the reader's own language.
  *
  * Read from the localised instrument data rather than the database: the level
@@ -162,5 +189,5 @@ function targetChoices(currentLevel, maxLevel = 5) {
 
 module.exports = {
   ADVANCE, MAINTAIN, INTENTS, INITIATIVE_STATUSES, PLAN_YEARS,
-  openPlan, requirementsFor, planRows, planSummary, targetChoices,
+  openPlan, requirementsFor, planRows, planSummary, targetChoices, planInclude, loadPlan,
 };
