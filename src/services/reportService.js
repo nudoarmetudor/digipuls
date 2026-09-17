@@ -38,8 +38,13 @@ function reportTiming(plan, kind, now = new Date()) {
 /**
  * Every initiative in the plan, flattened with the parameter it belongs to.
  * This is the report's content; the report itself only adds a narrative.
+ *
+ * `actual` is the result for the year this report covers. The final report
+ * also carries `interimActual`, the year-one figure, so the two years can be
+ * read side by side instead of the second replacing the first.
  */
-function reportLines(rows) {
+function reportLines(rows, kind = INTERIM) {
+  const isFinal = kind === FINAL;
   return rows.flatMap((row) => row.initiatives.map((ini) => ({
     indicatorCode: row.indicator.code,
     indicatorName: row.indicator.name,
@@ -58,7 +63,8 @@ function reportLines(rows) {
       target: k.target,
       // null means nobody has said yet — which is different from a measure
       // that was recorded as missed, and the report must not blur the two.
-      actual: k.actual || null,
+      actual: (isFinal ? k.finalActual : k.actual) || null,
+      ...(isFinal ? { interimActual: k.actual || null } : {}),
     })),
   })));
 }
@@ -96,7 +102,7 @@ function reportProgress(lines) {
  * The snapshot is the report as it was sent out.
  */
 function buildSnapshot(rows, { narrative, kind, publishedAt }) {
-  const lines = reportLines(rows);
+  const lines = reportLines(rows, kind);
   return {
     kind,
     publishedAt: publishedAt instanceof Date ? publishedAt.toISOString() : publishedAt,

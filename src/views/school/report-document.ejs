@@ -65,7 +65,10 @@
             <tr>
               <th scope="col"><%= t('plan_kpi_measure') %></th>
               <th scope="col"><%= t('plan_kpi_target') %></th>
-              <th scope="col"><%= t('report_actual') %></th>
+              <%# Snapshots published before the two years were separated carry no interimActual at all. %>
+              <% const twoYears = line.kpis.some(function (k) { return k.interimActual !== undefined; }); %>
+              <% if (twoYears) { %><th scope="col"><%= t('report_year_one') %></th><% } %>
+              <th scope="col"><%= twoYears ? t('report_year_two') : t('report_actual') %></th>
             </tr>
           </thead>
           <tbody>
@@ -73,6 +76,7 @@
               <tr>
                 <td><%= k.measure %></td>
                 <td><%= k.target %></td>
+                <% if (twoYears) { %><td><%= k.interimActual || t('report_not_recorded') %></td><% } %>
                 <td><%= k.actual || t('report_not_recorded') %></td>
               </tr>
             <% }) %>

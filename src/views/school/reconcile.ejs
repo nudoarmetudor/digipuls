@@ -85,6 +85,9 @@
                       <%= t('reconcile_agreed') %> — <%= row.indicator.code %>
                     </label>
                     <select id="agreed-<%= row.indicator.code %>" name="level" data-tour="reconcile-agreed">
+                      <%# Blank until chosen. Starting at 0 meant pressing Save
+                          on an unsettled row quietly recorded level 0. %>
+                      <option value="" <%- row.agreedLevel === null ? 'selected' : '' %>>—</option>
                       <% for (var lv = 0; lv <= 5; lv++) { %>
                         <option value="<%= lv %>" <%- row.agreedLevel === lv ? 'selected' : '' %>><%= lv %></option>
                       <% } %>
@@ -101,7 +104,11 @@
                 <p class="help"><%= t('reconcile_not_settled') %></p>
               <% } %>
             <% } else { %>
-              <span class="num"><%= row.agreedLevel === null ? t('reconcile_not_settled') : row.agreedLevel %></span>
+              <% if (row.agreedHidden) { %>
+                <span class="help" title="<%= t('reconcile_hidden_hint') %>"><%= t('reconcile_hidden') %></span>
+              <% } else { %>
+                <span class="num"><%= row.agreedLevel === null ? t('reconcile_not_settled') : row.agreedLevel %></span>
+              <% } %>
             <% } %>
           </td>
         </tr>

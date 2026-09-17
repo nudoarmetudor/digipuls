@@ -97,6 +97,13 @@ function checkDeviceCompliance({ enrolmentTotal, classroomsTotal, studentsGrades
   };
 }
 
+// Every kind of device the inventory counts. Each also has a matching
+// `<field>Obsolete` count of how many are waiting to be written off.
+const DEVICE_FIELDS = [
+  'classroomPCs', 'interactivePanels', 'itRoomPCs', 'managementPCs',
+  'methodicalCentrePCs', 'libraryPCs', 'printers', 'multifunctionPrinters',
+];
+
 const NETWORK_CHECKLIST_ITEMS = [
   { key: 'wifiWholeSchool', labelKey: 'o675_wifiWholeSchool', label: 'Whole-school WiFi/LAN coverage' },
   { key: 'subnetsSeparated', labelKey: 'o675_subnetsSeparated', label: '≥2–3 separated, password-protected subnets (Administration/Teachers, Students, Guest)' },
@@ -105,6 +112,8 @@ const NETWORK_CHECKLIST_ITEMS = [
   { key: 'firewallActive', labelKey: 'o675_firewallActive', label: 'Active firewall' },
   { key: 'contentFiltering', labelKey: 'o675_contentFiltering', label: 'Content filtering for the student network' },
 ];
+
+const NETWORK_FIELDS = NETWORK_CHECKLIST_ITEMS.map((i) => i.key);
 
 function checkNetworkCompliance(networkChecklist) {
   const checks = NETWORK_CHECKLIST_ITEMS.map((item) => ({
@@ -116,6 +125,8 @@ function checkNetworkCompliance(networkChecklist) {
 
 module.exports = {
   usable,
+  DEVICE_FIELDS,
+  NETWORK_FIELDS,
   ENROLMENT_BANDS,
   QUOTAS_BY_BAND,
   NETWORK_CHECKLIST_ITEMS,

@@ -58,7 +58,8 @@
             <tr>
               <th scope="col"><%= t('plan_kpi_measure') %></th>
               <th scope="col"><%= t('plan_kpi_target') %></th>
-              <th scope="col"><%= t('report_actual') %></th>
+              <% if (kind === 'FINAL') { %><th scope="col"><%= t('report_year_one') %></th><% } %>
+              <th scope="col"><%= kind === 'FINAL' ? t('report_year_two') : t('report_actual') %></th>
             </tr>
           </thead>
           <tbody>
@@ -66,6 +67,7 @@
               <tr id="k<%= k.id %>">
                 <td><%= k.measure %></td>
                 <td><%= k.target %></td>
+                <% if (kind === 'FINAL') { %><td><%= k.interimActual || t('report_not_recorded') %></td><% } %>
                 <td>
                   <form method="POST" action="<%= href('/school/cycles/' + (cycle.id) + '/plan/kpis/' + (k.id) + '/actual') %>">
                     <input type="hidden" name="_csrf" value="<%= csrfToken %>">

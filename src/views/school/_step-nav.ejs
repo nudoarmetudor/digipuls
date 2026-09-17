@@ -12,11 +12,14 @@ const stateLabels = { grey: t('step_state_grey'), blue: t('step_state_blue'), re
   <% stepStatuses.forEach(s => {
        let status = s.status;
        if (s.kind === 'review' && cycle.status === 'CONFIRMED') status = 'green';
-       const href = s.kind === 'review'
+       // Through href(), like every other link: a bare path lands in whichever
+       // post this browser used last, so someone holding two posts clicked a
+       // step in their mentor tab and rated on the administration's side.
+       const link = s.kind === 'review'
          ? `/school/cycles/${cycle.id}/step/review`
          : `/school/cycles/${cycle.id}/step/${s.key}`;
   %>
-    <a href="<%= href %>" class="step-pill step-<%= status %>"
+    <a href="<%= href(link) %>" class="step-pill step-<%= status %>"
        <%- activeStep === s.key ? 'aria-current="step"' : '' %>>
       <span class="step-dot" aria-hidden="true"></span>
       <%= stepLabels[s.key] %>

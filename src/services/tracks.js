@@ -108,10 +108,15 @@ function reconciliation(ratings, indicators) {
  * Someone who writes to no working track — an administrator acting inside the
  * school — is not one of the two sides and is not masked.
  *
+ * The agreed level goes with them when `hideAgreed` is set — for anyone who
+ * cannot settle, and so did not write it. Agreeing a level before the team has
+ * answered otherwise tells the team what to answer.
+ *
  * @param {Array} rows      from reconciliation()
  * @param {string} myTrack  the track this viewer writes to
+ * @param {{hideAgreed?: boolean}} [options]
  */
-function maskForTrack(rows, myTrack) {
+function maskForTrack(rows, myTrack, { hideAgreed = false } = {}) {
   if (!WORKING_TRACKS.includes(myTrack)) return rows;
   const mine = myTrack === ADMINISTRATION ? 'administrationLevel' : 'teamLevel';
   const theirs = myTrack === ADMINISTRATION ? 'teamLevel' : 'administrationLevel';
@@ -127,6 +132,7 @@ function maskForTrack(rows, myTrack) {
       state: 'hidden',
       gap: null,
       hidden: true,
+      ...(hideAgreed ? { agreedLevel: null, agreedHidden: true } : {}),
     };
   });
 }

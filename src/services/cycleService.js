@@ -1,6 +1,10 @@
 const prisma = require('../config/db');
 const { INDICATORS } = require('../data/indicators');
 const { TRACKS, AGREED } = require('./tracks');
+const {
+  DEVICE_FIELDS, NETWORK_FIELDS, checkDeviceCompliance, checkNetworkCompliance,
+} = require('../data/order675');
+const { logAction } = require('./audit');
 // AGREED is still read by setContinuationRating below, which derives the change
 // state from the previous cycle's official level.
 
@@ -86,31 +90,15 @@ async function startContinuationCycle(schoolId) {
       // Carry forward device/network data as the starting point — the
       // school edits it if equipment changed, rather than re-entering
       // everything from scratch.
+      //
+      // Every field, write-off counts included. The list used to be written
+      // out by hand and predated write-offs, so a school that reported eight
+      // scrap PCs started its renewal with none — and was compliant again.
       deviceInventory: {
-        create: priorCycle.deviceInventory
-          ? {
-              classroomPCs: priorCycle.deviceInventory.classroomPCs,
-              interactivePanels: priorCycle.deviceInventory.interactivePanels,
-              itRoomPCs: priorCycle.deviceInventory.itRoomPCs,
-              managementPCs: priorCycle.deviceInventory.managementPCs,
-              methodicalCentrePCs: priorCycle.deviceInventory.methodicalCentrePCs,
-              libraryPCs: priorCycle.deviceInventory.libraryPCs,
-              printers: priorCycle.deviceInventory.printers,
-              multifunctionPrinters: priorCycle.deviceInventory.multifunctionPrinters,
-            }
-          : {},
+        create: pick(priorCycle.deviceInventory, DEVICE_FIELDS.flatMap((f) => [f, `${f}Obsolete`])),
       },
       networkChecklist: {
-        create: priorCycle.networkChecklist
-          ? {
-              wifiWholeSchool: priorCycle.networkChecklist.wifiWholeSchool,
-              subnetsSeparated: priorCycle.networkChecklist.subnetsSeparated,
-              wifi80211n: priorCycle.networkChecklist.wifi80211n,
-              wifi80211ac: priorCycle.networkChecklist.wifi80211ac,
-              firewallActive: priorCycle.networkChecklist.firewallActive,
-              contentFiltering: priorCycle.networkChecklist.contentFiltering,
-            }
-          : {},
+        create: pick(priorCycle.networkChecklist, NETWORK_FIELDS),
       },
     },
   });
@@ -125,6 +113,56 @@ async function startContinuationCycle(schoolId) {
   });
 
   return newCycle;
+}
+
+/** The named fields of a record, or nothing when there is no record. */
+function pick(record, fields) {
+  if (!record) return {};
+  return Object.fromEntries(fields.map((f) => [f, record[f]]));
+}
+
+/**
+ * Holds D1 and D2 at 0, on every track, while the school's own equipment data
+ * fails Order 675.
+ *
+ * The floor was enforced only at the moment a level was saved. Agree D1 at 3
+ * with the network passing, then untick the network, and the agreed 3 stayed —
+ * through confirmation. It is a fact derived from data, so it is re-applied
+ * whenever that data changes and once more at confirmation.
+ *
+ * @returns {Promise<Array>} the rating rows that were lowered
+ */
+async function enforceOrder675Floor(cycleId, school, userId) {
+  const cycle = await prisma.assessmentCycle.findUnique({
+    where: { id: cycleId },
+    include: {
+      deviceInventory: true,
+      networkChecklist: true,
+      ratings: { where: { indicatorCode: { in: ['D1', 'D2'] } } },
+    },
+  });
+  if (!cycle || cycle.status !== 'DRAFT') return [];
+
+  const failing = floorCodes(school, cycle.deviceInventory, cycle.networkChecklist);
+  const lowered = cycle.ratings.filter((r) => failing.includes(r.indicatorCode) && r.level > 0);
+  for (const row of lowered) {
+    if (cycle.previousCycleId) {
+      await setContinuationRating(row.id, 0, row.comment);
+    } else {
+      await prisma.indicatorRating.update({ where: { id: row.id }, data: { level: 0 } });
+    }
+    await logAction(userId, 'ORDER675_FLOOR', 'IndicatorRating', row.id,
+      `${row.indicatorCode} ${row.track}: ${row.level} -> 0`);
+  }
+  return lowered;
+}
+
+/** Which of D1 and D2 the equipment data holds at 0. */
+function floorCodes(school, deviceInventory, networkChecklist) {
+  const codes = [];
+  if (!checkNetworkCompliance(networkChecklist).compliant) codes.push('D1');
+  if (!(deviceInventory && checkDeviceCompliance(school, deviceInventory).compliant)) codes.push('D2');
+  return codes;
 }
 
 /**
@@ -156,4 +194,6 @@ async function setContinuationRating(ratingId, newLevel, comment) {
   });
 }
 
-module.exports = { startFirstCycle, startContinuationCycle, setContinuationRating };
+module.exports = {
+  startFirstCycle, startContinuationCycle, setContinuationRating, enforceOrder675Floor, floorCodes, pick,
+};

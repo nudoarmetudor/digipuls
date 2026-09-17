@@ -5,6 +5,7 @@ const { activeSchoolId } = require('../middleware/workspace');
 const { INDICATORS, DOMAINS } = require('../data/indicators'); // structural use only (codes, counts) — locale-invariant
 const { getIndicatorData } = require('../data/indicatorsI18n');
 const { checkDeviceCompliance, checkNetworkCompliance } = require('../data/order675');
+const { EVIDENCE_TYPES } = require('../data/evidenceTypes');
 const cycleService = require('../services/cycleService');
 const { logAction } = require('../services/audit');
 const { renderWheel, itemsFromRatings } = require('../services/wheelChart');
@@ -145,7 +146,23 @@ async function loadCycleForSchool(req, res, next) {
   const track = trackForRole(req.workspace ? req.workspace.role : null) || AGREED;
   cycle.allRatings = cycle.ratings;
   cycle.agreedRatings = cycle.ratings.filter((r) => r.track === AGREED);
-  cycle.ratings = cycle.ratings.filter((r) => r.track === track);
+
+  // Evidence is stored once, on the agreed row (see the evidence route), and
+  // belongs to every reading of that parameter. The pages below read the
+  // viewer's own row, which never carries any — so for as long as this was
+  // missing, nobody ever saw the evidence they had just added, and every step
+  // holding a level of 2 or above stayed red however much was attached, while
+  // confirmation (which reads the agreed row) counted it correctly. Found by
+  // the end-to-end check-up, September 2026.
+  const evidenceByCode = new Map(cycle.agreedRatings.map((r) => [r.indicatorCode, r.evidences || []]));
+  cycle.allRatings.forEach((r) => { r.evidences = evidenceByCode.get(r.indicatorCode) || []; });
+
+  // Once a cycle is confirmed the two working columns are history and the
+  // agreed record is what the school declared. Showing the viewer their own
+  // column here meant a principal read A1 at 4 on their own wheel while the
+  // Ministry, the metamentor and the public read the agreed 2.
+  const shown = cycle.status === 'CONFIRMED' ? AGREED : track;
+  cycle.ratings = cycle.ratings.filter((r) => r.track === shown);
   req.track = track;
   req.cycle = cycle;
   return next();
@@ -165,6 +182,19 @@ function requireDraftCycle(req, res, next) {
     return res.redirect(res.locals.href(`/school/cycles/${req.cycle.id}/step/review?error=${msg}`));
   }
   next();
+}
+
+/**
+ * The review step's error line. The evidence refusal arrives as a key and a
+ * list of codes and is worded here, from the translator, with the codes
+ * checked against the instrument; anything else is passed through as before.
+ */
+function reviewError(req, res, indicators) {
+  const { error, codes } = req.query;
+  if (error !== 'evidence_missing') return error || null;
+  const known = new Set(indicators.map((i) => i.code));
+  const named = String(codes || '').split(',').map((c) => c.trim()).filter((c) => known.has(c));
+  return res.locals.t('err_evidence_missing', { n: named.length, codes: named.join(', ') });
 }
 
 function stepStatusesFor(cycle) {
@@ -254,7 +284,7 @@ router.get('/cycles/:id/step/:stepKey', loadCycleForSchool, async (req, res) => 
       title: `Cycle ${cycle.cycleNumber} — Review`, wide: true,
       school, cycle, stepStatuses, domains, wheelSvg,
       isContinuation: !!cycle.previousCycleId,
-      errorMessage: req.query.error || null,
+      errorMessage: reviewError(req, res, localeData.INDICATORS),
     });
   }
 
@@ -317,6 +347,11 @@ router.post('/cycles/:id/ratings/:code/evidence', loadCycleForSchool, requireDra
   if (!rating) return res.status(400).send(res.locals.t('err_unknown_indicator'));
 
   const { type, description, source } = req.body;
+  // The form offers nine types; the server used to store whatever arrived.
+  if (!EVIDENCE_TYPES.includes(type) || !String(description || '').trim()) {
+    const returnTo = req.body.returnStep || code[0];
+    return res.redirect(res.locals.href(`/school/cycles/${cycle.id}/step/${returnTo}#ind-${code}`));
+  }
   await prisma.evidence.create({
     data: { ratingId: rating.id, type, description, source: source || null },
   });
@@ -351,6 +386,7 @@ router.post('/cycles/:id/device', loadCycleForSchool, requireDraftCycle, async (
     create: { cycleId: cycle.id, ...data },
   });
   await logAction(req.session.user.id, 'UPDATE_DEVICE_INVENTORY', 'AssessmentCycle', cycle.id, null);
+  await cycleService.enforceOrder675Floor(cycle.id, req.school, req.session.user.id);
   res.redirect(res.locals.href(`/school/cycles/${cycle.id}/step/infra`));
 });
 
@@ -365,6 +401,7 @@ router.post('/cycles/:id/network', loadCycleForSchool, requireDraftCycle, async 
     create: { cycleId: cycle.id, ...data },
   });
   await logAction(req.session.user.id, 'UPDATE_NETWORK_CHECKLIST', 'AssessmentCycle', cycle.id, null);
+  await cycleService.enforceOrder675Floor(cycle.id, req.school, req.session.user.id);
   res.redirect(res.locals.href(`/school/cycles/${cycle.id}/step/infra`));
 });
 
@@ -374,6 +411,15 @@ router.post('/cycles/:id/confirm', requireCapability('school.manage'), loadCycle
   const cycle = req.cycle;
   if (cycle.status === 'CONFIRMED') return res.redirect(res.locals.href(`/school/cycles/${cycle.id}/plan`));
   const school = req.school;
+  // Once more at the signature, whatever happened before it. The floor is
+  // applied when levels are saved and when the equipment data changes, but a
+  // cycle opened before that second rule existed may still carry an agreed D1
+  // or D2 above what its own data allows.
+  const lowered = await cycleService.enforceOrder675Floor(cycle.id, school, req.session.user.id);
+  lowered.forEach((row) => {
+    const agreed = cycle.agreedRatings.find((r) => r.id === row.id);
+    if (agreed) agreed.level = 0;
+  });
   // Confirmation is about the agreed record. A cycle cannot close while any
   // parameter still lacks a level the two sides settled on — an unreconciled
   // disagreement quietly becoming the official record is the failure the
@@ -393,11 +439,11 @@ router.post('/cycles/:id/confirm', requireCapability('school.manage'), loadCycle
   // Enforce the evidence threshold: Level 2+ requires at least one evidence item.
   const missingEvidence = cycle.agreedRatings.filter((r) => r.level >= 2 && r.evidences.length === 0);
   if (missingEvidence.length > 0) {
-    const msg = encodeURIComponent(
-      `${missingEvidence.length} indicator(s) are rated Level 2 or above without any evidence attached: ` +
-      `${missingEvidence.map((r) => r.indicatorCode).join(', ')}. Evidence is required from Level 2 upward.`
-    );
-    return res.redirect(res.locals.href(`/school/cycles/${cycle.id}/step/review?error=${msg}`));
+    // A key and codes, not a sentence: this used to be built here in English
+    // and printed as-is to Romanian and Russian readers.
+    const codes = missingEvidence.map((r) => r.indicatorCode).join(',');
+    return res.redirect(res.locals.href(
+      `/school/cycles/${cycle.id}/step/review?error=evidence_missing&codes=${encodeURIComponent(codes)}`));
   }
   await prisma.assessmentCycle.update({
     where: { id: cycle.id },
@@ -450,7 +496,13 @@ router.get('/cycles/:id/reconcile', loadCycleForSchool, async (req, res) => {
   // levels, while the columns are the thing that has to stay apart. See
   // maskForTrack in services/tracks.js.
   const summary = outstanding(rows);
-  const visible = maskForTrack(rows, req.track);
+  const canSettle = res.locals.can('school.manage');
+  // The agreed column is hidden too, from anyone who cannot settle. It is
+  // usually a copy of one of the two readings, and a principal who agrees a
+  // level before the team has answered was otherwise handing the team the
+  // answer. The principal and the deputy wrote it, so it is not hidden from
+  // them.
+  const visible = maskForTrack(rows, req.track, { hideAgreed: !canSettle });
 
   return res.render('school/reconcile', {
     title: res.locals.t('reconcile_title'),
@@ -466,7 +518,7 @@ router.get('/cycles/:id/reconcile', loadCycleForSchool, async (req, res) => {
     hiddenCount: visible.filter((r) => r.hidden).length,
     // Everyone in the school can see where the two readings differ; only the
     // principal and the deputy can record what was agreed.
-    canSettle: res.locals.can('school.manage'),
+    canSettle,
     myTrack: req.track,
     errorMessage: reconcileError(req, res, localeData.INDICATORS),
   });
@@ -775,6 +827,8 @@ router.post('/cycles/:id/plan/kpis/:kid/delete', loadCycleForSchool, async (req,
   if (!kpi || kpi.initiative.priority.plan.cycleId !== req.cycle.id) return notFoundInPlan(res);
 
   await prisma.planKpi.delete({ where: { id } });
+  await logAction(req.session.user.id, 'REMOVE_KPI', 'PlanInitiative', kpi.initiativeId,
+    `${kpi.measure} -> ${kpi.target}`);
   return res.redirect(res.locals.href(
     `${planPath(req.cycle.id, kpi.initiative.priority.indicatorCode)}#i${kpi.initiativeId}`));
 });
@@ -815,6 +869,7 @@ router.post('/cycles/:id/plan/details', requireCapability('school.manage'), load
       endsOn: toDate(req.body.endsOn) || plan.endsOn,
     },
   });
+  await logAction(req.session.user.id, 'UPDATE_PLAN_DETAILS', 'DevelopmentPlan', plan.id, null);
   return res.redirect(res.locals.href(planPath(cycle.id)));
 });
 
@@ -980,9 +1035,12 @@ router.post('/cycles/:id/plan/kpis/:kid/actual', loadCycleForSchool, async (req,
   if (!kpi || kpi.initiative.priority.plan.cycleId !== req.cycle.id) return notFoundInPlan(res);
 
   const actual = (req.body.actual || '').trim();
-  await prisma.planKpi.update({ where: { id }, data: { actual: actual || null } });
+  // Each report writes its own year. See PlanKpi in the schema.
+  const kind = req.body.kind === FINAL ? FINAL : INTERIM;
+  const field = kind === FINAL ? 'finalActual' : 'actual';
+  await prisma.planKpi.update({ where: { id }, data: { [field]: actual || null } });
   await logAction(req.session.user.id, 'RECORD_KPI_ACTUAL', 'PlanKpi', id,
-    `${kpi.measure}: ${actual || '(cleared)'}`);
+    `${kind} ${kpi.measure}: ${actual || '(cleared)'}`);
   return res.redirect(res.locals.href(
     `/school/cycles/${req.cycle.id}/plan/report/${req.body.kind === FINAL ? FINAL : INTERIM}#k${id}`));
 });
@@ -1008,7 +1066,7 @@ router.get('/cycles/:id/plan/report/:kind', loadCycleForSchool, async (req, res)
 
   const rows = planRows(plan, getIndicatorData(req.lang).INDICATORS);
   const report = await loadReport(plan.id, kind);
-  const lines = reportLines(rows);
+  const lines = reportLines(rows, kind);
 
   return res.render('school/plan-report', {
     title: res.locals.t(`report_title_${kind}`),

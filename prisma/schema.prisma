@@ -534,8 +534,15 @@ model PlanKpi {
   initiative   PlanInitiative @relation(fields: [initiativeId], references: [id], onDelete: Cascade)
   measure      String
   target       String
-  // Filled in at the interim report, and again at the end of the plan.
+  // What the measure reached by the interim report, at the end of year one.
   actual       String?
+  // What it reached by the final report, at the end of year two.
+  //
+  // One field used to serve both reports, so entering the year-two figure
+  // replaced year one on the plan; year one survived only if the interim
+  // report had been published first. Additive and empty for every existing
+  // KPI, whose `actual` was always a year-one figure.
+  finalActual  String?
 
   @@index([initiativeId])
 }
