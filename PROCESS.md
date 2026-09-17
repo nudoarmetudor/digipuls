@@ -423,11 +423,22 @@ by the person who added it, and by the principal or the deputy. A removal keeps
 what the evidence said in the audit log. After confirmation, evidence is locked
 with everything else.
 
-Evidence is a written record, not an uploaded file: the file itself stays where
-the school keeps it, and the evidence says what it is and where to find it.
+**A file can be attached**: a PDF, an image, a Word, Excel, PowerPoint or
+OpenDocument file, or plain text, up to 10 MB. The file is checked against its
+contents, not only its name, and stored privately outside the website: it opens
+only for people in the school and, once the cycle is confirmed, for the
+school's metamentor and the oversight bodies whose scope covers the school.
+PDFs and images open in the browser; other documents download. Removing the
+evidence removes its file. A description is still required — a file with no
+statement of what it shows is not evidence.
 
-Your answer is yours: it goes into your side's track, and the other side's
-number is not shown to you while you work.
+**Your answer is yours.** Each person's reading is recorded separately: two
+mentors who rate the same parameter at 2 and at 4 both stay on the record.
+Your side's reading of a parameter is worked out from everyone on the side who
+has answered — the middle value, rounded down when there is an even number of
+readings — and is shown under your own once you have answered. Before you
+answer, you see only the names of colleagues who already have, not their
+levels. The other side's number is not shown to you while you work.
 
 ### 6.6 The infrastructure step
 
@@ -455,14 +466,21 @@ actually usable.
 
 ### 7.1 What this screen is for
 
-The other side's level for a parameter is hidden until you have recorded your
-own for it — so this screen fills in as the work is done, and nobody can read
-the other column first. For mentors the agreed level is hidden the same way: a
+The other side's level for a parameter is hidden until **you** have recorded
+your own for it — a colleague on your side having answered does not open it for
+you, and until you answer, your own side's column is hidden too, because it may
+be entirely a colleague's reading. So this screen fills in as the work is done,
+and nobody can read the other column first. For mentors the agreed level is hidden the same way: a
 principal who settles a parameter early does not thereby tell the team what to
 answer. Once both sides have finished, the two readings sit
 side by side in full and the school works through the differences. This is the conversation the method is
 built around: the interesting parameter is not the one both sides rated 3, it is
 the one the administration rated 4 and the team rated 1.
+
+Under each side's level, every person's reading is listed with their name and
+comment, and a side whose members are two or more levels apart is flagged: that
+is a conversation the side has to have with itself before it has one with the
+other side.
 
 Each parameter shows one of four states:
 
@@ -497,17 +515,29 @@ platform sends you back to this screen with the outstanding codes listed.
 Cycles assessed before the two-track design existed are shown as such and are
 not retro-fitted with a disagreement they never had.
 
+Once a cycle is confirmed, nothing on this screen is masked any more: there is
+nothing left to answer independently, and the record is read whole.
+
 ---
 
 ## 8. Process C — confirming and publishing the assessment
 
 ### 8.1 Confirming
 
-Principal or deputy: **Review → Confirm**. The platform checks two things and
-refuses if either fails:
+Principal or deputy: **Review → Confirm**. The platform checks three things:
 
-1. Every parameter has an agreed level.
-2. Every agreed level of 2 or above has evidence.
+1. Every parameter has an agreed level. If not, it refuses.
+2. Every agreed level of 2 or above has evidence. If not, it refuses.
+3. Both sides have read every parameter. If some have no reading from the
+   administration or from the team, the review step names them **before**
+   anything is pressed, and confirming then requires a written reason of at
+   least 20 characters.
+
+The third is not a refusal, because a team member falling ill should not stall
+a school — but it is not silent either. The parameters and the reason are
+recorded with the cycle and shown beside the assessment wherever it is read:
+on the metamentor's, the Ministry's and the district's pages, and in the
+printable summary. An agreement one side never took part in is visible as such.
 
 Confirming settles what the school found. It is what the DigiPlan is built on,
 and a cycle cannot carry a plan until it is confirmed.
@@ -708,6 +738,20 @@ So is **who takes what** (§6.3): everyone still on the school's team keeps the
 parameters they took last time, and anyone who has left is dropped. Check it
 before the team starts.
 
+### Closing a cycle
+
+When the work of the cycle is done — typically once the final report is
+published — the principal or deputy can **close the cycle** from its overview,
+with an optional closing note. The card lists anything not yet published (no
+plan opened, interim or final report not published) so the decision is made
+knowingly, but none of those blocks it.
+
+**Closing locks nothing.** The plan, its initiatives and the reports stay
+editable, and a closed cycle can be reopened. It is a dated, attributed
+statement that the school considers the cycle finished, shown on the school's
+dashboard, on the cycle itself and on the supervisors' pages. Starting the next
+cycle does not require closing the last one.
+
 ---
 
 ## 12. What the oversight roles do
@@ -719,7 +763,7 @@ Not a neighbouring school in the same district, and not the other eleven. They
 change nothing.
 
 On the school's page they read what stands behind the numbers: the evidence
-under every agreed level, and the DigiPlan's initiatives, people and measures
+under every agreed level, with any attached files, and the DigiPlan's initiatives, people and measures
 with both years' results. From there they open the school's documents — the
 assessment summary, the plan document, and every published version of the
 interim and final reports. Documents are served for confirmed cycles only; a
@@ -827,6 +871,7 @@ Developers see the whole backlog and move tickets through it.
 | Fill the device and network data | ● | ● | ● | | |
 | Settle a reconciled level | ● | ● | | | |
 | Confirm a cycle | ● | ● | | | |
+| Close or reopen a confirmed cycle | ● | ● | | | |
 | Publish the assessment | ● | ● | | | |
 | Open a DigiPlan | ● | ● | | | |
 | Set a parameter's intent and target | ● | ● | | | |
@@ -846,6 +891,7 @@ Developers see the whole backlog and move tickets through it.
 | Reconciling | Both sides finished | Differences are being settled |
 | Confirmed | Principal or deputy confirms | The agreed record; a plan may now be opened |
 | Published | Principal or deputy publishes | Visible on the public tier |
+| Closed | Principal or deputy closes | Marked finished; nothing is locked, and it can be reopened |
 
 ### 17.3 Where things live
 
