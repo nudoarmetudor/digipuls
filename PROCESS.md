@@ -412,6 +412,19 @@ is meant to become — the plan is where intent belongs.
 **From level 2 upward, attach evidence.** A document, a link, a named practice:
 whatever a sceptical reader would need in order to believe the rating. A rating
 of 2 or more with no evidence turns its step red and will block confirmation.
+At levels 0 and 1 evidence can be attached too, and stays optional.
+
+Evidence is stored once for the parameter, not per side: everyone on the team
+sees every piece, whoever added it, with that person's name and the date. A
+source that is a web address — a shared drive link, say — opens as a link.
+
+While the cycle is a draft, a piece of evidence can be **corrected or removed**
+by the person who added it, and by the principal or the deputy. A removal keeps
+what the evidence said in the audit log. After confirmation, evidence is locked
+with everything else.
+
+Evidence is a written record, not an uploaded file: the file itself stays where
+the school keeps it, and the evidence says what it is and where to find it.
 
 Your answer is yours: it goes into your side's track, and the other side's
 number is not shown to you while you work.
@@ -425,7 +438,16 @@ Two things that are counted rather than judged:
 - **Network** — the Annex 5 checklist: whole-school Wi-Fi, separated subnets,
   802.11n, 802.11ac, active firewall, content filtering.
 
-Both feed the Ministry's compliance monitor. Neither affects a maturity rating.
+Both feed the Ministry's compliance monitor. They also hold two parameters down:
+while the network checklist fails, **D1** stays at level 0, and while the device
+quota is not met, **D2** stays at level 0 — on both sides and in the agreed
+record. The rule is applied again whenever this data changes, and once more at
+confirmation, so ticking the checklist to agree a higher level and unticking it
+afterwards does not leave the higher level standing.
+
+Each kind of device has two numbers: how many the school has, and how many of
+those are **waiting to be written off**. The quota is measured against what is
+actually usable.
 
 ---
 
@@ -435,7 +457,9 @@ Both feed the Ministry's compliance monitor. Neither affects a maturity rating.
 
 The other side's level for a parameter is hidden until you have recorded your
 own for it — so this screen fills in as the work is done, and nobody can read
-the other column first. Once both sides have finished, the two readings sit
+the other column first. For mentors the agreed level is hidden the same way: a
+principal who settles a parameter early does not thereby tell the team what to
+answer. Once both sides have finished, the two readings sit
 side by side in full and the school works through the differences. This is the conversation the method is
 built around: the interesting parameter is not the one both sides rated 3, it is
 the one the administration rated 4 and the team rated 1.
@@ -487,6 +511,15 @@ refuses if either fails:
 
 Confirming settles what the school found. It is what the DigiPlan is built on,
 and a cycle cannot carry a plan until it is confirmed.
+
+From then on every page of the cycle — the wheel, the review table, the steps —
+shows the **agreed record**, the same numbers the metamentor, the Ministry and
+the public read, rather than either side's working reading.
+
+The review step shows each domain's **average level**, with the strongest and
+weakest named, and links to the **printable assessment summary**: the wheel,
+every parameter with its level and evidence, and the Order 675 result — the
+document for the staff meeting, the pedagogical council or the founder.
 
 ### 8.2 Publishing
 
@@ -570,7 +603,12 @@ Under each initiative, the measures. Each has:
 - **Measure** — what is being counted ("teachers trained", "sessions per term").
 - **Target** — what counts as success, in the school's own words ("80%", "all
   teachers", "twice per term").
-- **Result** — filled in later, at report time.
+- **Result** — filled in later: one for the end of year one (the interim report)
+  and one for the end of year two (the final report). Recording the second
+  never overwrites the first.
+
+A measure's wording and target can be corrected in place, keeping any result
+already recorded against it.
 
 Targets are free text on purpose. Forcing them into a number would either lose
 what the school means or invent precision it does not have.
@@ -632,19 +670,26 @@ goes out. A report that kept reading the live plan would quietly rewrite
 itself — a year-one report would end up describing year two, and a document
 already sent to the Ministry would no longer say what was sent. The published
 document shows the plan as it was; the working report page shows it as it is
-today. Publishing again produces a new frozen version with today's figures.
+today. Publishing again produces a new frozen version with today's figures, and
+**every earlier version is kept**: the report page lists them all, so a school
+can always show what it actually sent out and when.
 
 ---
 
 ## 11. Process F — the final report and the next cycle
 
-The final report works exactly like the interim one, due at the end of the
-second year, and is published the same way.
+The final report works like the interim one, due at the end of the second year,
+and is published the same way. Each measure shows **what it reached by year one
+beside what it reached by year two**, so the report shows the movement between
+the two rather than only where the school ended up.
 
 The cycle then begins again: a new assessment, in two tracks, against the same
 nineteen parameters — which is what makes the second cycle's numbers comparable
 with the first's, and what turns this from a snapshot into a trajectory. The
-school's own history page shows each parameter's movement across cycles.
+school's own history page shows each parameter's movement across cycles and,
+wherever the previous plan set out to advance a parameter, **whether the level
+it aimed for was reached**. When the new cycle's plan is opened, the same shows
+beside every parameter while the new targets are being chosen.
 
 **A renewal starts empty, not pre-filled.** Both sides rate all nineteen again,
 and all nineteen are reconciled again. Last cycle's agreed level is shown beside
@@ -655,9 +700,13 @@ let a school confirm a new official record without anyone having looked at
 anything, and would put the same number in front of both sides before either
 had answered, which is exactly what the two tracks exist to prevent.
 
-The equipment data — the device counts and the network checklist — *is* carried
-forward. It is an inventory rather than a judgement, and retyping eight numbers
-proves nothing.
+The equipment data — the device counts, the write-offs and the network
+checklist — *is* carried forward. It is an inventory rather than a judgement,
+and retyping sixteen numbers proves nothing.
+
+So is **who takes what** (§6.3): everyone still on the school's team keeps the
+parameters they took last time, and anyone who has left is dropped. Check it
+before the team starts.
 
 ---
 
@@ -667,7 +716,14 @@ proves nothing.
 
 Sees **their own institution and no other** — its record live, drafts included.
 Not a neighbouring school in the same district, and not the other eleven. They
-change nothing. Their work is conversation: the platform's job is to make sure
+change nothing.
+
+On the school's page they read what stands behind the numbers: the evidence
+under every agreed level, and the DigiPlan's initiatives, people and measures
+with both years' results. From there they open the school's documents — the
+assessment summary, the plan document, and every published version of the
+interim and final reports. Documents are served for confirmed cycles only; a
+draft is summarised by its progress panel. Their work is conversation: the platform's job is to make sure
 the conversation happens before a mistake is confirmed rather than after.
 
 ### 12.2 The metacoordinator
@@ -687,7 +743,9 @@ part of the address (see [§5.1](#51-workspaces)).
   levels; exportable as CSV.
 - **The compliance monitor** — the Order 675 quantitative check: devices against
   the Annex 2 quota, and the Annex 5 network checklist, school by school.
-- **A school's page** — that school's full record.
+- **A school's page** — that school's full record: levels with their evidence,
+  the plan with its initiatives and measures, and the school's documents (see
+  §12.1).
 
 ### 12.4 The Territorial Education Agency
 
@@ -765,6 +823,7 @@ Developers see the whole backlog and move tickets through it.
 | --- | :---: | :---: | :---: | :---: | :---: |
 | Open an assessment cycle | ● | ● | | | |
 | Rate parameters, attach evidence | ● | ● | ● | | |
+| Correct or remove evidence (draft only) | ● any | ● any | ● own | | |
 | Fill the device and network data | ● | ● | ● | | |
 | Settle a reconciled level | ● | ● | | | |
 | Confirm a cycle | ● | ● | | | |
@@ -777,6 +836,7 @@ Developers see the whole backlog and move tickets through it.
 | Publish the plan or a report | ● | ● | | | |
 | Create and manage school accounts | ● | ● | | | |
 | Read the school's record | ● | ● | ● | ● | ● |
+| Read evidence, plan, and published reports | ● | ● | ● | ● | ● |
 
 ### 17.2 The states a cycle passes through
 
@@ -796,12 +856,14 @@ Developers see the whole backlog and move tickets through it.
 | Reconciliation | `/school/cycles/<id>/reconcile` |
 | The DigiPlan | `/school/cycles/<id>/plan` |
 | One parameter of the plan | `/school/cycles/<id>/plan/parameter/<code>` |
+| The assessment summary | `/school/cycles/<id>/document` |
 | The plan document | `/school/cycles/<id>/plan/document` |
 | A report | `/school/cycles/<id>/plan/report/<INTERIM\|FINAL>` |
 | School accounts | `/school/accounts` |
 | The school's history | `/school/history` |
 | National dashboard | `/ministry` |
 | Compliance monitor | `/ministry/compliance` |
+| A school's documents, for supervisors | `/ministry/schools/<id>/cycles/<cycle>/<assessment\|plan\|report/INTERIM\|report/FINAL>` |
 | Territorial dashboard | `/territorial` |
 | Public tier | `/public-view/schools` |
 
