@@ -17,7 +17,7 @@
   </div>
 
   <% ['A','B','C','D'].forEach(domain => { %>
-    <h2 id="hist-<%= domain %>"><%= t('domain_label') %> <%= domain %> — <%= t('domain_' + domain + '_short') %></h2>
+    <h2 id="hist-<%= domain %>" <%- domain === 'A' ? 'data-tour="history-table"' : '' %>><%= t('domain_label') %> <%= domain %> — <%= t('domain_' + domain + '_short') %></h2>
     <div class="table-scroll">
       <table aria-labelledby="hist-<%= domain %>">
         <thead>
@@ -35,6 +35,10 @@
                   <% if (s.level !== null) { %>
                     <span class="badge badge-level<%= s.level %>"><%= t('level_label') %> <%= s.level %></span>
                     <% if (s.changeState) { %><span class="badge badge-<%= s.changeState.toLowerCase() %>"><%= CHANGE_STATE_LABELS[s.changeState] %></span><% } %>
+                    <% if (s.planTarget !== null && s.planTarget !== undefined) { %>
+                      <br><span class="small"><%= t('plan_prev_aimed', { n: s.planTarget }) %></span>
+                      <span class="badge badge-<%= s.reached ? 'grew' : 'decayed' %>"><%= s.reached ? t('target_reached') : t('target_missed') %></span>
+                    <% } %>
                   <% } else { %>—<% } %>
                 </td>
               <% }) %>

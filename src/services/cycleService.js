@@ -5,6 +5,7 @@ const {
   DEVICE_FIELDS, NETWORK_FIELDS, checkDeviceCompliance, checkNetworkCompliance,
 } = require('../data/order675');
 const { logAction } = require('./audit');
+const { SCHOOL_ROLES } = require('./capabilities');
 // AGREED is still read by setContinuationRating below, which derives the change
 // state from the previous cycle's official level.
 
@@ -112,7 +113,38 @@ async function startContinuationCycle(schoolId) {
     }))),
   });
 
+  await carrySplitForward(schoolId, priorCycle.id, newCycle.id);
+
   return newCycle;
+}
+
+/**
+ * Starts a renewal with last cycle's split of who takes which parameter, for
+ * the people still on the school's team.
+ *
+ * Unlike the levels, this is a plan of work rather than a finding, and the
+ * team two years on is mostly the same people: making the principal rebuild
+ * nineteen rows from nothing was work with no purpose. Anyone who has left, or
+ * whose account is switched off, is dropped, and the principal changes the
+ * rest on the same page as before.
+ */
+async function carrySplitForward(schoolId, priorCycleId, newCycleId) {
+  const prior = await prisma.indicatorAssignment.findMany({ where: { cycleId: priorCycleId } });
+  if (!prior.length) return 0;
+  const onTeam = await prisma.assignment.findMany({
+    where: { schoolId, isActive: true, role: { in: SCHOOL_ROLES }, user: { isActive: true } },
+    select: { userId: true },
+  });
+  const still = new Set(onTeam.map((a) => a.userId));
+  const carried = prior.filter((a) => still.has(a.userId));
+  if (carried.length) {
+    await prisma.indicatorAssignment.createMany({
+      data: carried.map((a) => ({
+        cycleId: newCycleId, indicatorCode: a.indicatorCode, userId: a.userId, assignedById: a.assignedById,
+      })),
+    });
+  }
+  return carried.length;
 }
 
 /** The named fields of a record, or nothing when there is no record. */

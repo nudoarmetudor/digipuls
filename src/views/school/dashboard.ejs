@@ -1,6 +1,7 @@
 <h1><%= school.name %></h1>
 <p class="subtitle">
   <%= t('sime_id') %>: <span class="mono"><%= school.simeId || '—' %></span>
+  <% if (locals.territory) { %>· <%= t('territory') %>: <%= territory.name %><% } %>
   · <%= t('enrolment') %>: <%= school.enrolmentTotal %> (<%= t('band') %> <%= school.enrolmentBand %>)
 </p>
 

@@ -54,6 +54,7 @@
           <th scope="col"><%= t('plan_intent') %></th>
           <th scope="col"><%= t('plan_target') %></th>
           <th scope="col"><%= t('plan_initiatives') %></th>
+          <% if (locals.previousByCode) { %><th scope="col" data-tour="plan-previous"><%= t('plan_previous') %></th><% } %>
         </tr>
       </thead>
       <tbody>
@@ -79,6 +80,19 @@
                 <span class="badge badge-unvalidated"><%= t('plan_none_yet') %></span>
               <% } %>
             </td>
+            <% if (locals.previousByCode) {
+                 const prev = previousByCode.get(row.indicator.code); %>
+              <td class="small">
+                <% if (prev && prev.intent === 'ADVANCE') { %>
+                  <%= t('plan_prev_aimed', { n: prev.targetLevel }) %>
+                  <% if (row.currentLevel !== null && row.currentLevel >= prev.targetLevel) { %>
+                    <span class="badge badge-grew"><%= t('target_reached') %></span>
+                  <% } else { %>
+                    <span class="badge badge-decayed"><%= t('target_missed') %></span>
+                  <% } %>
+                <% } else { %>—<% } %>
+              </td>
+            <% } %>
           </tr>
         <% }) %>
       </tbody>

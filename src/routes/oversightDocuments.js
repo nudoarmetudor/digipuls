@@ -18,6 +18,7 @@ const { loadPlan, planRows, planSummary } = require('../services/planService');
 const { REPORT_KINDS } = require('../services/reportService');
 const { summariseDomains, isEvidenceLink } = require('../services/assessmentSummary');
 const { renderWheel, itemsFromRatings } = require('../services/wheelChart');
+const { reportVersionFor } = require('../services/reportVersions');
 
 module.exports = function oversightDocuments({ deniedKey }) {
   const router = express.Router();
@@ -109,9 +110,11 @@ module.exports = function oversightDocuments({ deniedKey }) {
         message: res.locals.t('report_err_unpublished'),
       });
     }
+    const shown = await reportVersionFor(report, req.query.version);
+    if (!shown) return notFound(res);
     return res.render('school/report-document', {
       title: res.locals.t(`report_title_${kind}`), layout: false,
-      school: cycle.school, cycle, plan, report, snapshot: report.snapshot,
+      school: cycle.school, cycle, plan, ...shown,
     });
   });
 

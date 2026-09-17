@@ -21,6 +21,7 @@ const {
   openPlan, requirementsFor, planRows, planSummary, targetChoices, loadPlan,
 } = require('../services/planService');
 const { summariseDomains, isEvidenceLink } = require('../services/assessmentSummary');
+const { reportVersionFor } = require('../services/reportVersions');
 const {
   INTERIM, FINAL, REPORT_KINDS,
   reportTiming, reportLines, reportProgress, buildSnapshot,
@@ -87,8 +88,11 @@ router.get('/', async (req, res) => {
   ]);
   const latest = cycles[0];
   const hasConfirmedPrior = cycles.some((c) => c.status === 'CONFIRMED');
+  const territory = school.territoryId
+    ? await prisma.territory.findUnique({ where: { id: school.territoryId } })
+    : null;
   res.render('school/dashboard', {
-    title: res.locals.t('nav_dashboard'), wide: true, school, cycles, latest, hasConfirmedPrior, mentors,
+    title: res.locals.t('nav_dashboard'), wide: true, school, cycles, latest, hasConfirmedPrior, mentors, territory,
   });
 });
 
@@ -712,8 +716,17 @@ router.get('/cycles/:id/plan', loadCycleForSchool, async (req, res) => {
   const indicators = getIndicatorData(req.lang).INDICATORS;
   const plan = await loadPlan(cycle.id);
   const rows = plan ? planRows(plan, indicators) : [];
+  // What the last plan aimed at for each parameter. A renewal's plan used to
+  // start with no memory of the one before it, so nobody could see at the
+  // moment of setting new targets which of the old ones had been reached.
+  const previousPlan = cycle.previousCycleId
+    ? await prisma.developmentPlan.findUnique({
+      where: { cycleId: cycle.previousCycleId }, include: { priorities: true },
+    })
+    : null;
 
   return res.render('school/plan', {
+    previousByCode: previousPlan ? new Map(previousPlan.priorities.map((p) => [p.indicatorCode, p])) : null,
     title: res.locals.t('plan_title'),
     wide: true,
     school: req.school,
@@ -888,6 +901,28 @@ router.post('/cycles/:id/plan/initiatives/:iid/kpis', loadCycleForSchool, async 
   await logAction(req.session.user.id, 'ADD_KPI', 'PlanInitiative', initiative.id,
     `${measure} -> ${target}`);
   return res.redirect(res.locals.href(`${back}#i${initiative.id}`));
+});
+
+// Correcting a measure's wording. It could only be deleted and added again,
+// which also threw away any result already recorded against it.
+router.post('/cycles/:id/plan/kpis/:kid', loadCycleForSchool, async (req, res) => {
+  const id = Number(req.params.kid);
+  if (!Number.isInteger(id) || id <= 0) return notFoundInPlan(res);
+  const kpi = await prisma.planKpi.findUnique({
+    where: { id },
+    include: { initiative: { include: { priority: { include: { plan: true } } } } },
+  });
+  if (!kpi || kpi.initiative.priority.plan.cycleId !== req.cycle.id) return notFoundInPlan(res);
+
+  const measure = (req.body.measure || '').trim();
+  const target = (req.body.target || '').trim();
+  const back = planPath(req.cycle.id, kpi.initiative.priority.indicatorCode);
+  if (!measure || !target) return res.redirect(res.locals.href(`${back}?error=kpi#i${kpi.initiativeId}`));
+
+  await prisma.planKpi.update({ where: { id }, data: { measure, target } });
+  await logAction(req.session.user.id, 'UPDATE_KPI', 'PlanInitiative', kpi.initiativeId,
+    `${kpi.measure} -> ${kpi.target}  =>  ${measure} -> ${target}`);
+  return res.redirect(res.locals.href(`${back}#i${kpi.initiativeId}`));
 });
 
 router.post('/cycles/:id/plan/kpis/:kid/delete', loadCycleForSchool, async (req, res) => {
@@ -1121,7 +1156,15 @@ router.post('/cycles/:id/plan/kpis/:kid/actual', loadCycleForSchool, async (req,
 // -------------------- The interim and final reports --------------------
 
 async function loadReport(planId, kind) {
-  return prisma.planReport.findUnique({ where: { planId_kind: { planId, kind } } });
+  return prisma.planReport.findUnique({
+    where: { planId_kind: { planId, kind } },
+    include: {
+      versions: {
+        orderBy: { publishedAt: 'desc' },
+        include: { publishedBy: { select: { id: true, name: true } } },
+      },
+    },
+  });
 }
 
 function reportKind(req) {
@@ -1192,13 +1235,18 @@ router.post('/cycles/:id/plan/report/:kind/publish',
       narrative: existing ? existing.narrative : null, kind, publishedAt,
     });
 
-    await prisma.planReport.upsert({
+    const published = await prisma.planReport.upsert({
       where: { planId_kind: { planId: plan.id, kind } },
       create: {
         planId: plan.id, kind, narrative: null, snapshot,
         publishedAt, publishedById: req.session.user.id,
       },
       update: { snapshot, publishedAt, publishedById: req.session.user.id },
+    });
+    // And kept, so republishing adds a version instead of replacing the one
+    // already sent out.
+    await prisma.planReportVersion.create({
+      data: { reportId: published.id, snapshot, publishedAt, publishedById: req.session.user.id },
     });
     await logAction(req.session.user.id, 'PUBLISH_REPORT', 'DevelopmentPlan', plan.id, kind);
     return res.redirect(res.locals.href(
@@ -1219,15 +1267,16 @@ router.get('/cycles/:id/plan/report/:kind/document', loadCycleForSchool, async (
   }
 
   // Read from the snapshot, never from the live plan — that is the whole point
-  // of taking one.
+  // of taking one. An earlier version when one is asked for.
+  const shown = await reportVersionFor(report, req.query.version);
+  if (!shown) return notFoundInPlan(res);
   return res.render('school/report-document', {
     title: res.locals.t(`report_title_${kind}`),
     layout: false,
     school: req.school,
     cycle: req.cycle,
     plan,
-    report,
-    snapshot: report.snapshot,
+    ...shown,
   });
 });
 
@@ -1240,14 +1289,30 @@ router.get('/history', async (req, res) => {
     orderBy: { cycleNumber: 'asc' },
     // Progress over time is a history of what the school agreed, not of what
     // either side proposed along the way.
-    include: { ratings: { where: { track: 'AGREED' } } },
+    include: { ratings: { where: { track: 'AGREED' } }, plan: { include: { priorities: true } } },
   });
   const localeIndicators = getIndicatorData(req.lang).INDICATORS;
+  // Each cycle's plan, by cycle, so a level can be read against what the plan
+  // before it was aiming for.
+  const planByCycle = new Map(cycles.map((c) => [c.id, c.plan]));
   const history = localeIndicators.map((ind) => ({
     code: ind.code, domain: ind.domain, name: ind.name,
     series: cycles.map((c) => {
       const r = c.ratings.find((x) => x.indicatorCode === ind.code);
-      return { cycleNumber: c.cycleNumber, level: r ? r.level : null, changeState: r ? r.changeState : null };
+      const previousPlan = c.previousCycleId ? planByCycle.get(c.previousCycleId) : null;
+      const aimed = previousPlan
+        ? previousPlan.priorities.find((p) => p.indicatorCode === ind.code && p.intent === 'ADVANCE')
+        : null;
+      const level = r ? r.level : null;
+      return {
+        cycleNumber: c.cycleNumber,
+        level,
+        changeState: r ? r.changeState : null,
+        // Only where the last plan set out to advance this parameter. Holding
+        // a level is not a target to be "reached".
+        planTarget: aimed ? aimed.targetLevel : null,
+        reached: aimed && level !== null ? level >= aimed.targetLevel : null,
+      };
     }),
   }));
   const cycleWheels = cycles.map((c) => ({

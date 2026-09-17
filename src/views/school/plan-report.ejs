@@ -21,6 +21,8 @@
       initiatives: progress.initiatives,
       done: progress.byStatus.DONE,
       inProgress: progress.byStatus.IN_PROGRESS,
+      notStarted: progress.byStatus.NOT_STARTED,
+      dropped: progress.byStatus.DROPPED,
       recorded: progress.recorded,
       kpis: progress.kpis,
     }) %>
@@ -58,7 +60,7 @@
             <tr>
               <th scope="col"><%= t('plan_kpi_measure') %></th>
               <th scope="col"><%= t('plan_kpi_target') %></th>
-              <% if (kind === 'FINAL') { %><th scope="col"><%= t('report_year_one') %></th><% } %>
+              <% if (kind === 'FINAL') { %><th scope="col" data-tour="report-year-one"><%= t('report_year_one') %></th><% } %>
               <th scope="col"><%= kind === 'FINAL' ? t('report_year_two') : t('report_actual') %></th>
             </tr>
           </thead>
@@ -131,4 +133,22 @@
 </div>
 <% if (canPublish) { %>
   <p class="help"><%= t('report_publish_help') %></p>
+<% } %>
+
+<%# Every publication is kept. Republishing adds to this list rather than
+    replacing what was already sent out. %>
+<% if (report && report.versions && report.versions.length) { %>
+  <div class="card card-flat" style="margin-top:1rem;">
+    <h2 class="plain-heading" style="font-size:1rem;"><%= t('report_versions') %></h2>
+    <ul class="small">
+      <% report.versions.forEach(function (v, i) { %>
+        <li>
+          <a href="<%= href('/school/cycles/' + (cycle.id) + '/plan/report/' + kind + '/document' + (i === 0 ? '' : '?version=' + v.id)) %>">
+            <%= new Date(v.publishedAt).toLocaleString(lang) %></a>
+          <% if (v.publishedBy) { %> — <%= v.publishedBy.name %><% } %>
+          <% if (i === 0) { %> · <%= t('report_version_current') %><% } %>
+        </li>
+      <% }) %>
+    </ul>
+  </div>
 <% } %>

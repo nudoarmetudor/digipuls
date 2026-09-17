@@ -84,6 +84,7 @@ model User {
   publishedCycles        AssessmentCycle[]     @relation("CyclePublishedBy")
   publishedReports       PlanReport[]          @relation("ReportPublishedBy")
   evidenceAdded          Evidence[]            @relation("EvidenceAddedBy")
+  publishedReportVersions PlanReportVersion[]  @relation("ReportVersionPublishedBy")
   initiativesResponsible PlanInitiative[]      @relation("InitiativeResponsible")
   initiativesSupervised  PlanInitiative[]      @relation("InitiativeSupervisor")
   capabilities           UserCapability[]
@@ -454,7 +455,26 @@ model PlanReport {
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
+  versions PlanReportVersion[]
+
   @@unique([planId, kind])
+}
+
+// Every time a report was published, as it was published.
+//
+// PlanReport.snapshot holds the current version, and republishing used to
+// overwrite it: a school that corrected its interim report after sending it to
+// the district could no longer show what the district had actually received.
+model PlanReportVersion {
+  id            Int        @id @default(autoincrement())
+  reportId      Int
+  report        PlanReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  snapshot      Json
+  publishedAt   DateTime
+  publishedById Int?
+  publishedBy   User?      @relation("ReportVersionPublishedBy", fields: [publishedById], references: [id], onDelete: SetNull)
+
+  @@index([reportId])
 }
 
 // One row per parameter per plan — all nineteen, not a shortlist.

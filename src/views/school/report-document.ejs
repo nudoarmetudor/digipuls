@@ -27,6 +27,9 @@
     <% } %>
   </p>
   <p class="small"><%= t('report_frozen_note') %></p>
+  <% if (locals.isEarlier) { %>
+    <p><b><%= t('report_version_earlier', { date: new Date(locals.currentPublishedAt).toLocaleDateString(lang) }) %></b></p>
+  <% } %>
 
   <% if (snapshot && snapshot.narrative) { %>
     <h2><%= t('report_narrative') %></h2>
@@ -39,6 +42,7 @@
     <p>
       <%= t('report_counts', {
         initiatives: p.initiatives, done: p.byStatus.DONE, inProgress: p.byStatus.IN_PROGRESS,
+        notStarted: p.byStatus.NOT_STARTED || 0, dropped: p.byStatus.DROPPED || 0,
         recorded: p.recorded, kpis: p.kpis,
       }) %>
     </p>
