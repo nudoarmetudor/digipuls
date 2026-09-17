@@ -14,6 +14,7 @@ const { securityHeaders } = require('./middleware/securityHeaders');
 const { throttle } = require('./middleware/rateLimit');
 const { safeRedirect } = require('./utils/safeRedirect');
 const { clientId, limitsAreGlobal } = require('./utils/clientId');
+const { PrismaSessionStore } = require('./services/sessionStore');
 
 // No silent fallback in production — sessions signed with the checked-in
 // dev secret are not secure once real accounts/data exist on this instance.
@@ -54,9 +55,19 @@ app.use('/static', express.static(path.join(__dirname, '..', 'public')));
 // asking (see src/services/evidenceFiles.js). A static mount would serve them
 // to anyone with the name.
 
+// Sessions live in the database wherever there is one. In memory they ended
+// every time the host restarted the app — at each deploy, and whenever it
+// recycled idle processes on its own — signing everyone out mid-task. Memory
+// remains only where there is no MySQL database to hold them: the unit tests,
+// and a developer machine that sets SESSION_STORE=memory.
+const sessionStore = /^mysql:/.test(process.env.DATABASE_URL || '') && process.env.SESSION_STORE !== 'memory'
+  ? new PrismaSessionStore({ client: require('./config/db') })
+  : undefined;
+
 app.use(
   session({
     secret: process.env.SESSION_SECRET || 'digipuls-dev-secret',
+    store: sessionStore,
     resave: false,
     saveUninitialized: false,
     name: 'digipuls.sid',
